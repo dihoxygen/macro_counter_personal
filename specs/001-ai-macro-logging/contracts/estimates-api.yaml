@@ -1,0 +1,159 @@
+openapi: 3.1.0
+info:
+  title: Macro Counter AI Proxy
+  version: 1.0.0
+  description: >
+    Stateless backend for AI macro estimates. It stores no user data. Requests carry only the food
+    description and/or photo and an optional note (FR-015). Client cancellation (request abort)
+    cancels the upstream Claude call.
+servers:
+  - url: /api
+paths:
+  /status:
+    get:
+      summary: Report whether AI lookup is available
+      operationId: getStatus
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [aiAvailable]
+                properties:
+                  aiAvailable:
+                    type: boolean
+                    description: false when no API key is configured. The UI then offers manual entry only.
+  /estimates/text:
+    post:
+      summary: Estimate macros from a text description
+      operationId: estimateFromText
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [description]
+              additionalProperties: false
+              properties:
+                description:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                  example: 2 scrambled eggs and a slice of whole wheat toast with butter
+      responses:
+        "200": { $ref: "#/components/responses/EstimateOk" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "502": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
+        "504": { $ref: "#/components/responses/Problem" }
+  /estimates/photo:
+    post:
+      summary: Estimate macros from a meal photo
+      operationId: estimateFromPhoto
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo:
+                  type: string
+                  format: binary
+                  description: JPEG only, at most 5 MB. The client re-encodes the photo, which strips EXIF/GPS (research R7).
+                note:
+                  type: string
+                  maxLength: 300
+                  example: cooked in olive oil
+      responses:
+        "200": { $ref: "#/components/responses/EstimateOk" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
+        "415": { $ref: "#/components/responses/Problem" }
+        "502": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
+        "504": { $ref: "#/components/responses/Problem" }
+components:
+  responses:
+    EstimateOk:
+      description: >
+        A validated estimate. If recognized is false, items is empty and the UI shows the
+        "couldn't identify food" message.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Estimate" }
+    Problem:
+      description: >
+        RFC 9457 problem details. The `code` values are
+        invalid_request (400), image_too_large (413), unsupported_media_type (415),
+        invalid_ai_response (502, failed validation or AI refusal), ai_unavailable (503, no key
+        configured or upstream unreachable), and ai_timeout (504).
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            required: [title, status, code]
+            properties:
+              title: { type: string }
+              status: { type: integer }
+              code:
+                type: string
+                enum: [invalid_request, image_too_large, unsupported_media_type, invalid_ai_response, ai_unavailable, ai_timeout]
+              detail: { type: string }
+  schemas:
+    Unit:
+      type: string
+      enum: [g, ml, serving]
+    Quantity:
+      type: object
+      required: [amount, unit]
+      properties:
+        amount: { type: number, minimum: 0 }
+        unit: { $ref: "#/components/schemas/Unit" }
+    Macros:
+      type: object
+      required: [kcal, proteinG, carbsG, fatG]
+      properties:
+        kcal: { type: number, minimum: 0 }
+        proteinG: { type: number, minimum: 0 }
+        carbsG: { type: number, minimum: 0 }
+        fatG: { type: number, minimum: 0 }
+    Flag:
+      type: string
+      enum: [calorie_macro_mismatch, large_portion]
+      description: >
+        Warnings the user can still confirm through (research R5). Values that should be rejected
+        produce a 502 instead.
+    EstimateItem:
+      type: object
+      required: [name, portion, portionDescription, macros, flags]
+      properties:
+        name: { type: string, example: Scrambled eggs }
+        portion: { $ref: "#/components/schemas/Quantity" }
+        portionDescription:
+          type: string
+          description: The portion the AI assumed, shown to the user (vague-portion edge case).
+          example: 2 large eggs (~100 g) with ~5 g butter
+        macros: { $ref: "#/components/schemas/Macros" }
+        flags:
+          type: array
+          items: { $ref: "#/components/schemas/Flag" }
+    Estimate:
+      type: object
+      required: [recognized, items, total, flags]
+      properties:
+        recognized: { type: boolean }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EstimateItem" }
+        total:
+          allOf: [{ $ref: "#/components/schemas/Macros" }]
+          description: Recomputed on the server as the sum of the items. Claude's own total is never used.
+        flags:
+          type: array
+          description: The union of the item flags.
+          items: { $ref: "#/components/schemas/Flag" }
