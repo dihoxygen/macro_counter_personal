@@ -87,8 +87,14 @@ AI output can be wrong, it is treated as a suggestion, never as trusted data:
 - Claude MUST be asked for structured output (JSON) with explicit units, and every response
   MUST be validated against a schema before use. Invalid responses MUST surface an error, never
   partial data.
-- AI-provided values MUST pass sanity checks before being shown, e.g. calories consistent with
-  4/4/9 kcal per gram of protein/carbs/fat within a stated tolerance, and no negative values.
+- AI-provided values MUST pass two kinds of sanity checks, with limits and tolerances stated in
+  the feature plan:
+  - **Hard checks**: a response with negative values, non-finite numbers, or values outside the
+    plan's allowed ranges MUST be rejected and never shown.
+  - **Consistency checks**: values that fail a consistency check (e.g. calories not matching
+    4/4/9 kcal per gram of protein/carbs/fat within the stated tolerance, or an implausibly
+    large portion) MAY be shown, but only with a clear warning. The user MUST explicitly accept
+    the warning or edit the values before the data can be confirmed.
 - The user MUST review and confirm (or edit) AI-provided nutrition data before it is saved.
   Saved foods MUST record that the data came from AI.
 - The Claude API key MUST NOT be committed to the repository or bundled into client code that
@@ -101,6 +107,8 @@ AI output can be wrong, it is treated as a suggestion, never as trusted data:
 
 Rationale: AI lookup removes most of the typing from logging new foods, but the numbers feed
 directly into the totals that Principle II protects, so they must be validated and confirmed.
+Consistency checks warn instead of reject because the 4/4/9 rule is inexact for high-fiber foods
+and alcohol; rejecting would block legitimate entries.
 
 ## Technical Constraints
 
@@ -140,4 +148,4 @@ directly into the totals that Principle II protects, so they must be validated a
 - Compliance is checked during `/speckit-plan` (Constitution Check) and `/speckit-analyze`.
   Unjustified violations block implementation.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-07
+**Version**: 1.2.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-08

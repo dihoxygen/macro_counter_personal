@@ -174,7 +174,8 @@ that the main screen shows 90 / 150 g with 60 g remaining.
   and a combined total.
 - **FR-005**: The system MUST validate each AI estimate before showing it. It MUST reject
   negative values and flag estimates whose calories are not consistent with protein × 4 + carbs
-  × 4 + fat × 9 (within a tolerance set during planning).
+  × 4 + fat × 9 (within a tolerance set during planning). A flagged estimate MUST NOT be
+  confirmed until the user explicitly accepts the warning or edits the values.
 - **FR-006**: Users MUST review each estimate and confirm, edit, or discard it. Nothing is added
   to the log without explicit confirmation.
 - **FR-007**: Confirmed entries MUST record whether their values came from AI (unedited), AI

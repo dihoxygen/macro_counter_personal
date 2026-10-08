@@ -88,7 +88,7 @@ that were considered.
      missing/non-finite numbers, or an empty item list when `recognized: true`. Errors return
      `502 invalid_ai_response`, never partial data.
   2. **Reject**: any negative value; any item with `kcal > 5000` or any macro `> 1000 g`.
-  3. **Flag (warn, user can still confirm)**: `|kcal − (4P + 4C + 9F)| > max(20 kcal, 15% of
+  3. **Flag (warn; the user must explicitly accept the warning before confirming)**: `|kcal − (4P + 4C + 9F)| > max(20 kcal, 15% of
      4P+4C+9F)` per item. The tolerance covers fiber and alcohol, which make the 4/4/9 rule
      inexact. Also a portion over 2000 g.
   4. **Totals**: the combined total is recomputed from the items on the server. Claude's own total
