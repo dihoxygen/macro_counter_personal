@@ -1,0 +1,30 @@
+{
+  "$comment": "Structured-output schema Claude must return (passed via OutputConfig.Format). The backend validator (research R5) then applies the reject/flag rules and maps the result to the public Estimate contract. Claude does not return a total; the server computes it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["recognized", "items"],
+  "properties": {
+    "recognized": {
+      "type": "boolean",
+      "description": "false when no food can be identified; items must then be empty"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "portion_amount", "portion_unit", "portion_description", "kcal", "protein_g", "carbs_g", "fat_g"],
+        "properties": {
+          "name": { "type": "string" },
+          "portion_amount": { "type": "number" },
+          "portion_unit": { "type": "string", "enum": ["g", "ml", "serving"] },
+          "portion_description": { "type": "string" },
+          "kcal": { "type": "number" },
+          "protein_g": { "type": "number" },
+          "carbs_g": { "type": "number" },
+          "fat_g": { "type": "number" }
+        }
+      }
+    }
+  }
+}
