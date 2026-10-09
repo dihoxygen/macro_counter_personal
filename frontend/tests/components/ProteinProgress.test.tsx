@@ -39,6 +39,19 @@ describe('ProteinProgress', () => {
     expect(bar).toHaveAttribute('aria-valuemax', '150');
   });
 
+  it('with a goal, offers Change goal so the goal can be edited (V9)', async () => {
+    const user = userEvent.setup();
+    const onSetGoal = vi.fn();
+    await renderWithServices(<ProteinProgress loggedG={90} goalG={180} onSetGoal={onSetGoal} />);
+    await user.click(screen.getByRole('button', { name: /change goal/i }));
+    expect(onSetGoal).toHaveBeenCalled();
+  });
+
+  it('with a goal but no handler (previous days), offers no Change goal button', async () => {
+    await renderWithServices(<ProteinProgress loggedG={90} goalG={180} />);
+    expect(screen.queryByRole('button', { name: /change goal/i })).not.toBeInTheDocument();
+  });
+
   it('when exceeded, shows Goal met and by how much', async () => {
     await renderWithServices(<ProteinProgress loggedG={170} goalG={150} />);
     expect(screen.getByText(/goal met/i)).toBeInTheDocument();

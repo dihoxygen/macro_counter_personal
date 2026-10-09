@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION, type Db } from './db';
+import { newId } from './ids';
 import { laterThan } from './entryRepository';
 import { SavedFoodSchema, type SavedFood } from './records';
 import type { NewEntry, SavedFoodRepository } from './repositories';
@@ -19,7 +20,7 @@ export class IdbSavedFoodRepository implements SavedFoodRepository {
     const existing = all.find((f) => normalize(f.name) === key && f.referenceQuantity.unit === entry.quantity.unit);
     const now = new Date().toISOString();
     const food = SavedFoodSchema.parse({
-      id: existing?.id ?? crypto.randomUUID(),
+      id: existing?.id ?? newId(),
       createdAt: existing?.createdAt ?? now,
       updatedAt: existing ? laterThan(existing.updatedAt) : now,
       schemaVersion: SCHEMA_VERSION,

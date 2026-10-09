@@ -6,7 +6,12 @@ test.describe('Daily protein goal (User Story 5)', () => {
     await mockApi(page);
     await page.goto('/');
 
+    // Set 180 g first, then change it to 150 g from the main screen (FR-018).
     await page.getByRole('button', { name: /set a protein goal/i }).click();
+    await page.getByLabel(/daily protein goal/i).fill('180');
+    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByRole('button', { name: /change goal/i }).click();
+    await expect(page.getByLabel(/daily protein goal/i)).toHaveValue('180');
     await page.getByLabel(/daily protein goal/i).fill('150');
     await page.getByRole('button', { name: /save/i }).click();
 

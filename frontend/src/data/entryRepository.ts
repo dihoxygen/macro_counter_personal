@@ -1,5 +1,6 @@
 import type { DayKey } from '../domain/types';
 import { SCHEMA_VERSION, type Db } from './db';
+import { newId } from './ids';
 import { LogEntrySchema, type LogEntry } from './records';
 import type { EntryPatch, EntryRepository, NewEntry } from './repositories';
 
@@ -14,7 +15,7 @@ export class IdbEntryRepository implements EntryRepository {
     const now = new Date().toISOString();
     const entry = LogEntrySchema.parse({
       ...input,
-      id: crypto.randomUUID(),
+      id: newId(),
       createdAt: now,
       updatedAt: now,
       schemaVersion: SCHEMA_VERSION,

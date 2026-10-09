@@ -3,6 +3,8 @@ using System.Text.Json;
 using Anthropic;
 using Anthropic.Exceptions;
 using Anthropic.Models.Beta.Messages;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace MacroCounter.Api.Ai;
@@ -26,8 +28,11 @@ public sealed class ClaudeEstimator(
     IClaudeMessageSender sender,
     IOptions<AnthropicOptions> options,
     TimeSpan? textTimeout = null,
-    TimeSpan? photoTimeout = null) : IEstimator
+    TimeSpan? photoTimeout = null,
+    ILogger<ClaudeEstimator>? logger = null) : IEstimator
 {
+    private readonly ILogger _logger = logger ?? NullLogger<ClaudeEstimator>.Instance;
+
     /// <summary>Leaves room inside SC-001's 30 s budget.</summary>
     public static readonly TimeSpan TextTimeout = TimeSpan.FromSeconds(25);
 
@@ -91,10 +96,13 @@ public sealed class ClaudeEstimator(
         }
         catch (AnthropicIOException ex)
         {
+            _logger.LogWarning(ex, "Could not reach Claude.");
             throw new AiUnavailableException("Could not reach Claude.", ex);
         }
         catch (AnthropicApiException ex)
         {
+            // The message carries Anthropic's error body, which says what was wrong with the request.
+            _logger.LogWarning(ex, "Claude returned HTTP {Status}: {Message}", (int)ex.StatusCode, ex.Message);
             throw new AiUnavailableException($"Claude returned HTTP {(int)ex.StatusCode}.", ex);
         }
 

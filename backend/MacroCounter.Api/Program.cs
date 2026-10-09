@@ -16,7 +16,8 @@ builder.Services.AddSingleton<IEstimator>(sp =>
     var options = sp.GetRequiredService<IOptions<AnthropicOptions>>();
     if (!options.Value.HasApiKey) return new UnavailableEstimator();
     var client = new AnthropicClient { ApiKey = options.Value.ApiKey! };
-    return new ClaudeEstimator(new AnthropicMessageSender(client), options);
+    return new ClaudeEstimator(
+        new AnthropicMessageSender(client), options, logger: sp.GetRequiredService<ILogger<ClaudeEstimator>>());
 });
 
 var app = builder.Build();

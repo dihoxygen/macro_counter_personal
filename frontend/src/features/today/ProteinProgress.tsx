@@ -4,7 +4,7 @@ import { proteinProgress } from '../../domain/nutrition/proteinProgress';
 interface Props {
   loggedG: number;
   goalG: number | null;
-  /** When given and there is no goal, a prompt to set one is shown (Story 5 #1). */
+  /** When given, a prompt to set the goal (none yet, Story 5 #1) or to change it (FR-018) is shown. */
   onSetGoal?: () => void;
 }
 
@@ -29,6 +29,11 @@ export function ProteinProgress({ loggedG, goalG, onSetGoal }: Props) {
         <strong className="goal-amount">{formatGramsOfGoal(progress.loggedG, progress.goalG)}</strong>
         {progress.met ? <span className="goal-status">Goal met</span> : <span>{formatGrams(progress.remainingG)} left</span>}
         {progress.exceededG > 0 && <span>+{formatGrams(progress.exceededG)}</span>}
+        {onSetGoal && (
+          <button type="button" className="goal-change" onClick={onSetGoal}>
+            Change goal
+          </button>
+        )}
       </div>
       <div
         role="progressbar"

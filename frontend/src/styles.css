@@ -283,6 +283,10 @@ button.entry {
   gap: 10px;
 }
 
+.goal-change {
+  margin-left: auto;
+}
+
 .goal-amount {
   font-size: 1.5rem;
 }
