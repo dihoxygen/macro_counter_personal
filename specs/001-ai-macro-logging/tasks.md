@@ -451,7 +451,8 @@ amount remaining or exceeded. Previous days keep the goal that was in effect the
   - Changing `Anthropic:Model`.
   - Running `scripts/check.ps1`.
 - [X] T097 Run `scripts/check.ps1` and fix anything that fails. Confirm 100% line and branch coverage for `frontend/src/domain/**` and `MacroCounter.Api.Nutrition`
-- [ ] T098 The user manually runs quickstart.md V1–V14 with their real key, on desktop and on a phone over the LAN. Record the results in `specs/001-ai-macro-logging/checklists/validation.md`
+- [x] T098 The user manually runs quickstart.md V1–V14 with their real key, on desktop and on a phone over the LAN. Record the results in `specs/001-ai-macro-logging/checklists/validation.md`
+  - Done 2026-10-11 (rounds 1–2 in `checklists/validation.md`, `validation_2.md`). V12 editing a past day is unverified by hand (no past entries can be created yet); deferred to a follow-up.
 
 ---
 
