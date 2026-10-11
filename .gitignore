@@ -1,1 +1,24 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+coverage.*.xml
+backend/MacroCounter.Api/wwwroot/
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+*.log
+.env*
+
+# OS / editors
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

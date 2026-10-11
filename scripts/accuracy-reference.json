@@ -1,0 +1,27 @@
+{
+  "$comment": "SC-007 reference set: common single foods with a stated portion and approximate USDA FoodData Central calories. Used only by scripts/accuracy-check.ps1.",
+  "tolerance": 0.2,
+  "target": 0.8,
+  "foods": [
+    { "description": "1 large egg (50 g)", "kcal": 72 },
+    { "description": "1 medium banana (118 g)", "kcal": 105 },
+    { "description": "1 medium apple (182 g)", "kcal": 95 },
+    { "description": "1 cup cooked white rice (158 g)", "kcal": 205 },
+    { "description": "100 g cooked skinless chicken breast", "kcal": 165 },
+    { "description": "1 slice whole wheat bread (28 g)", "kcal": 69 },
+    { "description": "1 tablespoon peanut butter (16 g)", "kcal": 94 },
+    { "description": "1 cup whole milk (244 g)", "kcal": 149 },
+    { "description": "1 oz cheddar cheese (28 g)", "kcal": 114 },
+    { "description": "1 tablespoon olive oil (13.5 g)", "kcal": 119 },
+    { "description": "1 cup cooked oatmeal made with water (234 g)", "kcal": 166 },
+    { "description": "1 medium baked potato with skin (173 g)", "kcal": 161 },
+    { "description": "100 g raw broccoli", "kcal": 34 },
+    { "description": "1 medium orange (131 g)", "kcal": 62 },
+    { "description": "170 g plain nonfat Greek yogurt", "kcal": 100 },
+    { "description": "1 cup cooked spaghetti (140 g)", "kcal": 221 },
+    { "description": "1 oz almonds (28 g)", "kcal": 164 },
+    { "description": "100 g cooked farmed Atlantic salmon", "kcal": 206 },
+    { "description": "1 medium avocado, flesh only (150 g)", "kcal": 240 },
+    { "description": "1 tablespoon butter (14 g)", "kcal": 102 }
+  ]
+}
