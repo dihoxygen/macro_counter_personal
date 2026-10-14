@@ -72,6 +72,17 @@ Firewall may ask you to allow the port; allow it for **private** networks only.
 Note: browsers only install PWAs and keep service workers over HTTPS or `localhost`, so offline mode
 works on the PC itself; on the phone over plain HTTP the app works while connected.
 
+**Photos.** The photo step offers **Take photo** and **Choose existing photo** on every device:
+
+- **Choose existing photo** opens the phone's photo library (or the file dialog on a PC).
+- **Take photo** shows a live camera view inside the app wherever the browser allows it: on the PC at
+  `http://localhost:5080`, or over HTTPS. Browsers block the in-app camera over plain HTTP, so on the
+  phone over the LAN, Take photo opens the phone's own camera app instead.
+- To try the in-app camera on the phone, serve the app over LAN HTTPS with a locally trusted
+  certificate. The steps are in
+  [the feature 002 quickstart](specs/002-add-photo-from-source/quickstart.md#manual-checks-on-real-devices-sc-001-sc-002-sc-003-sc-007)
+  (manual check 3).
+
 ## Change the model
 
 The model is configured in exactly one place, `backend/MacroCounter.Api/appsettings.json`:

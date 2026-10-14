@@ -9,6 +9,7 @@ import { LogService } from '../../src/data/logService';
 import { IdbProteinGoalRepository } from '../../src/data/proteinGoalRepository';
 import { IdbSavedFoodRepository } from '../../src/data/savedFoodRepository';
 import { ServicesProvider, type Services } from '../../src/app/services';
+import { FakeCameraService } from './fakeCamera';
 
 let dbCounter = 0;
 
@@ -62,7 +63,8 @@ export async function createTestServices(overrides: Partial<Services> = {}): Pro
     estimateFromPhoto: vi.fn(async () => {
       throw new EstimateError('ai_unavailable');
     }),
-    reencodePhoto: vi.fn(async (file: File) => file),
+    reencodePhoto: vi.fn(async (file: Blob) => file),
+    camera: new FakeCameraService(),
     now: () => new Date(),
     auth: fakeAuth(),
     reload: vi.fn(),

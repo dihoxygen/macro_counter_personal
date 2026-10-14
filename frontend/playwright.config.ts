@@ -17,27 +17,40 @@ function prepareAuthDatabase(): string | undefined {
   if (!process.env.MACRO_E2E_DB_READY && !process.env.E2E_SKIP_DB) {
     const shell = process.platform === 'win32' ? 'powershell' : 'pwsh';
     try {
-      execFileSync(shell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', join(root, 'scripts/e2e-db.ps1')], {
-        stdio: 'inherit',
-      });
+      execFileSync(
+        shell,
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', join(root, 'scripts/e2e-db.ps1')],
+        {
+          stdio: 'inherit',
+        },
+      );
     } catch {
-      console.warn('[e2e] Could not reset macro_e2e (is MACROCOUNTER_TEST_PG set?). The auth projects are skipped.');
+      console.warn(
+        '[e2e] Could not reset macro_e2e (is MACROCOUNTER_TEST_PG set?). The auth projects are skipped.',
+      );
       return undefined;
     }
     process.env.MACRO_E2E_DB_READY = '1';
   }
   if (!existsSync(e2eDbFile)) return undefined;
-  return (JSON.parse(readFileSync(e2eDbFile, 'utf8')) as { connectionString: string }).connectionString;
+  return (JSON.parse(readFileSync(e2eDbFile, 'utf8')) as { connectionString: string })
+    .connectionString;
 }
 
 const authConnection = prepareAuthDatabase();
+/** Backend port for the auth projects; override if 5080 is busy (e.g. another checkout's backend). */
+const apiPort = process.env.E2E_API_PORT ?? '5080';
 
 const authProjects: PlaywrightTestConfig['projects'] = authConnection
   ? [
       {
         name: 'auth-desktop',
         testDir: './tests/e2e/auth',
-        use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5173', viewport: { width: 1280, height: 800 } },
+        use: {
+          ...devices['Desktop Chrome'],
+          baseURL: 'http://localhost:5173',
+          viewport: { width: 1280, height: 800 },
+        },
       },
       {
         name: 'auth-mobile',
@@ -55,6 +68,11 @@ const authProjects: PlaywrightTestConfig['projects'] = authConnection
     ]
   : [];
 
+// A synthetic test-pattern camera (feature 002). It needs the full Chromium build (channel
+// 'chromium'): the default headless shell rejects getUserMedia with NotSupportedError. Permission is
+// NOT auto-granted: camera tests call context.grantPermissions(['camera']) so the denied case stays testable.
+const fakeCamera = ['--use-fake-device-for-media-stream'];
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -67,7 +85,13 @@ export default defineConfig({
     {
       name: 'desktop',
       testIgnore: [/offline\.spec\.ts/, /[\\/]auth[\\/]/],
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5173', viewport: { width: 1280, height: 800 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5173',
+        viewport: { width: 1280, height: 800 },
+        channel: 'chromium',
+        launchOptions: { args: fakeCamera },
+      },
     },
     {
       name: 'mobile',
@@ -78,21 +102,28 @@ export default defineConfig({
         viewport: { width: 360, height: 740 },
         hasTouch: true,
         isMobile: true,
+        channel: 'chromium',
+        launchOptions: { args: fakeCamera },
       },
     },
     {
       // The service worker only exists in the production build, served by `vite preview`.
       name: 'offline',
       testMatch: /offline\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4173', serviceWorkers: 'allow' },
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:4173',
+        serviceWorkers: 'allow',
+      },
     },
     ...authProjects,
   ],
   webServer: [
     {
-      // The dev server proxies /api to the backend on 5080 (vite.config.ts).
+      // The dev server proxies /api to the backend on apiPort (vite.config.ts).
       command: 'npm run dev',
       url: 'http://localhost:5173',
+      env: { ...process.env, MACRO_API_PORT: apiPort } as Record<string, string>,
       reuseExistingServer: !process.env.CI,
     },
     {
@@ -106,13 +137,13 @@ export default defineConfig({
           {
             // Never reused: it must use this run's database and the Testing-only switches (no Claude, no HIBP).
             command: 'dotnet run --project ../backend/MacroCounter.Api --no-launch-profile',
-            url: 'http://localhost:5080/api/auth/session',
+            url: `http://localhost:${apiPort}/api/auth/session`,
             reuseExistingServer: false,
             timeout: 180_000,
             env: {
               ...process.env,
               ASPNETCORE_ENVIRONMENT: 'Testing',
-              ASPNETCORE_URLS: 'http://localhost:5080',
+              ASPNETCORE_URLS: `http://localhost:${apiPort}`,
               ConnectionStrings__Identity: authConnection,
               Testing__FakeEstimator: 'true',
               Testing__BreachedPasswords__0: 'password1234',

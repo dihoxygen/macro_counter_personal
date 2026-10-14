@@ -201,4 +201,18 @@ public class SetupServiceTests(PostgresFixture db) : IAsyncLifetime
         Assert.Null(result.NextStep);
         Assert.True(await Sql.Scalar<bool>(db.AdminConnectionString, "select setup_expires_at is null from macro.users"));
     }
+
+    [Fact]
+    public async Task Concurrent_starts_agree_on_one_key()
+    {
+        // React runs effects twice in development, so two starts can race; both must get the same key.
+        await SetPassword(GoodPassword);
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => StartTotp()));
+
+        var keys = results.Select(r => Assert.IsType<SetupResult.Enrollment>(r).SetupKey).Distinct().ToList();
+        Assert.Single(keys);
+        Assert.Equal(1L, await Sql.Scalar<long>(db.AdminConnectionString,
+            "select count(*) from macro.user_tokens where name = 'AuthenticatorKey'"));
+    }
 }

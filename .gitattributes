@@ -1,0 +1,9 @@
+# Store and check out text files with LF so `dotnet format`/.editorconfig agree on every machine,
+# regardless of the local core.autocrlf setting.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff2 binary

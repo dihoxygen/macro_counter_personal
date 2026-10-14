@@ -3,7 +3,9 @@ using MacroCounter.Api.Audit;
 using MacroCounter.Api.Data;
 using MacroCounter.Api.Security;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace MacroCounter.Api.Auth;
 
@@ -101,7 +103,18 @@ public sealed class SetupService(
         {
             key = users.GenerateNewAuthenticatorKey();
             await store.SetAuthenticatorKeyAsync(user, key, cancellationToken);
-            await db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                // A concurrent start (e.g. React running the effect twice) saved a key first: use that one.
+                db.ChangeTracker.Clear();
+                var current = await users.FindByIdAsync(user.Id.ToString());
+                key = current is null ? null : await store.GetAuthenticatorKeyAsync(current, cancellationToken);
+                if (key is null) throw;
+            }
         }
 
         var grouped = string.Join(' ', key.Chunk(4).Select(chunk => new string(chunk)));

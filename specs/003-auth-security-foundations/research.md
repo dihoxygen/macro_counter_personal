@@ -323,8 +323,9 @@ here (limits, lifetimes) are the defaults the implementation and tests use; all 
   - `X-Frame-Options: DENY` (for older browsers)
   - `Cross-Origin-Opener-Policy: same-origin`
   - `Cross-Origin-Resource-Policy: same-origin`
-  - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`. The photo picker
-    uses `<input type=file capture>`, which this policy does not affect.
+  - `Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=()`. Feature 002's
+    in-app camera uses `getUserMedia` on the app's own origin, so the camera is allowed for `self`
+    only; no other origin or embedded frame may use it. (Updated 2026-10-14 when 002 was merged.)
   - `/api/*` responses get `Cache-Control: no-store`.
   - `index.html` gets `Cache-Control: no-store`, so the back/forward cache cannot show a
     signed-in screen after sign-out (US1.3). A `pageshow` handler also re-checks the session

@@ -3,6 +3,7 @@ import type { AuthApi } from '../api/auth';
 import type { Estimate } from '../api/estimates';
 import type { Status } from '../api/status';
 import type { LogService } from '../data/logService';
+import type { CameraService } from '../media/camera';
 import type {
   EntryRepository,
   ProteinGoalRepository,
@@ -24,7 +25,9 @@ export interface Services {
     signal: AbortSignal,
   ) => Promise<Estimate>;
   /** Resizes and strips metadata on the device before upload (research R7). */
-  reencodePhoto: (file: File) => Promise<Blob>;
+  reencodePhoto: (file: Blob) => Promise<Blob>;
+  /** The only code that touches navigator.mediaDevices. */
+  camera: CameraService;
   now: () => Date;
   /** Sign-in, setup and sign-out (contracts/auth-api.yaml). */
   auth: AuthApi;

@@ -15,7 +15,7 @@ in [quickstart.md](../quickstart.md#v12-production-hardening-smoke-check).
 | `X-Frame-Options` | `DENY` | All |
 | `Cross-Origin-Opener-Policy` | `same-origin` | All |
 | `Cross-Origin-Resource-Policy` | `same-origin` | All |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` | All |
+| `Permissions-Policy` | `camera=(self), microphone=(), geolocation=(), payment=()` | All. `camera=(self)` because feature 002's in-app camera uses `getUserMedia` on the app's own origin; no other origin or embedded frame may use it. |
 | `Cache-Control` | `no-store` | `/api/*` and `index.html`. Hashed static assets keep long caching. |
 
 These headers are **not** sent: `Server` (Kestrel `AddServerHeader = false`), `X-Powered-By`, and

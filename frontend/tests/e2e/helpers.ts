@@ -116,3 +116,82 @@ export function inspectJpeg(bytes: Buffer): { width: number; height: number; has
   }
   throw new Error('no SOF segment');
 }
+
+declare global {
+  interface Window {
+    __streams?: MediaStream[];
+  }
+}
+
+/** Records every stream getUserMedia returns, so tests can check the camera really turns off. */
+export async function recordMediaStreams(page: Page) {
+  await page.addInitScript(() => {
+    window.__streams = [];
+    const media = navigator.mediaDevices;
+    if (!media?.getUserMedia) return;
+    const original = media.getUserMedia.bind(media);
+    media.getUserMedia = async (constraints) => {
+      const stream = await original(constraints);
+      window.__streams!.push(stream);
+      return stream;
+    };
+  });
+}
+
+/** Number of recorded camera/mic tracks that are still running. */
+export function liveTrackCount(page: Page): Promise<number> {
+  return page.evaluate(
+    () => (window.__streams ?? []).flatMap((s) => s.getTracks()).filter((t) => t.readyState !== 'ended').length,
+  );
+}
+
+async function setVisibility(page: Page, state: 'hidden' | 'visible') {
+  await page.evaluate((value) => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value });
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => value === 'hidden',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
+}
+
+/** Emulates the app being backgrounded or the tab hidden. */
+export const hidePage = (page: Page) => setVisibility(page, 'hidden');
+export const showPage = (page: Page) => setVisibility(page, 'visible');
+
+/**
+ * Returns `jpeg` with every APP1 (EXIF/XMP) segment removed and a minimal EXIF segment holding only
+ * the given Orientation tag inserted after SOI. Used to check rotated photos are sent upright.
+ */
+export function withOrientation(jpeg: Buffer, orientation: number): Buffer {
+  if (jpeg[0] !== 0xff || jpeg[1] !== 0xd8) throw new Error('not a JPEG');
+  const kept: Buffer[] = [];
+  let offset = 2;
+  while (offset < jpeg.length) {
+    const marker = jpeg[offset + 1]!;
+    if (marker === 0xda) {
+      kept.push(jpeg.subarray(offset)); // start of scan: the rest is image data
+      break;
+    }
+    const end = offset + 2 + jpeg.readUInt16BE(offset + 2);
+    if (marker !== 0xe1) kept.push(jpeg.subarray(offset, end));
+    offset = end;
+  }
+  // Big-endian TIFF header, one IFD with a single SHORT entry (0x0112 Orientation), no next IFD.
+  const tiff = Buffer.alloc(26);
+  tiff.write('MM', 0, 'latin1');
+  tiff.writeUInt16BE(0x002a, 2);
+  tiff.writeUInt32BE(8, 4);
+  tiff.writeUInt16BE(1, 8);
+  tiff.writeUInt16BE(0x0112, 10);
+  tiff.writeUInt16BE(3, 12);
+  tiff.writeUInt32BE(1, 14);
+  tiff.writeUInt16BE(orientation, 18);
+  tiff.writeUInt32BE(0, 22);
+  const payload = Buffer.concat([Buffer.from('Exif\0\0', 'latin1'), tiff]);
+  const header = Buffer.alloc(4);
+  header.writeUInt16BE(0xffe1, 0);
+  header.writeUInt16BE(payload.length + 2, 2);
+  return Buffer.concat([jpeg.subarray(0, 2), header, payload, ...kept]);
+}
