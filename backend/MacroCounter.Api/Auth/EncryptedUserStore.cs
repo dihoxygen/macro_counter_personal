@@ -3,8 +3,8 @@ using MacroCounter.Api.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using UserOnlyStoreBase = Microsoft.AspNetCore.Identity.EntityFrameworkCore.UserOnlyStore<MacroCounter.Api.Auth.AppUser, MacroCounter.Api.Data.IdentityDbContext, System.Guid>;
 using Microsoft.Extensions.Options;
+using UserOnlyStoreBase = Microsoft.AspNetCore.Identity.EntityFrameworkCore.UserOnlyStore<MacroCounter.Api.Auth.AppUser, MacroCounter.Api.Data.IdentityDbContext, System.Guid>;
 
 namespace MacroCounter.Api.Auth;
 
