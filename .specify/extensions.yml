@@ -1,0 +1,8 @@
+hooks:
+  after_specify:
+    - extension: worktree
+      command: speckit.worktree
+      enabled: true
+      optional: true
+      description: Move the new spec into its own git worktree + branch (master only)
+      prompt: Create a git worktree and branch for this feature?
