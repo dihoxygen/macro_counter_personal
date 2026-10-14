@@ -374,7 +374,7 @@ again. As `macro_app`, `insert into macro.users` is denied. Quickstart V5, V12.5
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T063 [P] [US2] Write owner procedure tests in `backend/MacroCounter.Api.Tests/Database/OwnerProceduresTests.cs`, run on the **admin** connection, following contracts/owner-procedures.md:
+- [X] T063 [P] [US2] Write owner procedure tests in `backend/MacroCounter.Api.Tests/Database/OwnerProceduresTests.cs`, run on the **admin** connection, following contracts/owner-procedures.md:
   - `reset_user`: clears `password_hash`, the authenticator token, `two_factor_enabled` and the replay fields; sets a new hash and deadline; rotates the stamp; deletes all sessions; clears the lockout; keeps `ai_notice_ack_at` and `role`; writes `account_reset`;
   - `disable_user` and `enable_user`: correct fields, sessions deleted on disable, and their audit rows;
   - `unlock_user`: clears `lockout_end` and `access_failed_count`;
@@ -384,18 +384,18 @@ again. As `macro_app`, `insert into macro.users` is denied. Quickstart V5, V12.5
   - on the **app** connection, executing any of these procedures fails with 42501.
 
   (`invite_user` is tested in Phase 2, T014.)
-- [ ] T064 [P] [US2] Write `users_overview` and `ai_usage_today` view tests in `backend/MacroCounter.Api.Tests/Database/OwnerViewsTests.cs`. The `state` column is `invited`, `setup`, `active`, `expired`, `disabled` or `incomplete`, following the data-model.md state machine (one fixture row per state). `active_sessions` counts only unexpired sessions. On the **app** connection, `select` from either view fails with 42501.
-- [ ] T065 [US2] Write lifecycle integration tests in `backend/MacroCounter.Api.Tests/Auth/AccountLifecycleTests.cs`:
+- [X] T064 [P] [US2] Write `users_overview` and `ai_usage_today` view tests in `backend/MacroCounter.Api.Tests/Database/OwnerViewsTests.cs`. The `state` column is `invited`, `setup`, `active`, `expired`, `disabled` or `incomplete`, following the data-model.md state machine (one fixture row per state). `active_sessions` counts only unexpired sessions. On the **app** connection, `select` from either view fails with 42501.
+- [X] T065 [US2] Write lifecycle integration tests in `backend/MacroCounter.Api.Tests/Auth/AccountLifecycleTests.cs`:
   - an activated client makes a successful request; then `disable_user` runs; the **next** request gives 401 (SC-005: immediate); sign-in now gives the generic 401;
   - `enable_user` makes sign-in work again;
   - after `reset_user`, the old password plus code gives the generic 401, and the new temp code gives `setup`;
   - an invite older than 72 h (using `FakeTimeProvider` and a `setup_expires_at` in the past) is refused with audit reason `setup_expired`.
-- [ ] T066 [P] [US2] Write a no-sign-up route test in `backend/MacroCounter.Api.Tests/Security/NoSignUpRouteTests.cs` (SC-004). Using `EndpointDataSource`, check that no route pattern matches `(?i)register|sign-?up|create-?account|invite|/users` (ignoring the static-file fallback), and that `POST` to `/api/auth/register`, `/api/register`, `/api/users` and `/api/auth/sign-up` returns 401 or 404, never 2xx.
-- [ ] T067 [US2] Write an e2e test in `frontend/tests/e2e/auth/disable.spec.ts`. As `e2e-friend`, complete setup; the test then calls `macro_admin.disable_user('e2e-friend')` through a helper `frontend/tests/e2e/auth/db.ts`, which uses `psql` with `MACROCOUNTER_TEST_PG` against `macro_e2e`. Attempt an AI lookup: the **sign-in screen appears, with no crash and no console errors**. Re-enable the account afterwards.
+- [X] T066 [P] [US2] Write a no-sign-up route test in `backend/MacroCounter.Api.Tests/Security/NoSignUpRouteTests.cs` (SC-004). Using `EndpointDataSource`, check that no route pattern matches `(?i)register|sign-?up|create-?account|invite|/users` (ignoring the static-file fallback), and that `POST` to `/api/auth/register`, `/api/register`, `/api/users` and `/api/auth/sign-up` returns 401 or 404, never 2xx.
+- [X] T067 [US2] Write an e2e test in `frontend/tests/e2e/auth/disable.spec.ts`. As `e2e-friend`, complete setup; the test then calls `macro_admin.disable_user('e2e-friend')` through a helper `frontend/tests/e2e/auth/db.ts`, which uses `psql` with `MACROCOUNTER_TEST_PG` against `macro_e2e`. Attempt an AI lookup: the **sign-in screen appears, with no crash and no console errors**. Re-enable the account afterwards.
 
 ### Implementation for User Story 2
 
-- [ ] T068 [US2] Add a migration `Data/Migrations/*_OwnerProcedures.cs` with `macro_admin.reset_user`, `disable_user`, `enable_user`, `unlock_user` and `revoke_sessions`, and the views `macro_admin.users_overview` and `macro_admin.ai_usage_today`, exactly as specified in contracts/owner-procedures.md and data-model.md. All are `security invoker` with `set search_path = macro, extensions, public, pg_temp`, owned by the migration owner, and have `revoke execute … from public`. Make T063, T064, T065, T066 and T067 pass, adjusting `PostgresTicketStore` (T046) and `SignInService` (T047) for `disabled_at`, stamp changes and `setup_expires_at` where T065 needs it. If T066 fails, remove or rename the offending route; never weaken the test.
+- [X] T068 [US2] Add a migration `Data/Migrations/*_OwnerProcedures.cs` with `macro_admin.reset_user`, `disable_user`, `enable_user`, `unlock_user` and `revoke_sessions`, and the views `macro_admin.users_overview` and `macro_admin.ai_usage_today`, exactly as specified in contracts/owner-procedures.md and data-model.md. All are `security invoker` with `set search_path = macro, extensions, public, pg_temp`, owned by the migration owner, and have `revoke execute … from public`. Make T063, T064, T065, T066 and T067 pass, adjusting `PostgresTicketStore` (T046) and `SignInService` (T047) for `disabled_at`, stamp changes and `setup_expires_at` where T065 needs it. If T066 fails, remove or rename the offending route; never weaken the test.
 
 **Checkpoint**: Quickstart V5 passes. Owner tasks each take under 5 minutes using the runbook in
 contracts/owner-procedures.md.

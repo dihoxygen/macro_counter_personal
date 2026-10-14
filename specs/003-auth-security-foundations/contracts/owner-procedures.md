@@ -33,7 +33,7 @@ Every procedure:
 |---|---|
 | `macro_admin.users_overview` | `username, role, state (invited/setup/active/expired/disabled/incomplete), created_at, last_sign_in_at, locked_until, active_sessions` |
 | `macro_admin.recent_audit` | The last 30 days of `audit_events` joined to `username`, newest first |
-| `macro_admin.ai_usage_today` | Per-user count today, the global count today, the count for the month so far, the limits, and `ceiling_hit_at` |
+| `macro_admin.ai_usage_today` | `username, user_today, global_today, global_month, ceiling_hit_at` (UTC days). The limits themselves are app configuration (`Limits:Ai`), not stored in the database. |
 
 ## Why the owner role lives here
 

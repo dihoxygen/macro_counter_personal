@@ -10,7 +10,11 @@ function adminConnectionString(): string {
   if (!value && process.platform === 'win32') {
     value = execFileSync(
       'powershell',
-      ['-NoProfile', '-Command', "[Environment]::GetEnvironmentVariable('MACROCOUNTER_TEST_PG','User')"],
+      [
+        '-NoProfile',
+        '-Command',
+        "[Environment]::GetEnvironmentVariable('MACROCOUNTER_TEST_PG','User')",
+      ],
       { encoding: 'utf8' },
     ).trim();
   }
@@ -51,8 +55,29 @@ export function adminSql(sql: string): string {
   const admin = parse(adminConnectionString());
   return execFileSync(
     psqlPath(),
-    ['-h', admin.host, '-p', admin.port, '-U', admin.user, '-d', 'macro_e2e', '-v', 'ON_ERROR_STOP=1', '-tAq', '-c', sql],
-    { encoding: 'utf8', env: { ...process.env, PGPASSWORD: admin.password, PGOPTIONS: '-c client_min_messages=warning' } },
+    [
+      '-h',
+      admin.host,
+      '-p',
+      admin.port,
+      '-U',
+      admin.user,
+      '-d',
+      'macro_e2e',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-tAq',
+      '-c',
+      sql,
+    ],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PGPASSWORD: admin.password,
+        PGOPTIONS: '-c client_min_messages=warning',
+      },
+    },
   ).trim();
 }
 
@@ -64,10 +89,16 @@ export function invite(username: string, role: 'user' | 'owner' = 'user'): strin
 
 /** The codes scripts/e2e-db.ps1 issued for e2e-owner and e2e-friend. */
 export function seededCodes(): Record<'e2e-owner' | 'e2e-friend', string> {
-  return JSON.parse(readFileSync(join(import.meta.dirname, '.codes.json'), 'utf8')) as Record<'e2e-owner' | 'e2e-friend', string>;
+  return JSON.parse(readFileSync(join(import.meta.dirname, '.codes.json'), 'utf8')) as Record<
+    'e2e-owner' | 'e2e-friend',
+    string
+  >;
 }
 
 /** A unique, valid username for this test and project. */
 export function uniqueUsername(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`.slice(0, 32);
+  return `${prefix}-${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`.slice(
+    0,
+    32,
+  );
 }

@@ -86,16 +86,26 @@ export function getSession(): Promise<SessionState> {
   return sessionRequest('/api/auth/session', { method: 'GET' });
 }
 
-export function signIn(
+export async function signIn(
   username: string,
   password: string,
   code: string | undefined,
 ): Promise<SessionState> {
   const trimmed = code?.trim();
-  return sessionRequest(
-    '/api/auth/sign-in',
-    json(trimmed ? { username, password, code: trimmed } : { username, password }),
-  );
+  const request = () =>
+    sessionRequest(
+      '/api/auth/sign-in',
+      json(trimmed ? { username, password, code: trimmed } : { username, password }),
+    );
+  try {
+    return await request();
+  } catch (error) {
+    // The page may hold a CSRF token bound to a session that has since ended (signed out elsewhere,
+    // expired, disabled). Fetch a fresh anonymous token and try exactly once more.
+    if (!(error instanceof AuthError) || error.code !== 'csrf_failed') throw error;
+    await getSession();
+    return request();
+  }
 }
 
 export function setupPassword(newPassword: string): Promise<SessionState> {

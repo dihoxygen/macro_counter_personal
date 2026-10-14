@@ -82,6 +82,39 @@ describe('auth client', () => {
     expect(new Headers(after.mock.calls[0]![1]?.headers).get('X-CSRF-Token')).toBe('csrf-9');
   });
 
+  it('signIn refreshes a stale CSRF token once and retries (e.g. after the session ended)', async () => {
+    setCsrfToken('stale');
+    const fetchMock = stubFetch(async (input) => {
+      const url = String(input);
+      if (url === '/api/auth/session')
+        return Response.json({ state: 'signed_out', csrfToken: 'fresh' });
+      const token = new Headers(fetchMock.mock.calls.at(-1)![1]?.headers).get('X-CSRF-Token');
+      return token === 'fresh'
+        ? Response.json({ state: 'signed_in', csrfToken: 'next', user })
+        : problem(403, { code: 'csrf_failed' });
+    });
+
+    const state = await signIn('alice', 'secret passphrase', '123456');
+
+    expect(state.state).toBe('signed_in');
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+      '/api/auth/sign-in',
+      '/api/auth/session',
+      '/api/auth/sign-in',
+    ]);
+  });
+
+  it('signIn retries a CSRF refusal only once', async () => {
+    const fetchMock = stubFetch(async (input) =>
+      String(input) === '/api/auth/session'
+        ? Response.json({ state: 'signed_out', csrfToken: 'fresh' })
+        : problem(403, { code: 'csrf_failed' }),
+    );
+
+    expect((await caught(signIn('alice', 'x', undefined))).code).toBe('csrf_failed');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it('signIn leaves out a blank code', async () => {
     const fetchMock = stubFetch(async () =>
       Response.json({ state: 'setup', csrfToken: 'c', setupStep: 'password' }),

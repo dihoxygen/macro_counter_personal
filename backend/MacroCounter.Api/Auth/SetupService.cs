@@ -5,7 +5,6 @@ using MacroCounter.Api.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace MacroCounter.Api.Auth;
 
@@ -98,23 +97,23 @@ public sealed class SetupService(
     {
         if (SetupSteps.Next(user) != SetupSteps.Totp) return Wrong(user);
 
-        var key = await store.GetAuthenticatorKeyAsync(user, cancellationToken);
-        if (key is null)
+        // Two starts can arrive together (React runs effects twice in development). Lock the user row so
+        // they take turns, and read the key fresh inside the lock: the second one then reuses the first key.
+        string key;
+        await using (var transaction = await db.Database.BeginTransactionAsync(cancellationToken))
         {
-            key = users.GenerateNewAuthenticatorKey();
-            await store.SetAuthenticatorKeyAsync(user, key, cancellationToken);
-            try
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"select 1 from macro.users where id = {user.Id} for update", cancellationToken);
+            db.ChangeTracker.Clear();
+            var existing = await store.GetAuthenticatorKeyAsync(user, cancellationToken);
+            if (existing is null)
             {
+                existing = users.GenerateNewAuthenticatorKey();
+                await store.SetAuthenticatorKeyAsync(user, existing, cancellationToken);
                 await db.SaveChangesAsync(cancellationToken);
             }
-            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-            {
-                // A concurrent start (e.g. React running the effect twice) saved a key first: use that one.
-                db.ChangeTracker.Clear();
-                var current = await users.FindByIdAsync(user.Id.ToString());
-                key = current is null ? null : await store.GetAuthenticatorKeyAsync(current, cancellationToken);
-                if (key is null) throw;
-            }
+            await transaction.CommitAsync(cancellationToken);
+            key = existing;
         }
 
         var grouped = string.Join(' ', key.Chunk(4).Select(chunk => new string(chunk)));

@@ -146,6 +146,8 @@ export default defineConfig({
               ASPNETCORE_URLS: `http://localhost:${apiPort}`,
               ConnectionStrings__Identity: authConnection,
               Testing__FakeEstimator: 'true',
+              // Makes /api/status report AI as available; the fake estimator answers, so it is never sent anywhere.
+              Anthropic__ApiKey: 'e2e-placeholder-not-a-key',
               Testing__BreachedPasswords__0: 'password1234',
             } as Record<string, string>,
           },

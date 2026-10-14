@@ -18,7 +18,9 @@ async function expectTouchTargets(page: Page, view: string) {
   const small = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('button, a[href], input:not([type="hidden"])')]
       .map((el) => ({ el, rect: el.getBoundingClientRect() }))
-      .filter(({ rect }) => rect.width > 0 && rect.height > 0 && (rect.width < 44 || rect.height < 44))
+      .filter(
+        ({ rect }) => rect.width > 0 && rect.height > 0 && (rect.width < 44 || rect.height < 44),
+      )
       .map(({ el }) => el.outerHTML.slice(0, 60)),
   );
   expect(small, `targets smaller than 44px on ${view}`).toEqual([]);
@@ -75,7 +77,9 @@ test('first sign-in: temporary code → password → authenticator → notice �
   // The temporary code was single-use.
   await page.goto('/');
   await signIn(page, username, code);
-  await expect(page.getByRole('alert')).toHaveText('Could not sign in. Check your details and try again.');
+  await expect(page.getByRole('alert')).toHaveText(
+    'Could not sign in. Check your details and try again.',
+  );
 
   // A normal sign-in with password + the next code (the current one was just used).
   const signInStarted = Date.now();
@@ -95,6 +99,8 @@ test('every kind of wrong sign-in gets the same message', async ({ page }, testI
     [username, 'still wrong', '000000'],
   ] as const) {
     await signIn(page, user, password, code);
-    await expect(page.getByRole('alert')).toHaveText('Could not sign in. Check your details and try again.');
+    await expect(page.getByRole('alert')).toHaveText(
+      'Could not sign in. Check your details and try again.',
+    );
   }
 });
