@@ -514,21 +514,21 @@ still works. Quickstart V3, V11.
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T090 [P] [US5] Write `SignInThrottle` tests in `backend/MacroCounter.Api.Tests/Auth/SignInThrottleTests.cs`, using `FakeTimeProvider`:
+- [X] T090 [P] [US5] Write `SignInThrottle` tests in `backend/MacroCounter.Api.Tests/Auth/SignInThrottleTests.cs`, using `FakeTimeProvider`:
   - a sliding window keyed by normalized username: 10 failures within 15 minutes gives `IsBlocked = true` with `RetryAfter`;
   - the 11th call is blocked even after a success is recorded for a different name;
   - failures older than 15 minutes expire;
   - an unknown username behaves exactly the same;
   - `RecordSuccess` clears the key;
   - memory is bounded: entries are evicted after 15 minutes of no activity.
-- [ ] T091 [US5] Write sign-in limit integration tests in `backend/MacroCounter.Api.Tests/Auth/SignInLimitTests.cs` (SC-006):
+- [X] T091 [US5] Write sign-in limit integration tests in `backend/MacroCounter.Api.Tests/Auth/SignInLimitTests.cs` (SC-006):
   - after 10 wrong passwords for `alice`, the correct password + code gives 429 `rate_limited` with a `Retry-After` header;
   - the same 10 failures for `nobody` give a **byte-identical** problem body (compare JSON without `traceId`), and the same status and headers apart from `Retry-After` values;
   - after the 15-minute window passes (FakeTimeProvider) and `unlock_user` runs, sign-in succeeds;
   - Identity's persisted lockout: after a restart (a new `ApiFactory` on the same database) with `lockout_end` still in the future, a correct sign-in gives the same 429;
   - per IP: 21 attempts from one `X-Forwarded-For` IP across different usernames, within 15 minutes, gives 429 on the 21st;
   - the `sign_in_locked` and `rate_limited` audit rows are written.
-- [ ] T092 [P] [US5] Write `AiQuotaService` tests in `backend/MacroCounter.Api.Tests/Usage/AiQuotaServiceTests.cs`, using `FakeTimeProvider` and limits from options:
+- [X] T092 [P] [US5] Write `AiQuotaService` tests in `backend/MacroCounter.Api.Tests/Usage/AiQuotaServiceTests.cs`, using `FakeTimeProvider` and limits from options:
   - `TryReserveAsync(userId)` succeeds 30 times and the 31st gives `Exceeded(user_daily, resetAt = next 00:00Z)`;
   - with `GlobalDaily = 3` and three users, the 4th reservation overall gives `global_daily`, and `ai_usage_global_daily.ceiling_hit_at` is set;
   - with `GlobalMonthly = 5` and days spread across one month, the reservation gives `global_monthly` with `resetAt` on the 1st of next month at 00:00Z;
@@ -536,34 +536,34 @@ still works. Quickstart V3, V11.
   - concurrency: 50 parallel `TryReserveAsync` calls for one user with a limit of 30 give exactly 30 successes and `count = 30` in the database;
   - the UTC day boundary at 23:59:59Z / 00:00:00Z starts a new day;
   - `quota_exceeded` and `ceiling_hit` audit rows are written with the matching reason.
-- [ ] T093 [US5] Write estimate quota integration tests in `backend/MacroCounter.Api.Tests/Endpoints/EstimateQuotaTests.cs`:
+- [X] T093 [US5] Write estimate quota integration tests in `backend/MacroCounter.Api.Tests/Endpoints/EstimateQuotaTests.cs`:
   - when the quota is exceeded, `POST /api/estimates/text` gives 429 `quota_exceeded` with `scope` and `resetAt` in the body, and the `FakeEstimator` records **no** call;
   - an estimator failure (`AiUnavailableException`) still uses up the reservation (no refund, R8);
   - the burst limiter: a 7th request within one minute from the same user gives 429 `rate_limited`, and a second user is unaffected;
   - the same checks apply to `/estimates/photo`.
-- [ ] T094 [P] [US5] Write frontend quota handling tests in `frontend/tests/unit/api/estimates.test.ts` and `frontend/tests/components/AddFoodText.test.tsx`:
+- [X] T094 [P] [US5] Write frontend quota handling tests in `frontend/tests/unit/api/estimates.test.ts` and `frontend/tests/components/AddFoodText.test.tsx`:
   - `quota_exceeded` with `scope: user_daily` shows "You've reached today's AI lookup limit. It resets at <local time, e.g. 5:00 PM>. You can still add food manually.";
   - `global_daily` and `global_monthly` show "AI lookup has reached its overall limit for now. It resets at <local date/time>. You can still add food manually.";
   - `rate_limited` shows "Too many lookups in a short time. Wait a minute and try again.";
   - in every case the manual-entry button is visible and works (FR-022).
-- [ ] T095 [US5] Write an e2e test in `frontend/tests/e2e/auth-quota/quota.spec.ts` in a **dedicated Playwright project `auth-quota`** (`testDir: tests/e2e/auth-quota`, `baseURL: http://localhost:5081`, `workers: 1`). Its own `webServer` entry runs the same backend command as the `auth` project, on `ASPNETCORE_URLS=http://localhost:5081` with `Limits__Ai__PerUserDaily=2`, against the same `macro_e2e` database. Exclude `tests/e2e/auth-quota/**` from the other projects. Make 3 text lookups as `e2e-owner`: the 3rd shows the daily-limit message, and adding the food manually logs it to Today.
+- [X] T095 (Done with its own Vite dev server on 5174 proxying to a second backend on E2E_API_PORT+1, because Playwright starts web servers in parallel. The backend is built once in the config's setup step and both backends use `dotnet run --no-build`.) [US5] Write an e2e test in `frontend/tests/e2e/auth-quota/quota.spec.ts` in a **dedicated Playwright project `auth-quota`** (`testDir: tests/e2e/auth-quota`, `baseURL: http://localhost:5081`, `workers: 1`). Its own `webServer` entry runs the same backend command as the `auth` project, on `ASPNETCORE_URLS=http://localhost:5081` with `Limits__Ai__PerUserDaily=2`, against the same `macro_e2e` database. Exclude `tests/e2e/auth-quota/**` from the other projects. Make 3 text lookups as `e2e-owner`: the 3rd shows the daily-limit message, and adding the food manually logs it to Today.
 
 ### Implementation for User Story 5
 
-- [ ] T096 [P] [US5] Write tests in `backend/MacroCounter.Api.Tests/Usage/SpendCapTests.cs` (research R8):
+- [X] T096 [P] [US5] Write tests in `backend/MacroCounter.Api.Tests/Usage/SpendCapTests.cs` (research R8):
   - `LimitsOptions` binds `Limits:Ai:WorstCaseCostPerRequestUsd` (default `0.35`);
   - `SpendCap.MonthlyWorstCaseUsd` = `GlobalMonthly × WorstCaseCostPerRequestUsd` (3,000 × 0.35 = 1,050) and `DailyWorstCaseUsd` = `GlobalDaily × WorstCaseCostPerRequestUsd` (200 × 0.35 = 70);
   - at startup one Information log line states both values and the configured model, with no key;
   - startup fails if any limit is ≤ 0 or `WorstCaseCostPerRequestUsd` is ≤ 0.
-- [ ] T097 [P] [US5] Create `backend/MacroCounter.Api/Auth/SignInThrottle.cs` (a singleton using `TimeProvider` and a `ConcurrentDictionary` of timestamp queues, swept periodically) so that T090 passes.
-- [ ] T098 [US5] In `Program.cs`:
+- [X] T097 [P] [US5] Create `backend/MacroCounter.Api/Auth/SignInThrottle.cs` (a singleton using `TimeProvider` and a `ConcurrentDictionary` of timestamp queues, swept periodically) so that T090 passes.
+- [X] T098 [US5] In `Program.cs`:
   - add `AddRateLimiter` with a partitioned fixed-window policy `"sign-in"`, keyed by `HttpContext.Connection.RemoteIpAddress` (20 per 15 minutes, no queue);
   - set `OnRejected` to write `Problems.RateLimited` plus a `rate_limited` audit row;
   - apply it to `/auth/sign-in` and all `/auth/setup/*` endpoints;
   - add `UseForwardedHeaders` with `ForwardedHeaders.XForwardedFor | XForwardedProto` and `ForwardLimit = 1`, before rate limiting. In Testing, trust the loopback test server.
 
   Integrate `SignInThrottle` and the Identity lockout into `SignInService` so that every block returns the identical `Problems.RateLimited`. Make T091 pass.
-- [ ] T099 [P] [US5] Create `backend/MacroCounter.Api/Usage/AiQuotaService.cs`. `TryReserveAsync(Guid userId, CancellationToken)` runs in one `ReadCommitted` transaction:
+- [X] T099 [P] [US5] Create `backend/MacroCounter.Api/Usage/AiQuotaService.cs`. `TryReserveAsync(Guid userId, CancellationToken)` runs in one `ReadCommitted` transaction:
   1. `insert … on conflict (day) do nothing` for the global row, then `select … for update` on it;
   2. check `count < GlobalDaily` and `sum(count) for the month < GlobalMonthly`;
   3. `insert into ai_usage_daily … on conflict (user_id, day) do update set count = ai_usage_daily.count + 1 where ai_usage_daily.count < @limit returning count`;
@@ -571,9 +571,9 @@ still works. Quickstart V3, V11.
   5. commit, or roll back and return `Exceeded(scope, resetAt)`.
 
   It writes the audit rows. T092 must pass.
-- [ ] T100 [US5] Create `backend/MacroCounter.Api/Usage/AiLimitsEndpointFilter.cs`, applied to `/estimates/text` and `/estimates/photo` in `EstimateEndpoints.cs`. It runs the per-user token bucket (a `"ai-burst"` rate-limiter policy partitioned by the `sub` claim, 6 per minute) and then `AiQuotaService.TryReserveAsync` **before** the handler, returning `Problems.QuotaExceeded` or `Problems.RateLimited`. Make T093 pass.
-- [ ] T101 [US5] Create `backend/MacroCounter.Api/Usage/SpendCap.cs`, add `WorstCaseCostPerRequestUsd` to `backend/MacroCounter.Api/Usage/LimitsOptions.cs` and `appsettings.json`, and log the computed caps at startup in `Program.cs`. Make T096 pass.
-- [ ] T102 [US5] Add the `quota_exceeded` and `rate_limited` codes, with `scope`/`resetAt` parsing, to `frontend/src/api/estimates.ts`, and render the messages (local time via `Intl.DateTimeFormat`) in `frontend/src/features/add-food/AddFood.tsx` so that T094 and T095 pass.
+- [X] T100 [US5] Create `backend/MacroCounter.Api/Usage/AiLimitsEndpointFilter.cs`, applied to `/estimates/text` and `/estimates/photo` in `EstimateEndpoints.cs`. It runs the per-user token bucket (a `"ai-burst"` rate-limiter policy partitioned by the `sub` claim, 6 per minute) and then `AiQuotaService.TryReserveAsync` **before** the handler, returning `Problems.QuotaExceeded` or `Problems.RateLimited`. Make T093 pass.
+- [X] T101 [US5] Create `backend/MacroCounter.Api/Usage/SpendCap.cs`, add `WorstCaseCostPerRequestUsd` to `backend/MacroCounter.Api/Usage/LimitsOptions.cs` and `appsettings.json`, and log the computed caps at startup in `Program.cs`. Make T096 pass.
+- [X] T102 [US5] Add the `quota_exceeded` and `rate_limited` codes, with `scope`/`resetAt` parsing, to `frontend/src/api/estimates.ts`, and render the messages (local time via `Intl.DateTimeFormat`) in `frontend/src/features/add-food/AddFood.tsx` so that T094 and T095 pass.
 
 **Checkpoint**: Guessing passwords is slowed uniformly and the AI bill has a hard ceiling.
 

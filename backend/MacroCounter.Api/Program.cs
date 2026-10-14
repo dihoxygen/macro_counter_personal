@@ -6,6 +6,7 @@ using MacroCounter.Api.Data;
 using MacroCounter.Api.Endpoints;
 using MacroCounter.Api.Security;
 using MacroCounter.Api.Testing;
+using MacroCounter.Api.Usage;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -16,6 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddIdentityStore();
 // Invite-only sign-in with server-side sessions, CSRF protection and access policies (feature 003).
 builder.AddAuth();
+builder.AddRateLimits();
 
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.Section));
 builder.Services.AddProblemDetails();
@@ -38,7 +40,9 @@ var app = builder.Build();
 
 // Fail fast when the identity store is not configured (it is resolved lazily, after all configuration).
 _ = app.Services.GetRequiredService<NpgsqlDataSource>();
+SpendCap.LogAtStartup(app.Services);
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 // Outside Production only: http://localhost counts as a secure context, as browsers treat it.
 app.UseLocalhostSecureContext(app.Environment);
@@ -47,6 +51,8 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
+// After authorization: anonymous requests to protected features are refused before they use up a limit.
+app.UseRateLimiter();
 
 var api = app.MapGroup("/api");
 api.AddEndpointFilter<CsrfEndpointFilter>();

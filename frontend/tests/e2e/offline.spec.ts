@@ -42,8 +42,10 @@ test('the app works offline: Today, history and manual entry; AI shows as unavai
 }) => {
   await page.goto('/');
   await rememberSignedInAccount(page);
+  // The server cannot be reached (whatever happens to be listening locally): every /api call fails.
+  await context.route('**/api/**', (route) => route.abort('connectionrefused'));
   await page.reload();
-  // No server here: the remembered account's data opens, with AI lookup blocked.
+  // The remembered account's data opens, with AI lookup blocked.
   await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
   await expect(page.getByRole('status')).toHaveText(
     'Offline – sign in or reconnect to use AI lookup',

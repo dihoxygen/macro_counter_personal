@@ -25,6 +25,7 @@ public static class AuthServices
         services.AddScoped<EncryptedUserStore>();
         services.Replace(ServiceDescriptor.Scoped<IUserStore<AppUser>>(sp => sp.GetRequiredService<EncryptedUserStore>()));
         services.AddSingleton<PasswordPolicy>();
+        services.AddSingleton<SignInThrottle>();
         services.AddScoped<SignInService>();
         services.AddScoped<SetupService>();
         services.AddSingleton<PostgresTicketStore>();

@@ -25,6 +25,8 @@ public static class IdentityServices
 
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.Section));
         services.Configure<LimitsOptions>(configuration.GetSection(LimitsOptions.Section));
+        services.AddLimitsValidation();
+        services.AddScoped<AiQuotaService>();
         services.AddSingleton(TimeProvider.System);
 
         // Resolved lazily so host-level configuration (environment, secrets, test overrides) applies;

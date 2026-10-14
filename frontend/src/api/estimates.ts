@@ -33,6 +33,8 @@ export type EstimateErrorCode =
   | 'ai_unavailable'
   | 'ai_timeout'
   | 'unauthenticated'
+  | 'quota_exceeded'
+  | 'rate_limited'
   | 'network';
 
 const messages: Record<EstimateErrorCode, string> = {
@@ -44,17 +46,42 @@ const messages: Record<EstimateErrorCode, string> = {
   ai_unavailable: 'AI lookup is unavailable right now. You can still enter the food manually.',
   ai_timeout: 'The AI took too long to answer. Try again or enter it manually.',
   unauthenticated: 'Sign in again to use AI lookup. Your entries are safe.',
+  quota_exceeded: "You've reached the AI lookup limit for now. You can still add food manually.",
+  rate_limited: 'Too many lookups in a short time. Wait a minute and try again.',
   network: 'Could not reach the server. Check your connection, or enter the food manually.',
 };
+
+/** For quota_exceeded: which limit was reached and when it resets (contracts/auth-api.yaml). */
+export interface QuotaDetails {
+  scope?: string;
+  resetAt?: string;
+}
 
 export class EstimateError extends Error {
   readonly code: EstimateErrorCode;
 
-  constructor(code: EstimateErrorCode) {
-    super(messages[code]);
+  constructor(code: EstimateErrorCode, quota: QuotaDetails = {}) {
+    super(code === 'quota_exceeded' ? quotaMessage(quota) : messages[code]);
     this.name = 'EstimateError';
     this.code = code;
   }
+}
+
+/** Says which limit was reached and when it resets, in the person's own time zone (FR-021). */
+function quotaMessage({ scope, resetAt }: QuotaDetails): string {
+  const reset = resetAt ? new Date(resetAt) : undefined;
+  if (!reset || Number.isNaN(reset.getTime())) return messages.quota_exceeded;
+  if (scope === 'user_daily') {
+    const time = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(
+      reset,
+    );
+    return `You've reached today's AI lookup limit. It resets at ${time}. You can still add food manually.`;
+  }
+  const when = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(reset);
+  return `AI lookup has reached its overall limit for now. It resets at ${when}. You can still add food manually.`;
 }
 
 const statusCodes: Record<number, EstimateErrorCode> = {
@@ -103,7 +130,7 @@ async function post(url: string, init: RequestInit, signal: AbortSignal): Promis
     response = await apiFetch(url, { ...init, signal });
   } catch (error) {
     if (isAbort(error)) throw error;
-    throw new EstimateError(estimateCode(error));
+    throw new EstimateError(estimateCode(error), quotaDetails(error));
   }
 
   let body: unknown;
@@ -122,4 +149,15 @@ function estimateCode(error: unknown): EstimateErrorCode {
   if (!(error instanceof ApiError)) return 'network';
   if (error.code in messages) return error.code as EstimateErrorCode;
   return (error.status !== undefined ? statusCodes[error.status] : undefined) ?? 'network';
+}
+
+const QuotaDetailsSchema = z.object({
+  scope: z.string().optional(),
+  resetAt: z.string().optional(),
+});
+
+function quotaDetails(error: unknown): QuotaDetails {
+  if (!(error instanceof ApiError)) return {};
+  const parsed = QuotaDetailsSchema.safeParse(error.problem ?? {});
+  return parsed.success ? parsed.data : {};
 }

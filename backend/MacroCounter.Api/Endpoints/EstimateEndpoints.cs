@@ -2,6 +2,8 @@ using System.Text.Json;
 using MacroCounter.Api.Ai;
 using MacroCounter.Api.Contracts;
 using MacroCounter.Api.Nutrition;
+using MacroCounter.Api.Security;
+using MacroCounter.Api.Usage;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,9 +22,13 @@ public static class EstimateEndpoints
 
     public static void MapEstimateEndpoints(this IEndpointRouteBuilder api)
     {
-        // Every AI call needs a full session (fallback policy): the key and the bill are the owner's.
-        api.MapPost("/estimates/text", EstimateFromText);
-        api.MapPost("/estimates/photo", EstimateFromPhoto)
+        // Every AI call needs a full session (fallback policy), passes the per-minute burst limit, and is
+        // reserved in the daily and monthly quotas before Claude is called: the key and the bill are the owner's.
+        var estimates = api.MapGroup("/estimates")
+            .RequireRateLimiting(RateLimits.AiBurst)
+            .AddEndpointFilter<AiLimitsEndpointFilter>();
+        estimates.MapPost("/text", EstimateFromText);
+        estimates.MapPost("/photo", EstimateFromPhoto)
             .WithMetadata(new RequestSizeLimitAttribute(MaxPhotoRequestBytes));
     }
 

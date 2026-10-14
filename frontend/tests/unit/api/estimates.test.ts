@@ -140,6 +140,71 @@ describe('estimateFromText', () => {
     expect(init?.credentials).toBe('same-origin');
   });
 
+  describe('AI limits (FR-021)', () => {
+    const resetAt = '2026-10-15T00:00:00Z';
+    const quota = (scope: string) =>
+      new Response(
+        JSON.stringify({ title: 'x', status: 429, code: 'quota_exceeded', scope, resetAt }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '3600' },
+        },
+      );
+
+    it('the daily personal limit says when it resets, in local time, and that manual entry still works', async () => {
+      stubFetch(async () => quota('user_daily'));
+      const error = (await estimateFromText('banana', new AbortController().signal).catch(
+        (e) => e,
+      )) as EstimateError;
+
+      const time = new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(new Date(resetAt));
+      expect(error.code).toBe('quota_exceeded');
+      expect(error.message).toBe(
+        `You've reached today's AI lookup limit. It resets at ${time}. You can still add food manually.`,
+      );
+    });
+
+    it.each(['global_daily', 'global_monthly'])(
+      'the overall %s limit says so, with the date and time',
+      async (scope) => {
+        stubFetch(async () => quota(scope));
+        const error = (await estimateFromText('banana', new AbortController().signal).catch(
+          (e) => e,
+        )) as EstimateError;
+
+        const when = new Intl.DateTimeFormat(undefined, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date(resetAt));
+        expect(error.message).toBe(
+          `AI lookup has reached its overall limit for now. It resets at ${when}. You can still add food manually.`,
+        );
+      },
+    );
+
+    it('a quota problem without a usable reset time still explains itself', async () => {
+      stubFetch(async () => problem(429, 'quota_exceeded'));
+      const error = (await estimateFromText('banana', new AbortController().signal).catch(
+        (e) => e,
+      )) as EstimateError;
+      expect(error.message).toBe(
+        "You've reached the AI lookup limit for now. You can still add food manually.",
+      );
+    });
+
+    it('the per-minute limit asks to wait a minute', async () => {
+      stubFetch(async () => problem(429, 'rate_limited'));
+      await expectError(estimateFromText('banana', new AbortController().signal), 'rate_limited');
+      const error = (await estimateFromText('banana', new AbortController().signal).catch(
+        (e) => e,
+      )) as EstimateError;
+      expect(error.message).toBe('Too many lookups in a short time. Wait a minute and try again.');
+    });
+  });
+
   it('gives every error a human-readable message', async () => {
     stubFetch(async () => problem(503, 'ai_unavailable'));
     const error = await estimateFromText('banana', new AbortController().signal).catch((e) => e);

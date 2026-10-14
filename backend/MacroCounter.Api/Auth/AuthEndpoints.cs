@@ -43,11 +43,12 @@ public static partial class AuthEndpoints
     {
         var auth = api.MapGroup("/auth");
         auth.MapGet("/session", GetSession).AllowAnonymous();
-        auth.MapPost("/sign-in", SignIn).AllowAnonymous();
-        auth.MapPost("/setup/password", SetPassword).RequireAuthorization(AccessPolicies.SetupSession);
-        auth.MapPost("/setup/totp", StartTotp).RequireAuthorization(AccessPolicies.SetupSession);
-        auth.MapPost("/setup/totp/confirm", ConfirmTotp).RequireAuthorization(AccessPolicies.SetupSession);
-        auth.MapPost("/setup/notice", AcknowledgeNotice).RequireAuthorization(AccessPolicies.SetupSession);
+        auth.MapPost("/sign-in", SignIn).AllowAnonymous().RequireRateLimiting(RateLimits.SignIn);
+        var setup = auth.MapGroup("/setup").RequireAuthorization(AccessPolicies.SetupSession).RequireRateLimiting(RateLimits.SignIn);
+        setup.MapPost("/password", SetPassword);
+        setup.MapPost("/totp", StartTotp);
+        setup.MapPost("/totp/confirm", ConfirmTotp);
+        setup.MapPost("/notice", AcknowledgeNotice);
         auth.MapPost("/sign-out", SignOut).RequireAuthorization(AccessPolicies.AnySession);
         auth.MapPost("/sign-out-everywhere", SignOutEverywhere).RequireAuthorization(AccessPolicies.FullSession);
     }

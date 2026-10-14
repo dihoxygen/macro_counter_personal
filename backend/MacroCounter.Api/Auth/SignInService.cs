@@ -39,6 +39,7 @@ public sealed partial class SignInService(
     IPasswordHasher<AppUser> hasher,
     IdentityDbContext db,
     IAuditLog audit,
+    SignInThrottle throttle,
     IOptions<SecurityOptions> options,
     TimeProvider clock)
 {
@@ -49,6 +50,24 @@ public sealed partial class SignInService(
     {
         var now = clock.GetUtcNow();
         var name = username.Trim().ToLowerInvariant();
+
+        // Checked before looking the name up: a blocked unknown name and a blocked real one look the same.
+        if (throttle.IsBlocked(name, out var retryAfter))
+        {
+            BurnOneHash();
+            await audit.WriteAsync(AuditEvent.RateLimited, AuditOutcome.Failure, null, AuditReason.RateLimited, sourceIp, cancellationToken);
+            return new SignInOutcome.Locked(retryAfter);
+        }
+
+        var outcome = await SignInCheckedAsync(name, password, code, now, sourceIp, cancellationToken);
+        if (outcome is SignInOutcome.Failed) throttle.RecordFailure(name);
+        else if (outcome is SignInOutcome.SignedIn or SignInOutcome.SetupRequired) throttle.RecordSuccess(name);
+        return outcome;
+    }
+
+    private async Task<SignInOutcome> SignInCheckedAsync(string name, string password, string? code, DateTimeOffset now,
+        IPAddress? sourceIp, CancellationToken cancellationToken)
+    {
         var user = CanonicalUsername().IsMatch(name) ? await users.FindByNameAsync(name) : null;
 
         if (user is null)
