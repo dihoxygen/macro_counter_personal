@@ -63,7 +63,7 @@ built and checked as its own increment.
 - [X] T006 [P] Add `Security` and `Limits` sections with the defaults in the table above to `backend/MacroCounter.Api/appsettings.json`. Also add `"Security": { "AllowedOrigins": ["http://localhost:5080", "http://localhost:5173"] }` for development. Do **not** add a connection string here: it comes from User Secrets or the environment as `ConnectionStrings:Identity`
 - [X] T007 [P] Create `backend/MacroCounter.Api/appsettings.Production.json` with `"AllowedHosts": "REPLACE_WITH_HOST"`, `"Security": { "AllowedOrigins": [] }` and `"Logging"` at Warning for `Microsoft.EntityFrameworkCore`. Add a comment in `README.md` (deployment section, written in T124) saying production must override both values
 
-- [ ] T008 Create `.github/workflows/ci.yml` (Constitution: Development Workflow, CI MUST run tests, linters and vulnerability scans). It triggers on `pull_request` to `master` and on `push` to `master`, and runs on `ubuntu-latest` with:
+- [X] T008 (Branch protection enabled on 2026-10-14 after the first green run: required check `check`, strict, no force pushes or deletion.) Create `.github/workflows/ci.yml` (Constitution: Development Workflow, CI MUST run tests, linters and vulnerability scans). It triggers on `pull_request` to `master` and on `push` to `master`, and runs on `ubuntu-latest` with:
   - a `postgres:17` service container (`POSTGRES_PASSWORD` set to a random per-run value generated in the job, health check `pg_isready`, port 5432);
   - `MACROCOUNTER_TEST_PG=Host=localhost;Username=postgres;Password=<that value>` in the job env;
   - `actions/setup-dotnet` (10.0.x) and `actions/setup-node` (24.x, with npm cache);
@@ -589,8 +589,8 @@ food text in the audit table or in the captured logs. Quickstart V13.
 
 ### Tests for User Story 6 ⚠️
 
-- [ ] T103 [US6] Write an audit coverage test in `backend/MacroCounter.Api.Tests/Audit/AuditCoverageTests.cs` (SC-009). One scripted scenario: invite, a failed sign-in, setup (including a rejected password, a breached password, a wrong TOTP code and the notice), sign-in, a lockout, the IP rate limit, sign-out, sign-out-everywhere, `revoke_sessions`, `disable_user`, `enable_user`, `unlock_user`, `reset_user`, quota exceeded and the ceiling hit. Assert that **every** value of the `AuditEvent` enum appears at least once, with `occurred_at`, the right `user_id` (null only when the account is unknown) and an `outcome`.
-- [ ] T104 [US6] Write an audit and log secret scan in `backend/MacroCounter.Api.Tests/Audit/SecretScanTests.cs`. Run the T103 scenario with an `ILoggerProvider` that captures every log message and exception. Then read the whole `audit_events` table as a text dump (`select row_to_json(a)::text`) and assert that **none** of these appear in the dump or in the captured logs:
+- [X] T103 [US6] Write an audit coverage test in `backend/MacroCounter.Api.Tests/Audit/AuditCoverageTests.cs` (SC-009). One scripted scenario: invite, a failed sign-in, setup (including a rejected password, a breached password, a wrong TOTP code and the notice), sign-in, a lockout, the IP rate limit, sign-out, sign-out-everywhere, `revoke_sessions`, `disable_user`, `enable_user`, `unlock_user`, `reset_user`, quota exceeded and the ceiling hit. Assert that **every** value of the `AuditEvent` enum appears at least once, with `occurred_at`, the right `user_id` (null only when the account is unknown) and an `outcome`.
+- [X] T104 [US6] Write an audit and log secret scan in `backend/MacroCounter.Api.Tests/Audit/SecretScanTests.cs`. Run the T103 scenario with an `ILoggerProvider` that captures every log message and exception. Then read the whole `audit_events` table as a text dump (`select row_to_json(a)::text`) and assert that **none** of these appear in the dump or in the captured logs:
   - every password used;
   - every temporary code (with and without dashes);
   - every TOTP code and setup key;
@@ -599,16 +599,16 @@ food text in the audit table or in the captured logs. Quickstart V13.
   - the bytes of the photo, as base64.
 
   Unknown usernames that were typed in (`"Pa55word!not-a-user"`) must also be absent (data-model.md rule).
-- [ ] T105 [P] [US6] Write tests for the `recent_audit` view and `purge_expired` in `backend/MacroCounter.Api.Tests/Database/AuditRetentionTests.cs`:
+- [X] T105 [P] [US6] Write tests for the `recent_audit` view and `purge_expired` in `backend/MacroCounter.Api.Tests/Database/AuditRetentionTests.cs`:
   - `macro_admin.recent_audit` returns the last 30 days, newest first, joined to `username`;
   - `macro_admin.purge_expired()` deletes audit rows older than 180 days, sessions past `absolute_expires_at`, and `ai_usage_*` rows older than 400 days, keeps everything else, and returns the number of rows removed;
   - the app role cannot execute `purge_expired` (42501).
 
 ### Implementation for User Story 6
 
-- [ ] T106 [US6] Add the missing audit writes found by T103 in `SignInService`, `SetupService`, `AuthEndpoints` (sign-out, sign-out-everywhere), the rate-limiter `OnRejected` handler and `AiQuotaService`, all in their existing files. Make T103 pass.
-- [ ] T107 [US6] Fix any leak found by T104. Check `backend/MacroCounter.Api/Ai/ClaudeEstimator.cs` logging (`LogWarning(ex, "Claude returned HTTP {Status}: {Message}")`) and drop `ex.Message` if it can echo request content. Set `Microsoft.EntityFrameworkCore.Database.Command` logging to Warning in `appsettings.json`, so SQL parameters are never logged, and confirm `EnableSensitiveDataLogging` is **never** called. Make T104 pass.
-- [ ] T108 [US6] Add a migration `Data/Migrations/*_AuditRetention.cs` with the `macro_admin.recent_audit` view and `macro_admin.purge_expired()`. Also add a guarded `pg_cron` schedule: `do $$ begin if exists (select 1 from pg_extension where extname='pg_cron') then perform cron.schedule('macro-purge', '15 3 * * *', 'select macro_admin.purge_expired()'); end if; end $$`. Make T105 pass.
+- [X] T106 (No change needed: T103 passed on its first run, so every event type was already written.) [US6] Add the missing audit writes found by T103 in `SignInService`, `SetupService`, `AuthEndpoints` (sign-out, sign-out-everywhere), the rate-limiter `OnRejected` handler and `AiQuotaService`, all in their existing files. Make T103 pass.
+- [X] T107 (No leak found, even with logging at Trace. EF command logging is pinned to Warning, and EnableSensitiveDataLogging is never called.) [US6] Fix any leak found by T104. Check `backend/MacroCounter.Api/Ai/ClaudeEstimator.cs` logging (`LogWarning(ex, "Claude returned HTTP {Status}: {Message}")`) and drop `ex.Message` if it can echo request content. Set `Microsoft.EntityFrameworkCore.Database.Command` logging to Warning in `appsettings.json`, so SQL parameters are never logged, and confirm `EnableSensitiveDataLogging` is **never** called. Make T104 pass.
+- [X] T108 [US6] Add a migration `Data/Migrations/*_AuditRetention.cs` with the `macro_admin.recent_audit` view and `macro_admin.purge_expired()`. Also add a guarded `pg_cron` schedule: `do $$ begin if exists (select 1 from pg_extension where extname='pg_cron') then perform cron.schedule('macro-purge', '15 3 * * *', 'select macro_admin.purge_expired()'); end if; end $$`. Make T105 pass.
 
 **Checkpoint**: The owner can answer "who signed in, who failed, who got locked, who hit limits"
 from the SQL editor.
