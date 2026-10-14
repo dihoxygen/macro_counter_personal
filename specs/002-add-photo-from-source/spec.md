@@ -22,6 +22,13 @@ This feature lets the user choose where the photo comes from: an existing photo 
 library or files, or a new photo taken through a live camera view inside the app. Everything after
 the photo is chosen (note, AI estimate, review, confirm) stays the same as in feature 001.
 
+## Clarifications
+
+### Session 2026-10-14
+
+- Q: Does selecting the photo inside the system picker count toward SC-001's interaction limit, and what is the limit? → A: Yes, it counts; 5 interactions is acceptable for this feature (Add food → Photo → Choose existing photo → select → Estimate).
+- Q: After a snapshot, should there be a separate "Use photo" step, or does requesting the estimate count as using the photo? → A: No separate step; the still image is shown with Retake and Remove, and requesting the estimate uses it.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Log a meal from a photo already on my phone (Priority: P1)
@@ -73,10 +80,11 @@ update.
    camera", **Then** the app asks for camera permission (if not already granted) and shows a live
    preview.
 2. **Given** the live preview is showing, **When** I take a snapshot, **Then** the preview is
-   replaced by the captured still image with options to retake or use it.
+   replaced by the captured still image with options to retake it, remove it, or use it by
+   requesting an estimate (there is no separate "use photo" step).
 3. **Given** I captured an image, **When** I choose retake, **Then** the live preview comes back
    and the previous capture is discarded.
-4. **Given** I accepted a captured image, **When** I request an estimate, **Then** the flow
+4. **Given** I captured an image, **When** I request an estimate, **Then** the flow
    continues exactly as with any other photo.
 5. **Given** the live preview is showing, **When** I leave the photo step, cancel, or finish
    capturing, **Then** the camera turns off (the device's camera-in-use indicator goes off).
@@ -146,11 +154,12 @@ step and confirm the estimate.
 - **FR-004**: On phones where an in-app live preview can't be used, "take a new photo" MAY fall
   back to the device's own camera app instead. The user MUST still end up with a captured photo
   ready to use.
-- **FR-005**: After capturing a frame, the user MUST be able to retake it or use it.
+- **FR-005**: After capturing a frame, the user MUST be able to retake it, remove it, or use it.
+  Requesting the estimate is how the photo gets used; there is no separate "use photo" step.
 - **FR-006**: When the device has more than one camera, the user MUST be able to switch between
   them in the live preview. On phones, the rear (outward-facing) camera MUST be the default.
-- **FR-007**: The camera MUST turn off as soon as it is no longer needed: after a capture is
-  accepted, when the user cancels or leaves the photo step, and when the app is hidden or moved to
+- **FR-007**: The camera MUST turn off as soon as it is no longer needed: after a snapshot is
+  taken, when the user cancels or leaves the photo step, and when the app is hidden or moved to
   the background.
 - **FR-008**: Camera access MUST be requested only when the user chooses to use the camera, never
   when the screen loads.
@@ -188,12 +197,13 @@ step and confirm the estimate.
 ### Measurable Outcomes
 
 - **SC-001**: On a phone, a user can go from the main screen to an estimate request for a photo
-  already in their library in 4 or fewer interactions (not counting scrolling in the library).
+  already in their library in 5 or fewer interactions, counting the selection in the system picker
+  but not scrolling in the library (Add food → Photo → Choose existing photo → select → Estimate).
 - **SC-002**: On a desktop with a webcam, a user can go from opening the photo step to an
   estimate request using a live capture in under 20 seconds.
 - **SC-003**: The live camera preview appears within 3 seconds of granting permission (or of
   choosing the camera, if permission was already granted).
-- **SC-004**: In 100% of tested cases (capture accepted, cancel, leave the step, hide the app),
+- **SC-004**: In 100% of tested cases (snapshot taken, cancel, leave the step, hide the app),
   the camera turns off within 2 seconds.
 - **SC-005**: In 100% of tested camera failures (denied, missing, in use, unsupported), the user
   sees an explanation and can still finish logging with an existing photo.
