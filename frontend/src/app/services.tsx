@@ -2,6 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import type { Estimate } from '../api/estimates';
 import type { Status } from '../api/status';
 import type { LogService } from '../data/logService';
+import type { CameraService } from '../media/camera';
 import type { EntryRepository, ProteinGoalRepository, SavedFoodRepository } from '../data/repositories';
 
 /** Everything the UI needs from the outside world, injected so tests can swap it. */
@@ -15,7 +16,9 @@ export interface Services {
   estimateFromText: (description: string, signal: AbortSignal) => Promise<Estimate>;
   estimateFromPhoto: (jpeg: Blob, note: string | undefined, signal: AbortSignal) => Promise<Estimate>;
   /** Resizes and strips metadata on the device before upload (research R7). */
-  reencodePhoto: (file: File) => Promise<Blob>;
+  reencodePhoto: (file: Blob) => Promise<Blob>;
+  /** The only code that touches navigator.mediaDevices. */
+  camera: CameraService;
   now: () => Date;
 }
 

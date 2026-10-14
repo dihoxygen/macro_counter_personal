@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { banana, estimate, mockApi } from './helpers';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { banana, estimate, liveTrackCount, mockApi, recordMediaStreams } from './helpers';
+
+const photo = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'meal-with-gps.jpg');
 
 const MIN = 44;
 
@@ -29,7 +33,9 @@ async function expectTouchTargets(page: Page, view: string) {
 test.describe('Touch targets', () => {
   test.skip(({ isMobile }) => !isMobile, 'touch targets are checked at the mobile viewport');
 
-  test('every view meets the 44×44 px minimum', async ({ page }) => {
+  test('every view meets the 44×44 px minimum', async ({ page, context }) => {
+    await context.grantPermissions(['camera']);
+    await recordMediaStreams(page);
     await mockApi(page, {
       text: (route) =>
         route.fulfill({
@@ -58,6 +64,14 @@ test.describe('Touch targets', () => {
     await page.getByRole('button', { name: 'Add food' }).click();
     await page.getByRole('button', { name: 'Photo' }).click();
     await expectTouchTargets(page, 'Add food / photo');
+    await page.getByLabel('Existing photo file').setInputFiles(photo);
+    await page.getByRole('img', { name: 'Selected photo' }).waitFor();
+    await expectTouchTargets(page, 'Photo step (selected)');
+    await page.getByRole('button', { name: 'Take photo' }).click();
+    await page.getByLabel('Camera preview').waitFor();
+    await expectTouchTargets(page, 'Photo step (live camera)');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect.poll(() => liveTrackCount(page)).toBe(0);
     await page.getByRole('button', { name: 'Manual' }).click();
     await expectTouchTargets(page, 'Add food / manual');
     await page.getByRole('button', { name: /back/i }).click();

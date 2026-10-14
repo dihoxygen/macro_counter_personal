@@ -27,6 +27,10 @@ export function computeTargetSize(
 }
 
 export async function reencodePhoto(file: Blob): Promise<Blob> {
+  // Some pickers report no MIME type at all, so only a known non-image type is rejected up front.
+  if (file.type !== '' && !file.type.startsWith('image/')) {
+    throw new PhotoDecodeError('This file is not an image.');
+  }
   let bitmap: ImageBitmap;
   try {
     // Apply the EXIF orientation while decoding, since the metadata itself is dropped.
