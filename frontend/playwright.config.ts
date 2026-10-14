@@ -1,6 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Every spec except offline.spec.ts mocks /api/** with page.route(); the real backend is never reached.
+
+// A synthetic test-pattern camera (feature 002). It needs the full Chromium build (channel
+// 'chromium'): the default headless shell rejects getUserMedia with NotSupportedError. Permission is
+// NOT auto-granted: camera tests call context.grantPermissions(['camera']) so the denied case stays testable.
+const fakeCamera = ['--use-fake-device-for-media-stream'];
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -13,7 +19,13 @@ export default defineConfig({
     {
       name: 'desktop',
       testIgnore: /offline\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5173', viewport: { width: 1280, height: 800 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5173',
+        viewport: { width: 1280, height: 800 },
+        channel: 'chromium',
+        launchOptions: { args: fakeCamera },
+      },
     },
     {
       name: 'mobile',
@@ -24,6 +36,8 @@ export default defineConfig({
         viewport: { width: 360, height: 740 },
         hasTouch: true,
         isMobile: true,
+        channel: 'chromium',
+        launchOptions: { args: fakeCamera },
       },
     },
     {

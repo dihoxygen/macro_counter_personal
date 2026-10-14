@@ -1,20 +1,31 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EstimateError, type Estimate } from '../../src/api/estimates';
+import type { Services } from '../../src/app/services';
+import { AddFood } from '../../src/features/add-food/AddFood';
 import { AddFoodPhoto } from '../../src/features/add-food/AddFoodPhoto';
+import { describeCameraError } from '../../src/media/camera';
 import { PhotoDecodeError } from '../../src/media/reencodePhoto';
 import { toDayKey } from '../../src/domain/days';
+import { FakeCameraService } from './fakeCamera';
 import { renderWithServices } from './testServices';
 import { eggItem, estimateOf, pendingUntilAborted, toastItem } from './fixtures';
 
 const today = () => toDayKey(new Date());
-const photoFile = () => new File(['raw-bytes'], 'meal.jpg', { type: 'image/jpeg' });
+const photoFile = (name = 'meal.jpg') => new File(['raw-bytes'], name, { type: 'image/jpeg' });
 const reencoded = new Blob(['jpeg'], { type: 'image/jpeg' });
+
+type User = ReturnType<typeof userEvent.setup>;
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 async function setup(
   estimateFromPhoto: (photo: Blob, note: string | undefined, signal: AbortSignal) => Promise<Estimate>,
-  reencodePhoto: (file: File) => Promise<Blob> = async () => reencoded,
+  reencodePhoto: (file: Blob) => Promise<Blob> = async () => reencoded,
+  overrides: Partial<Services> = {},
 ) {
   const user = userEvent.setup();
   const onConfirmed = vi.fn();
@@ -22,32 +33,197 @@ async function setup(
   const onManual = vi.fn();
   const rendered = await renderWithServices(
     <AddFoodPhoto onConfirmed={onConfirmed} onText={onText} onManual={onManual} />,
-    { estimateFromPhoto: vi.fn(estimateFromPhoto), reencodePhoto: vi.fn(reencodePhoto) },
+    {
+      estimateFromPhoto: vi.fn(estimateFromPhoto),
+      reencodePhoto: vi.fn(reencodePhoto),
+      ...overrides,
+    },
   );
   return { user, onConfirmed, onText, onManual, ...rendered };
 }
 
-async function choosePhoto(user: ReturnType<typeof userEvent.setup>, note?: string) {
-  await user.upload(screen.getByLabelText(/photo/i), photoFile());
+const libraryInput = () => screen.getByLabelText('Existing photo file');
+const cameraAppInput = () => screen.getByLabelText('Camera app photo file');
+
+async function pickLibraryPhoto(user: User, file = photoFile()) {
+  await user.upload(libraryInput(), file);
+  await screen.findByRole('img', { name: 'Selected photo' });
+}
+
+async function choosePhoto(user: User, note?: string) {
+  await pickLibraryPhoto(user);
   if (note) await user.type(screen.getByLabelText(/note/i), note);
   await user.click(screen.getByRole('button', { name: /estimate/i }));
 }
 
-describe('AddFoodPhoto', () => {
-  it('uses a camera-capable file input and an optional note of up to 300 characters', async () => {
+/** Records which inputs had .click() called on them (opening the picker or camera app). */
+function spyOnInputClicks() {
+  return vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+}
+
+describe('AddFoodPhoto: photo sources (feature 002)', () => {
+  it('offers Take photo and Choose existing photo without touching the camera (FR-001, FR-008)', async () => {
+    const { services } = await setup(async () => estimateOf(eggItem));
+    expect(screen.getByRole('button', { name: 'Take photo' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Choose existing photo' })).toBeVisible();
+    expect(services.camera.start).not.toHaveBeenCalled();
+  });
+
+  it('Take photo waits for camera detection; Choose existing photo does not', async () => {
+    let detected!: (support: 'live') => void;
+    const camera = new FakeCameraService();
+    camera.detectSupport.mockReturnValueOnce(new Promise((resolve) => (detected = resolve)));
+    await setup(async () => estimateOf(eggItem), undefined, { camera });
+
+    expect(screen.getByRole('button', { name: 'Take photo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Choose existing photo' })).toBeEnabled();
+    detected('live');
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Take photo' })).toBeEnabled());
+  });
+
+  it('falls back to the camera app if detection fails', async () => {
+    const camera = new FakeCameraService();
+    camera.detectSupport.mockRejectedValueOnce(new Error('boom'));
+    await setup(async () => estimateOf(eggItem), undefined, { camera });
+    expect(await screen.findByText("Opens your device's camera app.")).toBeVisible();
+  });
+
+  it('the library input has no capture attribute; the camera-app input does (FR-002)', async () => {
     await setup(async () => estimateOf(eggItem));
-    const input = screen.getByLabelText(/photo/i);
-    expect(input).toHaveAttribute('type', 'file');
-    expect(input).toHaveAttribute('accept', 'image/*');
-    expect(input).toHaveAttribute('capture', 'environment');
+    expect(libraryInput()).toHaveAttribute('type', 'file');
+    expect(libraryInput()).toHaveAttribute('accept', 'image/*');
+    expect(libraryInput()).not.toHaveAttribute('capture');
+    expect(libraryInput()).not.toHaveAttribute('multiple');
+    expect(cameraAppInput()).toHaveAttribute('accept', 'image/*');
+    expect(cameraAppInput()).toHaveAttribute('capture', 'environment');
+  });
+
+  it('uses only the first file if several arrive (one photo per estimate)', async () => {
+    const { services } = await setup(async () => estimateOf(eggItem));
+    const first = photoFile('first.jpg');
+    const user = userEvent.setup({ applyAccept: false });
+    // Bypass the missing `multiple` attribute to simulate a browser handing over two files anyway.
+    libraryInput().setAttribute('multiple', '');
+    await user.upload(libraryInput(), [first, photoFile('second.jpg')]);
+    await screen.findByRole('img', { name: 'Selected photo' });
+    expect(services.reencodePhoto).toHaveBeenCalledExactlyOnceWith(first);
+  });
+
+  it('Choose existing photo opens the library input', async () => {
+    const { user } = await setup(async () => estimateOf(eggItem));
+    const clicks = spyOnInputClicks();
+    await user.click(screen.getByRole('button', { name: 'Choose existing photo' }));
+    expect(clicks.mock.contexts).toContain(libraryInput());
+    expect(clicks.mock.contexts).not.toContain(cameraAppInput());
+  });
+
+  it('without a live camera, Take photo opens the camera app input and says so (FR-004)', async () => {
+    const { user } = await setup(async () => estimateOf(eggItem), undefined, {
+      camera: new FakeCameraService({ support: 'camera-app' }),
+    });
+    expect(await screen.findByText("Opens your device's camera app.")).toBeVisible();
+    const clicks = spyOnInputClicks();
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    expect(clicks.mock.contexts).toContain(cameraAppInput());
+    expect(clicks.mock.contexts).not.toContain(libraryInput());
+  });
+
+  it('re-encodes at selection time and previews exactly what will be sent', async () => {
+    const { user, services } = await setup(async () => estimateOf(eggItem));
+    const file = photoFile();
+    await pickLibraryPhoto(user, file);
+
+    expect(services.reencodePhoto).toHaveBeenCalledExactlyOnceWith(file);
+    expect(services.estimateFromPhoto).not.toHaveBeenCalled();
+    expect(screen.getByRole('img', { name: 'Selected photo' }).getAttribute('src')).toMatch(/^blob:/);
+
+    await user.click(screen.getByRole('button', { name: /estimate/i }));
+    expect(services.estimateFromPhoto).toHaveBeenCalledWith(reencoded, undefined, expect.any(AbortSignal));
+  });
+
+  it('shows "Preparing photo…" while the photo is being prepared', async () => {
+    let finish!: (blob: Blob) => void;
+    const { user } = await setup(
+      async () => estimateOf(eggItem),
+      () => new Promise<Blob>((resolve) => (finish = resolve)),
+    );
+    await user.upload(libraryInput(), photoFile());
+    expect(screen.getByRole('status')).toHaveTextContent('Preparing photo…');
+    finish(reencoded);
+    expect(await screen.findByRole('img', { name: 'Selected photo' })).toBeVisible();
+  });
+
+  it('with a library photo: Replace photo and Take photo are offered; Remove photo empties the step (FR-010)', async () => {
+    const { user, services } = await setup(async () => estimateOf(eggItem));
+    await pickLibraryPhoto(user);
+
+    expect(screen.getByRole('button', { name: 'Replace photo' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Take photo' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Choose existing photo' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Remove photo' }));
+    expect(screen.queryByRole('img', { name: 'Selected photo' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /estimate/i }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose or take a photo first.');
+    expect(services.estimateFromPhoto).not.toHaveBeenCalled();
+  });
+
+  it('with a camera-app photo: Retake and Choose existing photo are offered', async () => {
+    const { user } = await setup(async () => estimateOf(eggItem), undefined, {
+      camera: new FakeCameraService({ support: 'camera-app' }),
+    });
+    await user.upload(cameraAppInput(), photoFile());
+    await screen.findByRole('img', { name: 'Selected photo' });
+    expect(screen.getByRole('button', { name: 'Retake' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Choose existing photo' })).toBeVisible();
+  });
+
+  it('a cancelled picker changes nothing and shows no error (US1 AS5)', async () => {
+    const { user, services } = await setup(async () => estimateOf(eggItem));
+    await user.upload(libraryInput(), []);
+    expect(services.reencodePhoto).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose existing photo' })).toBeVisible();
+  });
+
+  it('a photo that cannot be decoded is rejected at selection; nothing is sent (FR-012)', async () => {
+    const { user, services } = await setup(
+      async () => estimateOf(eggItem),
+      async () => {
+        throw new PhotoDecodeError('decode failed');
+      },
+    );
+    await user.upload(libraryInput(), photoFile('meal.heic'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("This photo couldn't be used. Choose another photo.");
+    expect(screen.getByRole('button', { name: 'Take photo' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Choose existing photo' })).toBeVisible();
+    expect(services.estimateFromPhoto).not.toHaveBeenCalled();
+  });
+
+  it('disables the sources while an estimate is loading', async () => {
+    const pending = pendingUntilAborted();
+    const { user } = await setup((_photo, _note, signal) => pending.fn(null, signal));
+    await choosePhoto(user);
+
+    await screen.findByRole('status');
+    expect(screen.getByRole('button', { name: 'Replace photo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Take photo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Remove photo' })).toBeDisabled();
+    expect(libraryInput()).toBeDisabled();
+    expect(cameraAppInput()).toBeDisabled();
+  });
+});
+
+describe('AddFoodPhoto: estimate flow (unchanged from feature 001, FR-016)', () => {
+  it('keeps the note field at up to 300 characters', async () => {
+    await setup(async () => estimateOf(eggItem));
     expect(screen.getByLabelText(/note/i)).toHaveAttribute('maxLength', '300');
   });
 
-  it('re-encodes the photo before upload and sends the note', async () => {
+  it('sends the re-encoded photo and the note', async () => {
     const { user, services } = await setup(async () => estimateOf(eggItem));
     await choosePhoto(user, 'cooked in olive oil');
-
-    expect(services.reencodePhoto).toHaveBeenCalledWith(expect.any(File));
     expect(services.estimateFromPhoto).toHaveBeenCalledWith(reencoded, 'cooked in olive oil', expect.any(AbortSignal));
   });
 
@@ -57,7 +233,7 @@ describe('AddFoodPhoto', () => {
     expect(services.estimateFromPhoto).toHaveBeenCalledWith(reencoded, undefined, expect.any(AbortSignal));
   });
 
-  it('shows progress with Cancel; Cancel aborts and saves nothing (FR-016)', async () => {
+  it('shows progress with Cancel; Cancel aborts and saves nothing', async () => {
     const pending = pendingUntilAborted();
     const { user, services } = await setup((_photo, _note, signal) => pending.fn(null, signal));
     await choosePhoto(user);
@@ -114,31 +290,19 @@ describe('AddFoodPhoto', () => {
     expect(screen.getByRole('button', { name: /confirm/i })).toBeDisabled();
   });
 
-  it('an unrecognized photo offers Retry, Describe in text and Enter manually', async () => {
+  it('an unrecognized photo offers Retry (same photo, no re-encode), Describe in text and Enter manually', async () => {
     const { user, services, onText, onManual } = await setup(async () => estimateOf());
     await choosePhoto(user);
 
     expect(await screen.findByText(/couldn.t identify food/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /retry/i }));
     expect(services.estimateFromPhoto).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(services.estimateFromPhoto).mock.calls[1]![0]).toBe(reencoded);
+    expect(services.reencodePhoto).toHaveBeenCalledTimes(1);
     await user.click(await screen.findByRole('button', { name: /describe in text/i }));
     expect(onText).toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: /enter manually/i }));
     expect(onManual).toHaveBeenCalled();
-  });
-
-  it('a photo that cannot be decoded shows "This image couldn\'t be used"', async () => {
-    const { user, services } = await setup(
-      async () => estimateOf(eggItem),
-      async () => {
-        throw new PhotoDecodeError('decode failed');
-      },
-    );
-    await choosePhoto(user);
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/this image couldn.t be used/i);
-    expect(services.estimateFromPhoto).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: /enter manually/i })).toBeInTheDocument();
   });
 
   it.each(['image_too_large', 'unsupported_media_type'] as const)(
@@ -154,13 +318,120 @@ describe('AddFoodPhoto', () => {
   );
 
   it('asks for a photo before estimating', async () => {
-    const user = userEvent.setup();
-    const { services } = await renderWithServices(
-      <AddFoodPhoto onConfirmed={vi.fn()} onText={vi.fn()} onManual={vi.fn()} />,
-      { estimateFromPhoto: vi.fn() },
-    );
+    const { user, services } = await setup(async () => estimateOf(eggItem));
     await user.click(screen.getByRole('button', { name: /estimate/i }));
-    expect(screen.getByRole('alert')).toHaveTextContent(/choose a photo/i);
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose or take a photo first.');
     expect(services.estimateFromPhoto).not.toHaveBeenCalled();
+  });
+});
+
+describe('AddFoodPhoto: live camera (feature 002 US2)', () => {
+  const live = () => ({ camera: new FakeCameraService({ support: 'live' }) });
+
+  beforeEach(() => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+  });
+
+  it('Take photo opens the in-app preview instead of a file input', async () => {
+    const { user } = await setup(async () => estimateOf(eggItem), undefined, live());
+    const clicks = spyOnInputClicks();
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    expect(await screen.findByLabelText('Camera preview')).toBeInTheDocument();
+    expect(clicks).not.toHaveBeenCalled();
+  });
+
+  it('a snapshot becomes the selected photo with Retake, and the camera is off', async () => {
+    const { user, services } = await setup(async () => estimateOf(eggItem), undefined, live());
+    const camera = services.camera as FakeCameraService;
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    await screen.findByLabelText('Camera preview');
+    await user.click(screen.getByRole('button', { name: 'Take snapshot' }));
+
+    expect(await screen.findByRole('img', { name: 'Selected photo' })).toBeVisible();
+    const snapshot = await camera.sessions[0]!.snapshot.mock.results[0]!.value;
+    expect(services.reencodePhoto).toHaveBeenCalledExactlyOnceWith(snapshot);
+    expect(screen.getByRole('button', { name: 'Retake' })).toBeVisible();
+    expect(camera.liveSessions()).toEqual([]);
+
+    await user.click(screen.getByRole('button', { name: /estimate/i }));
+    expect(services.estimateFromPhoto).toHaveBeenCalledWith(reencoded, undefined, expect.any(AbortSignal));
+  });
+
+  it('Retake restarts the camera; cancelling it keeps the previous photo', async () => {
+    const { user, services } = await setup(async () => estimateOf(eggItem), undefined, live());
+    const camera = services.camera as FakeCameraService;
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    await user.click(await screen.findByRole('button', { name: 'Take snapshot' }));
+    await screen.findByRole('img', { name: 'Selected photo' });
+
+    await user.click(screen.getByRole('button', { name: 'Retake' }));
+    await screen.findByLabelText('Camera preview');
+    expect(camera.start).toHaveBeenCalledTimes(2);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('img', { name: 'Selected photo' })).toBeVisible();
+    expect(camera.liveSessions()).toEqual([]);
+  });
+
+  it('after a camera error, Choose existing photo and Use camera app open the right inputs (SC-005)', async () => {
+    const camera = new FakeCameraService({
+      support: 'live',
+      startError: describeCameraError(new DOMException('x', 'SecurityError')),
+    });
+    const { user } = await setup(async () => estimateOf(eggItem), undefined, { camera });
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    await screen.findByRole('alert');
+
+    const clicks = spyOnInputClicks();
+    await user.click(screen.getByRole('button', { name: 'Use camera app' }));
+    expect(clicks.mock.contexts).toEqual([cameraAppInput()]);
+
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    await screen.findByRole('alert');
+    clicks.mockClear();
+    await user.click(screen.getByRole('button', { name: 'Choose existing photo' }));
+    expect(clicks.mock.contexts).toEqual([libraryInput()]);
+    await pickLibraryPhoto(user);
+    expect(screen.getByRole('img', { name: 'Selected photo' })).toBeVisible();
+  });
+
+  it('a file chosen while the camera view is open replaces it and turns the camera off', async () => {
+    const { user, services } = await setup(async () => estimateOf(eggItem), undefined, live());
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    await screen.findByLabelText('Camera preview');
+    await pickLibraryPhoto(user);
+    expect(screen.queryByLabelText('Camera preview')).not.toBeInTheDocument();
+    expect((services.camera as FakeCameraService).liveSessions()).toEqual([]);
+  });
+
+  it('keeps the note and Estimate disabled while the camera is open', async () => {
+    const { user } = await setup(async () => estimateOf(eggItem), undefined, live());
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    await screen.findByLabelText('Camera preview');
+    expect(screen.getByLabelText(/note/i)).toBeDisabled();
+    expect(screen.getByRole('button', { name: /estimate/i })).toBeDisabled();
+  });
+
+  it('switching to another entry mode turns the camera off (FR-007)', async () => {
+    const camera = new FakeCameraService({ support: 'live' });
+    const user = userEvent.setup();
+    await renderWithServices(<AddFood onDone={vi.fn()} />, { camera });
+    await user.click(await screen.findByRole('button', { name: 'Photo' }));
+    await user.click(screen.getByRole('button', { name: 'Take photo' }));
+    await screen.findByLabelText('Camera preview');
+    expect(camera.liveSessions()).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'Describe' }));
+    expect(camera.liveSessions()).toEqual([]);
+  });
+
+  it('without a camera, Take photo is disabled with the reason; the library still works (P13)', async () => {
+    const { user } = await setup(async () => estimateOf(eggItem), undefined, {
+      camera: new FakeCameraService({ support: 'no-camera' }),
+    });
+    const take = await screen.findByRole('button', { name: 'Take photo' });
+    await vi.waitFor(() => expect(take).toBeDisabled());
+    expect(take).toHaveAccessibleDescription('No camera found on this device.');
+    await pickLibraryPhoto(user);
   });
 });

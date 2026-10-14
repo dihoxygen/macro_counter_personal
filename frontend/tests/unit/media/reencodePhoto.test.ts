@@ -67,6 +67,27 @@ describe('reencodePhoto', () => {
     await expect(reencodePhoto(new File(['x'], 'x.jpg'))).rejects.toBeInstanceOf(PhotoDecodeError);
   });
 
+  it('rejects a non-image file without trying to decode it (FR-012)', async () => {
+    const createImageBitmap = vi.fn();
+    vi.stubGlobal('createImageBitmap', createImageBitmap);
+    await expect(reencodePhoto(new Blob(['x'], { type: 'text/plain' }))).rejects.toBeInstanceOf(PhotoDecodeError);
+    expect(createImageBitmap).not.toHaveBeenCalled();
+  });
+
+  it('still decodes a file with no MIME type (some pickers give none)', async () => {
+    const createImageBitmap = vi.fn(async () => ({ width: 10, height: 10, close: vi.fn() }));
+    vi.stubGlobal('createImageBitmap', createImageBitmap);
+    mockCanvas();
+    const file = new Blob(['x']);
+    await reencodePhoto(file);
+    expect(createImageBitmap).toHaveBeenCalledWith(file, { imageOrientation: 'from-image' });
+  });
+
+  it('a HEIC photo the browser cannot decode becomes PhotoDecodeError', async () => {
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => Promise.reject(new DOMException('bad', 'InvalidStateError'))));
+    await expect(reencodePhoto(new Blob(['x'], { type: 'image/heic' }))).rejects.toBeInstanceOf(PhotoDecodeError);
+  });
+
   it('throws PhotoDecodeError when encoding produces nothing', async () => {
     vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 10, height: 10, close: vi.fn() })));
     mockCanvas(null);

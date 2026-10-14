@@ -78,7 +78,15 @@ export function AddFoodText({ onConfirmed, onManual }: Props) {
   );
 }
 
-export function SubmitOrProgress({ loading, onCancel }: { loading: boolean; onCancel: () => void }) {
+export function SubmitOrProgress({
+  loading,
+  disabled = false,
+  onCancel,
+}: {
+  loading: boolean;
+  disabled?: boolean;
+  onCancel: () => void;
+}) {
   return loading ? (
     <div className="row">
       <span role="status">Estimating…</span>
@@ -88,7 +96,7 @@ export function SubmitOrProgress({ loading, onCancel }: { loading: boolean; onCa
     </div>
   ) : (
     <div className="row">
-      <button type="submit" className="primary">
+      <button type="submit" className="primary" disabled={disabled}>
         Estimate
       </button>
     </div>
