@@ -39,6 +39,16 @@ export function estimate(...items: Item[]) {
   return { recognized: items.length > 0, items, total, flags: [] };
 }
 
+/**
+ * The session every mocked spec runs under. role "user" on purpose: an owner would trigger the one-time
+ * adoption of pre-feature local data (US4), which these specs are not about.
+ */
+export const signedInSession = {
+  state: 'signed_in',
+  csrfToken: 'test',
+  user: { id: '00000000-0000-4000-8000-000000000001', username: 'tester', role: 'user' },
+};
+
 /** Mocks every /api call; nothing reaches a real backend. */
 export async function mockApi(
   page: Page,
@@ -48,6 +58,10 @@ export async function mockApi(
   await page.route(
     (url) => url.pathname.startsWith('/api/'),
     (route) => route.fulfill({ status: 404, json: { title: 'not mocked', status: 404, code: 'invalid_request' } }),
+  );
+  await page.route(
+    (url) => url.pathname === '/api/auth/session',
+    (route) => route.fulfill({ json: signedInSession }),
   );
   await page.route(
     (url) => url.pathname === '/api/status',

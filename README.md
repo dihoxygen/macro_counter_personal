@@ -83,6 +83,17 @@ The model is configured in exactly one place, `backend/MacroCounter.Api/appsetti
 Change `Model` (for example to `claude-sonnet-5-5` for lower cost) or `Effort` (`low` to `max`) and
 restart the backend.
 
+## Production configuration
+
+`backend/MacroCounter.Api/appsettings.Production.json` ships with placeholders that **must** be
+overridden on the host (App Settings or environment variables). Never put real values in the
+repository:
+
+- `AllowedHosts`: the real host name (never `*`)
+- `Security:AllowedOrigins:0`: the app's own `https://` origin
+
+The full deployment guide is `docs/deploy.md` (added later in feature 003).
+
 ## Tests and the merge gate
 
 ```powershell

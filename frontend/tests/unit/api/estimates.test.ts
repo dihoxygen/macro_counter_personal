@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EstimateError, estimateFromPhoto, estimateFromText } from '../../../src/api/estimates';
+import { setCsrfToken } from '../../../src/api/http';
 
 export const bananaEstimate = {
   recognized: true,
@@ -84,9 +85,15 @@ describe('estimateFromText', () => {
 
   it('turns a malformed 200 body into invalid_ai_response', async () => {
     stubFetch(async () => Response.json({ ...bananaEstimate, total: { kcal: -1 } }));
-    await expectError(estimateFromText('banana', new AbortController().signal), 'invalid_ai_response');
+    await expectError(
+      estimateFromText('banana', new AbortController().signal),
+      'invalid_ai_response',
+    );
     stubFetch(async () => new Response('<html>', { status: 200 }));
-    await expectError(estimateFromText('banana', new AbortController().signal), 'invalid_ai_response');
+    await expectError(
+      estimateFromText('banana', new AbortController().signal),
+      'invalid_ai_response',
+    );
   });
 
   it('maps a network failure to network', async () => {
@@ -109,6 +116,28 @@ describe('estimateFromText', () => {
     const promise = estimateFromText('banana', controller.signal);
     controller.abort();
     await expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('maps a 401 to unauthenticated with a sign-in-again message', async () => {
+    stubFetch(async () => problem(401, 'unauthenticated'));
+    const error = await estimateFromText('banana', new AbortController().signal).catch((e) => e);
+    expect((error as EstimateError).code).toBe('unauthenticated');
+    expect((error as EstimateError).message).toBe(
+      'Sign in again to use AI lookup. Your entries are safe.',
+    );
+  });
+
+  it('sends the CSRF token and same-origin credentials', async () => {
+    const fetchMock = stubFetch(async () => Response.json(bananaEstimate));
+    setCsrfToken('csrf-1');
+    try {
+      await estimateFromText('banana', new AbortController().signal);
+    } finally {
+      setCsrfToken(undefined);
+    }
+    const init = fetchMock.mock.calls[0]![1];
+    expect(new Headers(init?.headers).get('X-CSRF-Token')).toBe('csrf-1');
+    expect(init?.credentials).toBe('same-origin');
   });
 
   it('gives every error a human-readable message', async () => {
@@ -155,7 +184,9 @@ describe('estimateFromPhoto', () => {
 
   it('parses the estimate like the text path', async () => {
     stubFetch(async () => Response.json(bananaEstimate));
-    expect(await estimateFromPhoto(jpeg, undefined, new AbortController().signal)).toEqual(bananaEstimate);
+    expect(await estimateFromPhoto(jpeg, undefined, new AbortController().signal)).toEqual(
+      bananaEstimate,
+    );
   });
 
   it.each([
@@ -169,6 +200,9 @@ describe('estimateFromPhoto', () => {
 
   it('maps a malformed 200 body to invalid_ai_response', async () => {
     stubFetch(async () => Response.json({ nope: true }));
-    await expectError(estimateFromPhoto(jpeg, undefined, new AbortController().signal), 'invalid_ai_response');
+    await expectError(
+      estimateFromPhoto(jpeg, undefined, new AbortController().signal),
+      'invalid_ai_response',
+    );
   });
 });

@@ -2,17 +2,19 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using MacroCounter.Api.Ai;
+using MacroCounter.Api.Tests.Infrastructure;
 
 namespace MacroCounter.Api.Tests.Endpoints;
 
-public class TextEstimateEndpointTests
+[Collection("Postgres")]
+public class TextEstimateEndpointTests(PostgresFixture db)
 {
     private const string Key = "test-key-not-real";
 
-    private static async Task<HttpResponseMessage> Post(IEstimator estimator, object body, string? apiKey = Key)
+    private async Task<HttpResponseMessage> Post(IEstimator estimator, object body, string? apiKey = Key)
     {
-        var factory = new ApiFactory(apiKey, estimator);
-        return await factory.CreateClient().PostAsJsonAsync("/api/estimates/text", body);
+        var factory = new ApiFactory(db, apiKey, estimator);
+        return await (await factory.SignedInClientAsync()).PostAsJsonAsync("/api/estimates/text", body);
     }
 
     private static async Task<JsonElement> Json(HttpResponseMessage response) =>
@@ -105,8 +107,8 @@ public class TextEstimateEndpointTests
     [Fact]
     public async Task Malformed_json_body_is_invalid_request()
     {
-        var factory = new ApiFactory(Key, FakeEstimator.Returning(FakeEstimator.Banana));
-        var response = await factory.CreateClient().PostAsync("/api/estimates/text",
+        var factory = new ApiFactory(db, Key, FakeEstimator.Returning(FakeEstimator.Banana));
+        var response = await (await factory.SignedInClientAsync()).PostAsync("/api/estimates/text",
             new StringContent("{not json", System.Text.Encoding.UTF8, "application/json"));
         await AssertProblem(response, HttpStatusCode.BadRequest, "invalid_request");
     }
@@ -130,8 +132,8 @@ public class TextEstimateEndpointTests
     public async Task No_key_is_ai_unavailable()
     {
         // No estimator override: the real DI registration must pick the unavailable estimator.
-        var factory = new ApiFactory(apiKey: null);
-        var response = await factory.CreateClient().PostAsJsonAsync("/api/estimates/text", new { description = "banana" });
+        var factory = new ApiFactory(db, apiKey: null);
+        var response = await (await factory.SignedInClientAsync()).PostAsJsonAsync("/api/estimates/text", new { description = "banana" });
         await AssertProblem(response, HttpStatusCode.ServiceUnavailable, "ai_unavailable");
     }
 
@@ -161,15 +163,27 @@ public class TextEstimateEndpointTests
             await Task.Delay(Timeout.Infinite, ct);
             return FakeEstimator.Banana;
         });
-        var factory = new ApiFactory(Key, estimator);
+        var factory = new ApiFactory(db, Key, estimator);
         using var cts = new CancellationTokenSource();
 
-        var request = factory.CreateClient().PostAsJsonAsync("/api/estimates/text", new { description = "banana" }, cts.Token);
+        var request = (await factory.SignedInClientAsync()).PostAsJsonAsync("/api/estimates/text", new { description = "banana" }, cts.Token);
         await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await cts.CancelAsync();
 
         await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.True(estimator.LastToken.IsCancellationRequested);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => request);
+    }
+
+    [Fact]
+    public async Task Without_a_session_it_is_refused_and_claude_is_never_called()
+    {
+        var estimator = FakeEstimator.Returning(FakeEstimator.Banana);
+        var factory = new ApiFactory(db, Key, estimator);
+
+        var response = await factory.CreateClient().PostAsJsonAsync("/api/estimates/text", new { description = "banana" });
+
+        await AssertProblem(response, HttpStatusCode.Unauthorized, "unauthenticated");
+        Assert.Equal(0, estimator.Calls);
     }
 }

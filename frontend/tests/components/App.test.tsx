@@ -20,4 +20,15 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: /back/i }));
     expect(await screen.findByRole('heading', { level: 1, name: /today/i })).toBeInTheDocument();
   });
+
+  it('opens the Account view with sign-out options', async () => {
+    const user = userEvent.setup();
+    await renderWithServices(<App />);
+
+    await user.click(await screen.findByRole('button', { name: /^account$/i }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: /account/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^sign out$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign out everywhere/i })).toBeInTheDocument();
+  });
 });
