@@ -50,12 +50,16 @@ app.UseAuthorization();
 
 var api = app.MapGroup("/api");
 api.AddEndpointFilter<CsrfEndpointFilter>();
-api.MapGet("/status", (IOptions<AnthropicOptions> options) => new StatusResponse(options.Value.HasApiKey))
-    .RequireAuthorization();
+// Public: says only that the service is up, nothing about users or configuration (R16).
+api.MapGet("/health", () => new { status = "ok" }).AllowAnonymous();
+// Everything below needs a full session through the fallback policy (deny by default, FR-013).
+api.MapGet("/status", (IOptions<AnthropicOptions> options) => new StatusResponse(options.Value.HasApiKey));
 api.MapEstimateEndpoints();
 api.MapAuthEndpoints();
 
-app.MapFallbackToFile("index.html");
+// The app shell is public so it can show sign-in, but /api never falls back to it: unknown /api paths
+// get no endpoint, so the fallback policy refuses them like any other server feature.
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api(/|$)).*$)}", "index.html").AllowAnonymous();
 
 app.Run();
 

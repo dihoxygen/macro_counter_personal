@@ -6,7 +6,7 @@ namespace MacroCounter.Api.Auth;
 /// <summary>Access levels from contracts/auth-api.yaml (x-access).</summary>
 public static class AccessPolicies
 {
-    /// <summary>A normal signed-in session. The default for <c>RequireAuthorization()</c>.</summary>
+    /// <summary>A normal signed-in session: the default for <c>RequireAuthorization()</c> and the fallback for everything else.</summary>
     public const string FullSession = "FullSession";
 
     /// <summary>Only during first-time setup.</summary>
@@ -23,6 +23,8 @@ public static class AccessPolicies
             .Build();
         options.AddPolicy(FullSession, full);
         options.DefaultPolicy = full;
+        // Deny by default (FR-013): an endpoint with no explicit setting needs a full session.
+        options.FallbackPolicy = full;
         options.AddPolicy(SetupSession, p => p.RequireAuthenticatedUser().RequireClaim(AuthClaims.SessionKind, SessionRecord.SetupKind));
         options.AddPolicy(AnySession, p => p.RequireAuthenticatedUser()
             .RequireClaim(AuthClaims.SessionKind, SessionRecord.FullKind, SessionRecord.SetupKind));

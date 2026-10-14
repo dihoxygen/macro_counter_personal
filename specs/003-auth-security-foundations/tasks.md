@@ -414,30 +414,30 @@ wrong session kind. Quickstart V6.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T069 [P] [US3] Write an endpoint inventory test in `backend/MacroCounter.Api.Tests/Security/EndpointInventoryTests.cs` (SC-003):
+- [X] T069 [P] [US3] Write an endpoint inventory test in `backend/MacroCounter.Api.Tests/Security/EndpointInventoryTests.cs` (SC-003):
   - read `specs/003-auth-security-foundations/contracts/auth-api.yaml` (located relative to the repo root) and extract each `path`, method and `x-access` value with a simple line-based parser; there is no YAML package (Principle V). A path with no `x-access` means `full`;
   - enumerate `EndpointDataSource` for `/api/*` routes;
   - assert the two sets are equal;
   - assert each endpoint's metadata matches its declared access: `public` has `AllowAnonymous`; `setup` uses the `SetupSession` policy; `any-session` uses `AnySession`; `full` uses the fallback/`FullSession` policy.
-- [ ] T070 [US3] Write access-matrix tests in `backend/MacroCounter.Api.Tests/Security/AccessMatrixTests.cs`. A theory over every non-public endpoint from T069 × these credentials: none, an expired full session (FakeTimeProvider + 7 d), an idle full session (+24 h), a signed-out cookie, a revoked session (`revoke_sessions`), a disabled user, a setup session on a `full` endpoint, and a full session on a `setup` endpoint. Expect 401 (or 409 `wrong_setup_step`/403 where the contract says so), never 2xx. For `/estimates/*`, also assert zero `FakeEstimator` calls and zero `ai_usage_daily` rows (US3.1).
-- [ ] T071 [P] [US3] Write cross-user tests in `backend/MacroCounter.Api.Tests/Security/CrossUserTests.cs` with users A and B both active:
+- [X] T070 [US3] Write access-matrix tests in `backend/MacroCounter.Api.Tests/Security/AccessMatrixTests.cs`. A theory over every non-public endpoint from T069 × these credentials: none, an expired full session (FakeTimeProvider + 7 d), an idle full session (+24 h), a signed-out cookie, a revoked session (`revoke_sessions`), a disabled user, a setup session on a `full` endpoint, and a full session on a `setup` endpoint. Expect 401 (or 409 `wrong_setup_step`/403 where the contract says so), never 2xx. For `/estimates/*`, also assert zero `FakeEstimator` calls and zero `ai_usage_daily` rows (US3.1).
+- [X] T071 [P] [US3] Write cross-user tests in `backend/MacroCounter.Api.Tests/Security/CrossUserTests.cs` with users A and B both active:
   - A's `sign-out-everywhere` does not end B's session;
   - A's estimate requests increment only A's `ai_usage_daily` row;
   - sending `userId`, `user_id` or `sub` in any JSON body or query is either rejected (400 for unknown JSON properties) or ignored, and never changes whose data is touched;
   - B's session cookie together with A's CSRF token gives 403.
-- [ ] T072 [P] [US3] Write health/status tests in `backend/MacroCounter.Api.Tests/Endpoints/HealthEndpointTests.cs`: `GET /api/health` returns 200 with exactly `{"status":"ok"}` (no other properties, no version, no AI flag) whether or not an API key is configured; `GET /api/status` without a session returns 401.
-- [ ] T073 [P] [US3] Write static-file access tests in `backend/MacroCounter.Api.Tests/Security/StaticAccessTests.cs`: `/`, `/index.html` and an asset under `/assets/` are served without a session (the app shell is public); `/api/unknown` without a session returns 401, not the SPA fallback.
+- [X] T072 [P] [US3] Write health/status tests in `backend/MacroCounter.Api.Tests/Endpoints/HealthEndpointTests.cs`: `GET /api/health` returns 200 with exactly `{"status":"ok"}` (no other properties, no version, no AI flag) whether or not an API key is configured; `GET /api/status` without a session returns 401.
+- [X] T073 [P] [US3] Write static-file access tests in `backend/MacroCounter.Api.Tests/Security/StaticAccessTests.cs`: `/`, `/index.html` and an asset under `/assets/` are served without a session (the app shell is public); `/api/unknown` without a session returns 401, not the SPA fallback.
 
 ### Implementation for User Story 3
 
-- [ ] T074 [US3] Create `backend/MacroCounter.Api/Auth/AccessPolicies.cs` with three policies:
+- [X] T074 [US3] Create `backend/MacroCounter.Api/Auth/AccessPolicies.cs` with three policies:
   - `FullSession`: authenticated with claim `session_kind=full`; it is also the `FallbackPolicy`;
   - `SetupSession`: claim `session_kind=setup`;
   - `AnySession`: authenticated.
 
   In `Program.cs`, set `AddAuthorization(o => o.FallbackPolicy = FullSession)`, add `UseAuthentication()`/`UseAuthorization()` after `UseStaticFiles()`, and mark `MapFallbackToFile` with `.AllowAnonymous()` but restricted to non-`/api` paths, so `/api/*` never falls back to `index.html`. Make T070 and T073 pass.
-- [ ] T075 [US3] In `backend/MacroCounter.Api/Auth/AuthEndpoints.cs`, mark `/auth/session` and `/auth/sign-in` with `.AllowAnonymous()`; the setup endpoints with `.RequireAuthorization("SetupSession")`; `/auth/sign-out` with `"AnySession"`. Remove any explicit `RequireAuthorization()` that now duplicates the fallback. Make T069 and T071 pass. Every endpoint must read the user only from `HttpContext.User` (`sub` claim), never from a body, route or query value.
-- [ ] T076 [US3] Add `GET /api/health` (`.AllowAnonymous()`, returning `{ status = "ok" }`) to `backend/MacroCounter.Api/Program.cs`, keeping `/api/status` on the fallback policy, so that T072 passes. Check that `frontend/src/api/status.ts` treats a 401 as `aiAvailable: false` without crashing, and add a test case to `frontend/tests/unit/api/status.test.ts`.
+- [X] T075 [US3] In `backend/MacroCounter.Api/Auth/AuthEndpoints.cs`, mark `/auth/session` and `/auth/sign-in` with `.AllowAnonymous()`; the setup endpoints with `.RequireAuthorization("SetupSession")`; `/auth/sign-out` with `"AnySession"`. Remove any explicit `RequireAuthorization()` that now duplicates the fallback. Make T069 and T071 pass. Every endpoint must read the user only from `HttpContext.User` (`sub` claim), never from a body, route or query value.
+- [X] T076 [US3] Add `GET /api/health` (`.AllowAnonymous()`, returning `{ status = "ok" }`) to `backend/MacroCounter.Api/Program.cs`, keeping `/api/status` on the fallback policy, so that T072 passes. Check that `frontend/src/api/status.ts` treats a 401 as `aiAvailable: false` without crashing, and add a test case to `frontend/tests/unit/api/status.test.ts`.
 
 **Checkpoint**: Every server feature is protected by default and the inventory test guards
 future endpoints.

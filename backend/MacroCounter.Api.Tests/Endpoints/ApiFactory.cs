@@ -27,6 +27,9 @@ public sealed class ApiFactory(PostgresFixture db, string? apiKey, IEstimator? e
     /// <summary>Replaces Have I Been Pwned; configure breached passwords or an outage per test.</summary>
     public FakeBreachedPasswordChecker Breach { get; } = new();
 
+    /// <summary>Optional web root (static files), for tests of the app shell.</summary>
+    public string? WebRoot { get; set; }
+
     /// <summary>Hosting environment; "Testing" unless a test checks another environment's behavior.</summary>
     public string EnvironmentName { get; set; } = "Testing";
 
@@ -39,6 +42,7 @@ public sealed class ApiFactory(PostgresFixture db, string? apiKey, IEstimator? e
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(EnvironmentName);
+        if (WebRoot is not null) builder.UseWebRoot(WebRoot);
         builder.ConfigureAppConfiguration(config =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

@@ -20,10 +20,9 @@ public static class EstimateEndpoints
 
     public static void MapEstimateEndpoints(this IEndpointRouteBuilder api)
     {
-        // Every AI call needs a full session: the key and the bill are the owner's (Principle VI/VII).
-        api.MapPost("/estimates/text", EstimateFromText).RequireAuthorization();
+        // Every AI call needs a full session (fallback policy): the key and the bill are the owner's.
+        api.MapPost("/estimates/text", EstimateFromText);
         api.MapPost("/estimates/photo", EstimateFromPhoto)
-            .RequireAuthorization()
             .WithMetadata(new RequestSizeLimitAttribute(MaxPhotoRequestBytes));
     }
 
