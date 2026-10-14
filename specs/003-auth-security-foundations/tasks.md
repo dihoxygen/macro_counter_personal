@@ -455,47 +455,47 @@ there. The owner adopts the legacy data and a regular user never does. Quickstar
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T077 [P] [US4] Write `DeviceRepository` tests in `frontend/tests/unit/data/deviceRepository.test.ts`, using fake-indexeddb:
+- [X] T077 [P] [US4] Write `DeviceRepository` tests in `frontend/tests/unit/data/deviceRepository.test.ts`, using fake-indexeddb:
   - the database `macro-counter-device` has store `device` and `schemaVersion` 1, and goes through `runMigrations`;
   - `getActiveAccount()` returns undefined when nothing is stored;
   - `setActiveAccount({userId, username, role})` stores `updatedAt` as an ISO string;
   - `clearActiveAccount()` removes it;
   - `isLegacyAdopted()` / `markLegacyAdopted()` work;
   - a `userId` that is not a UUID is rejected (zod).
-- [ ] T078 [P] [US4] Write per-user database tests in `frontend/tests/unit/data/db.test.ts`: `userDbName(userId)` returns `macro-counter.u.<userId>`; it rejects anything that is not a UUID; two users' databases are separate (an entry created in A is not listed in B); the existing schema migrations run for a new per-user database.
-- [ ] T079 [P] [US4] Write legacy adoption tests in `frontend/tests/unit/data/legacyAdoption.test.ts`:
+- [X] T078 [P] [US4] Write per-user database tests in `frontend/tests/unit/data/db.test.ts`: `userDbName(userId)` returns `macro-counter.u.<userId>`; it rejects anything that is not a UUID; two users' databases are separate (an entry created in A is not listed in B); the existing schema migrations run for a new per-user database.
+- [X] T079 [P] [US4] Write legacy adoption tests in `frontend/tests/unit/data/legacyAdoption.test.ts`:
   - with role `user`, nothing is copied, the legacy database stays and the flag stays unset;
   - with role `owner` and a legacy database of 3 entries, 2 saved foods and 1 goal, every record is copied with `id`, `createdAt` and `updatedAt` unchanged, then the legacy database is deleted and the flag is set;
   - running it a second time does nothing;
   - with no legacy database, the flag is set and nothing else happens;
   - if a copy fails (fault-injecting repository), the legacy database is **not** deleted and the flag stays unset;
   - if the target ends up with fewer records than the source, nothing is deleted.
-- [ ] T080 [P] [US4] Extend `frontend/tests/components/AuthGate.test.tsx` with launch tests:
+- [X] T080 [P] [US4] Extend `frontend/tests/components/AuthGate.test.tsx` with launch tests:
   - online and signed in: the active account is written and services open `macro-counter.u.<id>`;
   - online and signed out: no user database is opened;
   - `getSession` fails with `network`, or 503 `service_unavailable`, while an active account exists: the app renders in `offline` state using that account's database, with the banner "Offline – sign in or reconnect to use AI lookup";
   - the same failure with no active account shows sign-in with "Sign-in is temporarily unavailable.";
   - sign-out clears the active account, keeps the database and calls `reload`.
-- [ ] T081 [US4] Write an e2e test in `frontend/tests/e2e/auth/two-accounts.spec.ts` (SC-007, project `auth`). On one browser context:
+- [X] T081 (Uses two freshly invited accounts per project; only the legacy-adoption spec needs the single seeded owner, which it resets first.) [US4] Write an e2e test in `frontend/tests/e2e/auth/two-accounts.spec.ts` (SC-007, project `auth`). On one browser context:
   - `e2e-owner` logs 2 entries and sets a protein goal, then signs out;
   - `e2e-friend` signs in (completing setup if needed) and sees an empty Today, no recent foods and no goal; logs 1 entry; signs out;
   - `e2e-owner` signs back in and sees exactly their 2 entries and the goal, and not the friend's entry.
-- [ ] T082 [US4] Write an e2e test in `frontend/tests/e2e/auth/legacy-adoption.spec.ts`. Seed a pre-feature `macro-counter` IndexedDB in the page with `page.evaluate` (2 entries). Sign in as `e2e-friend`: nothing is adopted. Sign out. Sign in as `e2e-owner`: the 2 entries appear and the legacy database no longer exists (`indexedDB.databases()`). Sign out and back in: there are no duplicates.
+- [X] T082 [US4] Write an e2e test in `frontend/tests/e2e/auth/legacy-adoption.spec.ts`. Seed a pre-feature `macro-counter` IndexedDB in the page with `page.evaluate` (2 entries). Sign in as `e2e-friend`: nothing is adopted. Sign out. Sign in as `e2e-owner`: the 2 entries appear and the legacy database no longer exists (`indexedDB.databases()`). Sign out and back in: there are no duplicates.
 
 ### Implementation for User Story 4
 
-- [ ] T083 [P] [US4] Create `frontend/src/data/deviceRepository.ts` (`DeviceRepository` interface in `frontend/src/data/repositories.ts`, plus an IndexedDB implementation with its own migration list) so that T077 passes.
-- [ ] T084 [P] [US4] Add `userDbName(userId)` and `openUserDb(userId)` to `frontend/src/data/db.ts`, reusing `openDb(name)`, so that T078 passes. Keep `DB_NAME` exported as the legacy name.
-- [ ] T085 [US4] Create `frontend/src/data/legacyAdoption.ts` (`adoptLegacyData({ role, userId, device, openLegacy, openTarget, deleteLegacy })`) so that T079 passes. Copy each store in a single read-write transaction on the target and verify the counts before deleting.
-- [ ] T086 [US4] Update `frontend/src/auth/AuthGate.tsx` and `frontend/src/main.tsx` for per-user services:
+- [X] T083 [P] [US4] Create `frontend/src/data/deviceRepository.ts` (`DeviceRepository` interface in `frontend/src/data/repositories.ts`, plus an IndexedDB implementation with its own migration list) so that T077 passes.
+- [X] T084 [P] [US4] Add `userDbName(userId)` and `openUserDb(userId)` to `frontend/src/data/db.ts`, reusing `openDb(name)`, so that T078 passes. Keep `DB_NAME` exported as the legacy name.
+- [X] T085 [US4] Create `frontend/src/data/legacyAdoption.ts` (`adoptLegacyData({ role, userId, device, openLegacy, openTarget, deleteLegacy })`) so that T079 passes. Copy each store in a single read-write transaction on the target and verify the counts before deleting.
+- [X] T086 (Before sign-in the data repositories are a locked placeholder (src/data/lockedData.ts) that refuses every call; AuthGate opens the account's own database and provides memoized services, so effects don't re-run on every gate render.) [US4] Update `frontend/src/auth/AuthGate.tsx` and `frontend/src/main.tsx` for per-user services:
   - after `signed_in`, call `setActiveAccount`, run `adoptLegacyData`, then build `Services` from `openUserDb(user.id)`;
   - if the session check fails with `network` or `service_unavailable` and there is an active account, use the `offline` state with that account's database;
   - on sign-out, close the database, call `clearActiveAccount`, then `reload`.
 
   Make T080–T082 pass.
-- [ ] T087 [US4] Write component tests in `frontend/tests/components/AddFoodText.test.tsx`. When `Services.aiBlockedReason` is `'offline'`, AI lookup is disabled and shows "Sign in or reconnect to use AI lookup", and manual entry is visible and logs an entry. When it is `undefined`, behavior is unchanged.
-- [ ] T088 [US4] Add `aiBlockedReason` (`'offline' | 'signed_out' | undefined`) to `Services` in `frontend/src/app/services.tsx`, set it from `AuthGate`, and use it in `frontend/src/features/add-food/AddFood.tsx` and `useEstimateFlow.ts`. Make T087 pass.
-- [ ] T089 [US4] Update `frontend/tests/e2e/offline.spec.ts` so the offline launch keeps working with an active account. Seed the device database in the page first, then go offline and reload: Today shows the account's data and manual logging works (quickstart V9.1).
+- [X] T087 (Tests are in frontend/tests/components/AddFood.test.tsx: the entry mode is chosen in AddFood, not AddFoodText.) [US4] Write component tests in `frontend/tests/components/AddFoodText.test.tsx`. When `Services.aiBlockedReason` is `'offline'`, AI lookup is disabled and shows "Sign in or reconnect to use AI lookup", and manual entry is visible and logs an entry. When it is `undefined`, behavior is unchanged.
+- [X] T088 [US4] Add `aiBlockedReason` (`'offline' | 'signed_out' | undefined`) to `Services` in `frontend/src/app/services.tsx`, set it from `AuthGate`, and use it in `frontend/src/features/add-food/AddFood.tsx` and `useEstimateFlow.ts`. Make T087 pass.
+- [X] T089 [US4] Update `frontend/tests/e2e/offline.spec.ts` so the offline launch keeps working with an active account. Seed the device database in the page first, then go offline and reload: Today shows the account's data and manual logging works (quickstart V9.1).
 
 **Checkpoint**: Two people on one browser never see each other's data, and the owner's old data
 survives.

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { AuthError } from '../../src/api/auth';
 import { AccountMenu } from '../../src/auth/AccountMenu';
 import { CurrentUserContext } from '../../src/auth/currentUser';
-import { fakeAuth, renderWithServices } from './testServices';
+import { fakeAuth, fakeDevice, renderWithServices } from './testServices';
 
 const alice = {
   id: '6f1c2a4e-0000-4000-8000-000000000001',
@@ -27,15 +27,18 @@ describe('AccountMenu', () => {
     expect(screen.getByText(/signed in as/i)).toHaveTextContent('alice');
   });
 
-  it('signs out, then reloads so nothing of this person stays in memory', async () => {
+  it('signs out, forgets the account on this device, then reloads', async () => {
     const user = userEvent.setup();
     const auth = fakeAuth();
     const reload = vi.fn();
-    await renderMenu({ auth, reload });
+    const device = fakeDevice();
+    await renderMenu({ auth, reload, device });
 
     await user.click(screen.getByRole('button', { name: /^sign out$/i }));
 
     expect(auth.signOut).toHaveBeenCalled();
+    // Their data stays on the device, locked to their account (FR-017); only the marker goes.
+    expect(device.clearActiveAccount).toHaveBeenCalled();
     expect(reload).toHaveBeenCalled();
   });
 

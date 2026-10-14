@@ -28,12 +28,44 @@ export async function completeSetup(
   const setupKey = (await page.locator('.setup-key').textContent())!;
   await page.getByLabel(/6-digit code/i).fill(totp(setupKey));
   await page.getByRole('button', { name: 'Confirm' }).click();
-  await page.getByRole('button', { name: 'I understand' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
+  // After an owner reset the notice was already acknowledged, so setup may end here.
+  const today = page.getByRole('heading', { level: 1, name: 'Today' });
+  const notice = page.getByRole('button', { name: 'I understand' });
+  await expect(today.or(notice)).toBeVisible();
+  if (await notice.isVisible()) await notice.click();
+  await expect(today).toBeVisible();
   return setupKey;
 }
 
 /** A code from a later 30-second step, so it differs from one just used (replay guard). */
 export function nextCode(setupKey: string, stepsAhead = 1): string {
   return totp(setupKey, new Date(Date.now() + 30_000 * stepsAhead));
+}
+
+/** Logs a food by hand from Today and returns to Today. */
+export async function logManually(page: Page, name: string, protein: number) {
+  await page.getByRole('button', { name: 'Add food' }).click();
+  const manual = page.getByRole('button', { name: 'Manual' });
+  if (await manual.isVisible()) await manual.click();
+  await page.getByLabel(/food name/i).fill(name);
+  await page.getByLabel(/amount/i).fill('100');
+  await page.getByLabel(/calories/i).fill('200');
+  await page.getByLabel(/protein/i).fill(String(protein));
+  await page.getByLabel(/carbs/i).fill('10');
+  await page.getByLabel(/fat/i).fill('5');
+  await page.getByRole('button', { name: /^save$/i }).click();
+  await expect(page.getByRole('list', { name: /entries/i })).toContainText(name);
+}
+
+export async function setProteinGoal(page: Page, grams: number) {
+  await page.getByRole('button', { name: /set a protein goal/i }).click();
+  await page.getByLabel(/daily protein goal/i).fill(String(grams));
+  await page.getByRole('button', { name: /save/i }).click();
+  await expect(page.getByRole('region', { name: /protein goal/i })).toContainText(`/ ${grams} g`);
+}
+
+export async function signOut(page: Page) {
+  await page.getByRole('button', { name: 'Account' }).click();
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
 }

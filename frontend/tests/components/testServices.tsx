@@ -9,6 +9,7 @@ import { LogService } from '../../src/data/logService';
 import { IdbProteinGoalRepository } from '../../src/data/proteinGoalRepository';
 import { IdbSavedFoodRepository } from '../../src/data/savedFoodRepository';
 import { ServicesProvider, type Services } from '../../src/app/services';
+import type { ActiveAccount, DeviceRepository } from '../../src/data/deviceRepository';
 import { FakeCameraService } from './fakeCamera';
 
 let dbCounter = 0;
@@ -19,6 +20,27 @@ const testUser = {
   role: 'user' as const,
 };
 const signedIn: SessionState = { state: 'signed_in', csrfToken: 'test-csrf', user: testUser };
+
+/** An in-memory device record (who is signed in on this browser). */
+export function fakeDevice(account?: ActiveAccount): DeviceRepository & { close: () => void } {
+  let active = account;
+  let adopted = false;
+  return {
+    getActiveAccount: vi.fn(async () => active),
+    setActiveAccount: vi.fn(async (a: Omit<ActiveAccount, 'updatedAt'>) => {
+      active = { ...a, updatedAt: new Date().toISOString() };
+      return active;
+    }),
+    clearActiveAccount: vi.fn(async () => {
+      active = undefined;
+    }),
+    isLegacyAdopted: vi.fn(async () => adopted),
+    markLegacyAdopted: vi.fn(async () => {
+      adopted = true;
+    }),
+    close: vi.fn(),
+  };
+}
 
 /** An auth API whose calls all succeed (signed in as "tester"); override any of them per test. */
 export function fakeAuth(overrides: Partial<AuthApi> = {}): AuthApi {
@@ -51,11 +73,13 @@ export async function createTestServices(overrides: Partial<Services> = {}): Pro
   const db = await openDb(`component-test-${++dbCounter}-${Date.now()}`);
   const entries = new IdbEntryRepository(db);
   const savedFoods = new IdbSavedFoodRepository(db);
+  const goals = new IdbProteinGoalRepository(db);
+  const log = new LogService(entries, savedFoods);
   return {
     entries,
     savedFoods,
-    goals: new IdbProteinGoalRepository(db),
-    log: new LogService(entries, savedFoods),
+    goals,
+    log,
     getStatus: vi.fn(async () => ({ aiAvailable: true })),
     estimateFromText: vi.fn(async () => {
       throw new EstimateError('ai_unavailable');
@@ -68,6 +92,10 @@ export async function createTestServices(overrides: Partial<Services> = {}): Pro
     now: () => new Date(),
     auth: fakeAuth(),
     reload: vi.fn(),
+    device: fakeDevice(),
+    // Every account gets the same repositories here; AuthGate tests override this.
+    openUserData: vi.fn(async () => ({ entries, savedFoods, goals, log, close: () => undefined })),
+    adoptLegacyData: vi.fn(async () => 'not-owner' as const),
     ...overrides,
   };
 }

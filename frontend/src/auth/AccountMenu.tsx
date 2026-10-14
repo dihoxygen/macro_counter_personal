@@ -6,21 +6,27 @@ import { useCurrentUser } from './currentUser';
 
 /** Sign out here, or everywhere (FR-011). Local entries stay on the device, locked to this account. */
 export function AccountMenu() {
-  const { auth, reload } = useServices();
+  const { auth, reload, device } = useServices();
   const user = useCurrentUser();
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+
+  /** The data stays on the device, locked to this account (FR-017); only the "who's here" marker goes. */
+  async function forgetAndReload() {
+    await device.clearActiveAccount();
+    reload();
+  }
 
   async function run(signOut: () => Promise<void>) {
     setBusy(true);
     setError(undefined);
     try {
       await signOut();
-      reload();
+      await forgetAndReload();
     } catch (e) {
       // A session that already ended is as good as signed out.
       if (e instanceof AuthError && e.code === 'unauthenticated') {
-        reload();
+        await forgetAndReload();
         return;
       }
       setError("Couldn't sign out. Check your connection and try again.");

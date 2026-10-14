@@ -119,6 +119,11 @@ describe('authMachine', () => {
       });
     });
 
+    it('when already expired → the very same state (no re-render, no request loop)', () => {
+      const state: AuthState = { kind: 'signed_in', user: alice, expired: true };
+      expect(transition(state, { type: 'session-expired' })).toBe(state);
+    });
+
     it('during setup → back to sign-in with a notice', () => {
       expect(transition({ kind: 'setup', step: 'totp' }, { type: 'session-expired' })).toEqual({
         kind: 'signed_out',
@@ -130,6 +135,61 @@ describe('authMachine', () => {
       expect(transition(initialAuthState, { type: 'session-expired' })).toEqual(initialAuthState);
       const out: AuthState = { kind: 'signed_out' };
       expect(transition(out, { type: 'session-expired' })).toBe(out);
+    });
+  });
+
+  describe('offline launch (R9: the last signed-in account keeps working locally)', () => {
+    it('unavailable at launch with a remembered account → offline with that account', () => {
+      expect(transition(initialAuthState, { type: 'unavailable', account: alice })).toEqual({
+        kind: 'offline',
+        user: alice,
+      });
+    });
+
+    it('back online and still signed in as the same person → signed in', () => {
+      expect(
+        transition({ kind: 'offline', user: alice }, { type: 'session', session: signedIn() }),
+      ).toEqual({
+        kind: 'signed_in',
+        user: alice,
+        expired: false,
+      });
+    });
+
+    it('back online as someone else → reload', () => {
+      expect(
+        transition({ kind: 'offline', user: alice }, { type: 'session', session: signedIn(bob) }),
+      ).toEqual({
+        kind: 'reload',
+      });
+    });
+
+    it('back online but the session is gone → sign-in over the same app and data', () => {
+      expect(
+        transition({ kind: 'offline', user: alice }, { type: 'session', session: signedOut }),
+      ).toEqual({
+        kind: 'signed_in',
+        user: alice,
+        expired: true,
+      });
+      expect(transition({ kind: 'offline', user: alice }, { type: 'session-expired' })).toEqual({
+        kind: 'signed_in',
+        user: alice,
+        expired: true,
+      });
+    });
+
+    it('back online in the middle of a setup elsewhere → reload', () => {
+      expect(
+        transition({ kind: 'offline', user: alice }, { type: 'session', session: setup('totp') }),
+      ).toEqual({
+        kind: 'reload',
+      });
+    });
+
+    it('still unreachable → stays offline', () => {
+      const state: AuthState = { kind: 'offline', user: alice };
+      expect(transition(state, { type: 'unavailable', account: alice })).toBe(state);
     });
   });
 

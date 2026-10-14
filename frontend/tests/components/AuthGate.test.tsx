@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import { useEffect } from 'react';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuthError, type SessionState } from '../../src/api/auth';
 import { authEvents } from '../../src/api/http';
 import { AuthGate } from '../../src/auth/AuthGate';
+import { useServices } from '../../src/app/services';
+import { fakeDevice } from './testServices';
 import { fakeAuth, renderWithServices } from './testServices';
 
 const alice = {
@@ -207,5 +210,173 @@ describe('AuthGate', () => {
     );
 
     expect(await screen.findByText('Sign-in is temporarily unavailable.')).toBeInTheDocument();
+  });
+
+  describe('per-account local data (US4)', () => {
+    /** Shows which account's data the app was given, and whether AI is blocked. */
+    function WhoseData() {
+      const services = useServices();
+      return (
+        <p>
+          data for {(services.entries as unknown as { owner: string }).owner} / ai{' '}
+          {services.aiBlockedReason ?? 'allowed'}
+        </p>
+      );
+    }
+
+    function userData(owner: string) {
+      return { entries: { owner }, savedFoods: {}, goals: {}, log: {}, close: vi.fn() } as never;
+    }
+
+    it('signed in: remembers the account, offers adoption, and opens that account’s data', async () => {
+      const device = fakeDevice();
+      const openUserData = vi.fn(async (id: string) => userData(id));
+      const adoptLegacyData = vi.fn(async () => 'not-owner' as const);
+      await renderWithServices(
+        <AuthGate>
+          <WhoseData />
+        </AuthGate>,
+        {
+          auth: fakeAuth({ getSession: vi.fn(async () => signedIn()) }),
+          device,
+          openUserData,
+          adoptLegacyData,
+        },
+      );
+
+      expect(await screen.findByText(`data for ${alice.id} / ai allowed`)).toBeInTheDocument();
+      expect(device.setActiveAccount).toHaveBeenCalledWith({
+        userId: alice.id,
+        username: 'alice',
+        role: 'user',
+      });
+      expect(adoptLegacyData).toHaveBeenCalledWith(alice);
+      expect(openUserData).toHaveBeenCalledWith(alice.id);
+    });
+
+    it('gives the app a stable services object, so effects do not re-run on every gate render', async () => {
+      const seen: unknown[] = [];
+      function Probe() {
+        const services = useServices();
+        useEffect(() => {
+          seen.push(services);
+        }, [services]);
+        return <p>probe</p>;
+      }
+      await renderWithServices(
+        <AuthGate>
+          <Probe />
+        </AuthGate>,
+        { openUserData: vi.fn(async (id: string) => userData(id)) },
+      );
+      await screen.findByText('probe');
+
+      act(() => {
+        authEvents.dispatchEvent(new Event('session-expired'));
+      });
+      await screen.findByRole('dialog', { name: /sign in again/i });
+      act(() => {
+        authEvents.dispatchEvent(new Event('session-expired'));
+      });
+
+      expect(seen).toHaveLength(1);
+    });
+
+    it('signed out: no account data is opened', async () => {
+      const openUserData = vi.fn(async (id: string) => userData(id));
+      await renderWithServices(
+        <AuthGate>
+          <WhoseData />
+        </AuthGate>,
+        { auth: fakeAuth({ getSession: vi.fn(async () => signedOut) }), openUserData },
+      );
+
+      await screen.findByRole('button', { name: /^sign in$/i });
+      expect(openUserData).not.toHaveBeenCalled();
+    });
+
+    it.each([['network'], ['service_unavailable']] as const)(
+      'unreachable (%s) with a remembered account: opens it offline with AI blocked',
+      async (code) => {
+        const device = fakeDevice({
+          userId: bob.id,
+          username: 'bob',
+          role: 'user',
+          updatedAt: '2026-10-14T00:00:00.000Z',
+        });
+        const openUserData = vi.fn(async (id: string) => userData(id));
+        await renderWithServices(
+          <AuthGate>
+            <WhoseData />
+          </AuthGate>,
+          {
+            auth: fakeAuth({
+              getSession: vi.fn(async () => {
+                throw new AuthError(code);
+              }),
+            }),
+            device,
+            openUserData,
+          },
+        );
+
+        expect(await screen.findByText(`data for ${bob.id} / ai offline`)).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'Offline – sign in or reconnect to use AI lookup',
+        );
+      },
+    );
+
+    it('unreachable with no remembered account: sign-in says it is unavailable', async () => {
+      const openUserData = vi.fn(async (id: string) => userData(id));
+      await renderWithServices(
+        <AuthGate>
+          <WhoseData />
+        </AuthGate>,
+        {
+          auth: fakeAuth({
+            getSession: vi.fn(async () => {
+              throw new AuthError('network');
+            }),
+          }),
+          device: fakeDevice(),
+          openUserData,
+        },
+      );
+
+      expect(await screen.findByText('Sign-in is temporarily unavailable.')).toBeInTheDocument();
+      expect(openUserData).not.toHaveBeenCalled();
+    });
+
+    it('rechecks when the connection comes back', async () => {
+      const device = fakeDevice({
+        userId: alice.id,
+        username: 'alice',
+        role: 'user',
+        updatedAt: '2026-10-14T00:00:00.000Z',
+      });
+      const getSession = vi
+        .fn<() => Promise<SessionState>>()
+        .mockRejectedValueOnce(new AuthError('network'))
+        .mockResolvedValueOnce(signedIn());
+      await renderWithServices(
+        <AuthGate>
+          <WhoseData />
+        </AuthGate>,
+        {
+          auth: fakeAuth({ getSession }),
+          device,
+          openUserData: vi.fn(async (id: string) => userData(id)),
+        },
+      );
+      await screen.findByText(`data for ${alice.id} / ai offline`);
+
+      act(() => {
+        window.dispatchEvent(new Event('online'));
+      });
+
+      expect(await screen.findByText(`data for ${alice.id} / ai allowed`)).toBeInTheDocument();
+      expect(screen.queryByRole('status')).toBeNull();
+    });
   });
 });

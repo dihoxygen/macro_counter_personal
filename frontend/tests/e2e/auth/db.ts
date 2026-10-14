@@ -102,3 +102,9 @@ export function uniqueUsername(prefix: string): string {
     32,
   );
 }
+
+/** Owner reset of a seeded account (e2e-owner, e2e-friend): a new one-time code, setup from scratch. */
+export function reset(username: string): string {
+  if (!/^[a-z0-9._-]{3,32}$/.test(username)) throw new Error(`invalid username ${username}`);
+  return adminSql(`select macro_admin.reset_user('${username}');`);
+}
