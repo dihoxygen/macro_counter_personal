@@ -18,6 +18,7 @@ builder.AddIdentityStore();
 // Invite-only sign-in with server-side sessions, CSRF protection and access policies (feature 003).
 builder.AddAuth();
 builder.AddRateLimits();
+builder.AddProductionHardening();
 
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.Section));
 builder.Services.AddProblemDetails();
@@ -41,14 +42,26 @@ var app = builder.Build();
 // Fail fast when the identity store is not configured (it is resolved lazily, after all configuration).
 _ = app.Services.GetRequiredService<NpgsqlDataSource>();
 SpendCap.LogAtStartup(app.Services);
+app.ValidateProductionConfiguration();
 
 app.UseForwardedHeaders();
+if (app.Environment.IsProduction())
+{
+    // HTTPS only (FR-027); the host's "HTTPS only" setting redirects too, this covers anything that slips through.
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+// First, so every response (errors included) carries the protective headers (FR-028).
+app.UseMiddleware<SecurityHeadersMiddleware>();
+// Production gives a generic problem with no stack trace, type name, path or SQL (FR-031).
 app.UseExceptionHandler();
 // Outside Production only: http://localhost counts as a secure context, as browsers treat it.
 app.UseLocalhostSecureContext(app.Environment);
 app.UseStatusCodePages();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+// Unsafe /api requests from another site are refused before anything else looks at them (FR-029).
+app.UseMiddleware<OriginCheckMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 // After authorization: anonymous requests to protected features are refused before they use up a limit.

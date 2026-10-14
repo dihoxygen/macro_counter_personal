@@ -339,7 +339,7 @@ here (limits, lifetimes) are the defaults the implementation and tests use; all 
 - **Rationale**: The Vite production build emits only external scripts and styles, and
   vite-plugin-pwa's `injectRegister: 'auto'` uses an external `registerSW.js`. That means a strict
   CSP with no `'unsafe-inline'` works. React sets styles through the CSSOM, which CSP does not
-  block. The QR code is inline SVG markup (R13), so it needs no `img-src` exception.
+  block. The QR code is inline SVG markup (R13), so it needs no `img-src` exception. Zod 4 would probe for `new Function` to compile schemas, which a CSP without `'unsafe-eval'` reports as a violation; `z.config({ jitless: true })` is set at startup (`src/zodConfig.ts`), found by the end-to-end CSP test.
 - **Alternatives considered**: *NWebsec or a similar header package*: one more dependency for
   about 30 lines of code.
 

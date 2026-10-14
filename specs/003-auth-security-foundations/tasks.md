@@ -625,36 +625,36 @@ The built app runs under the CSP with zero violations. Quickstart V12 passes on 
 
 ### Tests for User Story 7 ⚠️
 
-- [ ] T109 [P] [US7] Write security header tests in `backend/MacroCounter.Api.Tests/Security/SecurityHeadersTests.cs`. Check every header and value in contracts/http-hardening.md on `/`, `/index.html`, a static asset, `/api/health`, a 401 API response and a 404:
+- [X] T109 (A missing asset returns 401, not 404: no endpoint matches it, so deny-by-default applies.) [P] [US7] Write security header tests in `backend/MacroCounter.Api.Tests/Security/SecurityHeadersTests.cs`. Check every header and value in contracts/http-hardening.md on `/`, `/index.html`, a static asset, `/api/health`, a 401 API response and a 404:
   - `Cache-Control: no-store` on `/api/*` and `index.html`, but not on `/assets/*`;
   - no `Server` header, no `X-Powered-By`, no `Access-Control-Allow-*`;
   - in Development, the CSP has no `upgrade-insecure-requests` and `connect-src` includes `ws://localhost:5173`;
   - in Production, the CSP is exactly the contract string.
-- [ ] T110 [P] [US7] Write origin check tests in `backend/MacroCounter.Api.Tests/Security/OriginCheckTests.cs`:
+- [X] T110 [P] [US7] Write origin check tests in `backend/MacroCounter.Api.Tests/Security/OriginCheckTests.cs`:
   - `POST /api/auth/sign-in` with `Origin: https://evil.example` gives 403 `csrf_failed`, even with a valid CSRF token;
   - with no `Origin` and `Sec-Fetch-Site: cross-site`, it gives 403;
   - with no `Origin` and no `Sec-Fetch-Site` (a non-browser client), it is allowed through to CSRF validation;
   - an allowed origin passes;
   - GET requests are never origin-blocked.
-- [ ] T111 [P] [US7] Write production configuration tests in `backend/MacroCounter.Api.Tests/Security/ProductionConfigTests.cs`, using `ApiFactory` in the Production environment with `AllowedHosts=app.example`, a test Data Protection certificate generated in the test, and `Security:AllowedOrigins:0=https://app.example`:
+- [X] T111 [P] [US7] Write production configuration tests in `backend/MacroCounter.Api.Tests/Security/ProductionConfigTests.cs`, using `ApiFactory` in the Production environment with `AllowedHosts=app.example`, a test Data Protection certificate generated in the test, and `Security:AllowedOrigins:0=https://app.example`:
   - an HTTPS request carries `Strict-Transport-Security: max-age=31536000; includeSubDomains`;
   - an HTTP request redirects to HTTPS (308);
   - `Host: other.example` gives 400;
   - an endpoint that throws (a test-only endpoint mapped through `ConfigureTestServices`) gives a 500 problem+json with no stack trace, exception type name, `at ` frames or file paths;
   - startup fails with a clear error if `ConnectionStrings:Identity` or the Data Protection certificate is missing, or if `AllowedHosts` is `*`.
-- [ ] T112 [US7] Write an e2e CSP test in `frontend/tests/e2e/auth/csp.spec.ts` (project `auth`, served by the backend from the production build). Collect `securitypolicyviolation` events and console errors while doing sign-in, setup (with the QR code), a text estimate with the fake estimator, the photo picker preview (blob image) and service worker registration. Assert **zero** violations.
+- [X] T112 [US7] Write an e2e CSP test in `frontend/tests/e2e/auth/csp.spec.ts` (project `auth`, served by the backend from the production build). Collect `securitypolicyviolation` events and console errors while doing sign-in, setup (with the QR code), a text estimate with the fake estimator, the photo picker preview (blob image) and service worker registration. Assert **zero** violations.
 
 ### Implementation for User Story 7
 
-- [ ] T113 [P] [US7] Create `backend/MacroCounter.Api/Security/SecurityHeadersMiddleware.cs` with the header set from contracts/http-hardening.md (the CSP differs by environment) and `Cache-Control: no-store` for `/api/*` and `index.html` (through `StaticFileOptions.OnPrepareResponse` and the fallback). Set `builder.WebHost.ConfigureKestrel(o => o.AddServerHeader = false)`. Make T109 pass.
-- [ ] T114 [P] [US7] Create `backend/MacroCounter.Api/Security/OriginCheckMiddleware.cs` (unsafe methods on `/api/*` only; allowlist from `SecurityOptions.AllowedOrigins`) and register it before authentication, so that T110 passes.
-- [ ] T115 [US7] Add Production hardening to `Program.cs`:
+- [X] T113 [P] [US7] Create `backend/MacroCounter.Api/Security/SecurityHeadersMiddleware.cs` with the header set from contracts/http-hardening.md (the CSP differs by environment) and `Cache-Control: no-store` for `/api/*` and `index.html` (through `StaticFileOptions.OnPrepareResponse` and the fallback). Set `builder.WebHost.ConfigureKestrel(o => o.AddServerHeader = false)`. Make T109 pass.
+- [X] T114 [P] [US7] Create `backend/MacroCounter.Api/Security/OriginCheckMiddleware.cs` (unsafe methods on `/api/*` only; allowlist from `SecurityOptions.AllowedOrigins`) and register it before authentication, so that T110 passes.
+- [X] T115 (Also fixed: the localhost origins moved from appsettings.json to appsettings.Development.json and appsettings.Testing.json. .NET merges arrays by index, so Production had inherited them.) [US7] Add Production hardening to `Program.cs`:
   - `UseHsts()` with `MaxAge = 365 days` and `IncludeSubDomains = true`, plus `UseHttpsRedirection()` with status 308, both Production only;
   - a startup check that throws if `AllowedHosts` is `*` or empty, or if `Security:AllowedOrigins` is empty;
   - `UseExceptionHandler` with ProblemDetails customised to drop `exception` details, and no developer exception page outside Development.
 
   Make T111 pass.
-- [ ] T116 [US7] If T112 finds violations, fix them at the source; never add `'unsafe-inline'`. For example, set `vite-plugin-pwa`'s `injectRegister: 'script'` in `frontend/vite.config.ts` if it inlines anything, or move inline styles into `frontend/src/styles.css`. Make T112 pass.
+- [X] T116 (The one violation was Zod 4 probing for `new Function` (script-src eval). Fixed with `z.config({ jitless: true })` in src/zodConfig.ts, imported first in main.tsx. No 'unsafe-inline' or 'unsafe-eval' added.) [US7] If T112 finds violations, fix them at the source; never add `'unsafe-inline'`. For example, set `vite-plugin-pwa`'s `injectRegister: 'script'` in `frontend/vite.config.ts` if it inlines anything, or move inline styles into `frontend/src/styles.css`. Make T112 pass.
 
 **Checkpoint**: All hardening checks pass in the Production environment configuration.
 

@@ -36,6 +36,12 @@ public sealed class ApiFactory(PostgresFixture db, string? apiKey, IEstimator? e
     /// <summary>Extra service replacements a test needs (applied last).</summary>
     public List<Action<IServiceCollection>> ServiceOverrides { get; } = [];
 
+    /// <summary>
+    /// Host settings, applied while Program builds its services: for values read at that point (the Production
+    /// Data Protection certificate) or startup checks. Ordinary settings go in <see cref="Settings"/>.
+    /// </summary>
+    public Dictionary<string, string?> HostSettings { get; } = new();
+
     /// <summary>Extra configuration a test needs (e.g. smaller limits).</summary>
     public Dictionary<string, string?> Settings { get; } = new();
 
@@ -43,6 +49,7 @@ public sealed class ApiFactory(PostgresFixture db, string? apiKey, IEstimator? e
     {
         builder.UseEnvironment(EnvironmentName);
         if (WebRoot is not null) builder.UseWebRoot(WebRoot);
+        foreach (var (key, value) in HostSettings) builder.UseSetting(key, value);
         builder.ConfigureAppConfiguration(config =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

@@ -16,10 +16,14 @@ public sealed class AuthClient
 
     private readonly CookieHandler _cookies = new();
 
-    public AuthClient(ApiFactory factory)
+    public AuthClient(ApiFactory factory, Uri? baseAddress = null)
     {
-        Http = factory.CreateDefaultClient(BaseAddress, _cookies);
+        Address = baseAddress ?? BaseAddress;
+        Http = factory.CreateDefaultClient(Address, _cookies);
     }
+
+    /// <summary>Where this client sends requests (https://localhost unless a test needs another host).</summary>
+    public Uri Address { get; }
 
     public HttpClient Http { get; }
 
@@ -29,7 +33,7 @@ public sealed class AuthClient
     /// <summary>"__Host-mc_session=…", as a stolen cookie would be replayed.</summary>
     public string SessionCookieHeader()
     {
-        var cookie = Cookies.GetCookies(BaseAddress)["__Host-mc_session"]
+        var cookie = Cookies.GetCookies(Address)["__Host-mc_session"]
             ?? throw new InvalidOperationException("No session cookie.");
         return $"{cookie.Name}={cookie.Value}";
     }

@@ -31,6 +31,9 @@ function prepareAuthDatabase(): string | undefined {
           stdio: 'inherit',
         },
       );
+      // The production build goes into the backend's wwwroot, so it must exist before any server starts
+      // (web servers start in parallel). The preview server then only serves it.
+      execFileSync('npm', ['run', 'build'], { stdio: 'inherit', cwd: here, shell: true });
     } catch {
       console.warn(
         '[e2e] Could not reset macro_e2e or build the backend (is MACROCOUNTER_TEST_PG set?). The auth projects are skipped.',
@@ -49,6 +52,8 @@ const authConnection = prepareAuthDatabase();
 const apiPort = process.env.E2E_API_PORT ?? '5080';
 /** A second backend with tiny AI limits for the quota spec, behind its own dev server on 5174. */
 const quotaApiPort = String(Number(apiPort) + 1);
+// Specs that open the backend-served build directly (csp.spec.ts) read this; workers inherit it.
+process.env.MACRO_E2E_API_PORT = apiPort;
 
 const authProjects: PlaywrightTestConfig['projects'] = authConnection
   ? [
@@ -147,7 +152,9 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: 'npm run build && npm run preview -- --port 4173 --strictPort',
+      command: process.env.MACRO_E2E_DB_READY
+        ? 'npm run preview -- --port 4173 --strictPort'
+        : 'npm run build && npm run preview -- --port 4173 --strictPort',
       url: 'http://localhost:4173',
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
@@ -188,6 +195,9 @@ function backend(port: string, connection: string, extra: Record<string, string>
       Testing__FakeEstimator: 'true',
       Testing__BreachedPasswords__0: 'password1234',
       Security__SignIn__PerIpLimit: '10000',
+      // appsettings.Testing.json allows 5080 and 5173; add the quota dev server and this backend's own port.
+      Security__AllowedOrigins__2: 'http://localhost:5174',
+      Security__AllowedOrigins__3: `http://localhost:${port}`,
       Anthropic__ApiKey: 'e2e-placeholder-not-a-key',
       ...extra,
     } as Record<string, string>,
