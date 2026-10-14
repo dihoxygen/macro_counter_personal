@@ -148,7 +148,7 @@ When the app is served over the internet, the browser is told to use secure conn
 - **FR-001**: The system MUST identify every user by a unique username and authenticate them with a password plus a second verification step before granting access to any server-backed feature.
 - **FR-002**: The system MUST NOT provide any sign-up, self-registration, "request an invite", or account-creation feature, in the user interface or as a server capability.
 - **FR-003**: Accounts MUST be created only by the owner directly in the database; the system MUST support provisioning a new account with a temporary credential.
-- **FR-004**: On first sign-in with a temporary credential, the system MUST require the person to set their own password and enrol the second verification step before granting access.
+- **FR-004**: On first sign-in with a temporary credential, the system MUST require the person to set their own password, enrol the second verification step, and acknowledge what is sent to Claude (food descriptions and photos they choose to look up) and that the owner runs the server, before granting access. The acknowledgement is recorded; after an owner reset it is not asked again. (Constitution VII, Accountability.)
 - **FR-005**: The system MUST enforce a minimum password strength and MUST reject passwords found in known-breached password lists.
 - **FR-006**: Failed sign-in responses MUST NOT reveal whether the username exists or which factor was wrong.
 - **FR-007**: Passwords MUST be stored only as salted, slow, one-way hashes, and MUST NEVER be stored or logged in readable form.

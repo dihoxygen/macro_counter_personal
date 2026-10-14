@@ -95,6 +95,28 @@ public class ProductionConfigTests(PostgresFixture db) : IAsyncLifetime
         Assert.Contains("ConnectionStrings:Identity", error.ToString());
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(";SSL Mode=Prefer")]
+    [InlineData(";SSL Mode=Require")]
+    public async Task Startup_refuses_a_database_connection_that_does_not_verify_the_server(string ssl)
+    {
+        await using var factory = Production();
+        factory.Settings["ConnectionStrings:Identity"] = db.AppConnectionString + ssl;
+
+        var error = Assert.ThrowsAny<Exception>(() => factory.Services);
+        Assert.Contains("SSL Mode=VerifyFull", error.ToString());
+    }
+
+    [Fact]
+    public async Task Startup_accepts_a_verified_database_connection()
+    {
+        await using var factory = Production();
+        factory.Settings["ConnectionStrings:Identity"] = db.AppConnectionString + ";SSL Mode=VerifyFull";
+
+        Assert.NotNull(factory.Services);
+    }
+
     /// <summary>A signed-in client over https://app.example (Production sessions need HTTPS and the real host).</summary>
     private async Task<AuthClient> SignedInOverHttps(ApiFactory factory)
     {

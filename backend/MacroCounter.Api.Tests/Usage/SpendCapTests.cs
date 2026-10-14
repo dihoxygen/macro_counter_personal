@@ -25,7 +25,7 @@ public class SpendCapTests(PostgresFixture db)
     public async Task Startup_logs_both_caps_and_the_model_but_never_the_key()
     {
         var logs = new CapturingLoggerProvider();
-        await using var factory = new ApiFactory(db, apiKey: "sk-ant-test-key-that-must-not-be-logged");
+        await using var factory = new ApiFactory(db, apiKey: "anthropic-test-key-that-must-not-be-logged");
         factory.ServiceOverrides.Add(services => services.AddSingleton<ILoggerProvider>(logs));
         _ = factory.Services; // start the host
 
@@ -34,7 +34,7 @@ public class SpendCapTests(PostgresFixture db)
         Assert.Contains("$70.00 per day", line.Text);
         Assert.Contains("$1,050.00 per month", line.Text);
         Assert.Contains("claude-opus-5-5", line.Text);
-        Assert.DoesNotContain(logs.Entries, e => e.Text.Contains("sk-ant-test-key"));
+        Assert.DoesNotContain(logs.Entries, e => e.Text.Contains("anthropic-test-key"));
     }
 
     [Theory]

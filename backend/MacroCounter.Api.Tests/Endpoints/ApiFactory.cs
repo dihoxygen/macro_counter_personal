@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
+using Npgsql;
 
 namespace MacroCounter.Api.Tests.Endpoints;
 
@@ -55,7 +56,11 @@ public sealed class ApiFactory(PostgresFixture db, string? apiKey, IEstimator? e
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Anthropic:ApiKey"] = apiKey ?? "",
-                ["ConnectionStrings:Identity"] = db.AppConnectionString,
+                // Production refuses anything but SSL Mode=VerifyFull; the local test database has no TLS, so the
+                // app validates this string while the data source below talks to the test database directly.
+                ["ConnectionStrings:Identity"] = EnvironmentName == "Production"
+                    ? db.AppConnectionString + ";SSL Mode=VerifyFull"
+                    : db.AppConnectionString,
             });
             config.AddInMemoryCollection(Settings);
         });
@@ -63,6 +68,10 @@ public sealed class ApiFactory(PostgresFixture db, string? apiKey, IEstimator? e
         {
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(Clock));
             services.Replace(ServiceDescriptor.Singleton<IBreachedPasswordChecker>(Breach));
+            if (EnvironmentName == "Production")
+            {
+                services.Replace(ServiceDescriptor.Singleton(NpgsqlDataSource.Create(db.AppConnectionString)));
+            }
             if (estimator is not null)
             {
                 services.Replace(ServiceDescriptor.Singleton(estimator));

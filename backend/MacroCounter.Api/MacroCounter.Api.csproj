@@ -20,6 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Supabase's public root CA, for SSL Mode=VerifyFull (research R12). Public, not a secret. -->
+    <None Include="certs\*.crt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Copy of contracts/ai-estimate.schema.json; sent to Claude as the structured-output schema. -->
     <EmbeddedResource Include="Ai\ai-estimate.schema.json" LogicalName="MacroCounter.Api.Ai.ai-estimate.schema.json" />
     <None Include="Ai\ai-estimate.schema.json" CopyToOutputDirectory="PreserveNewest" Link="ai-estimate.schema.json" />

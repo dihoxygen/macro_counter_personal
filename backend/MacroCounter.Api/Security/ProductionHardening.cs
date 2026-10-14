@@ -1,5 +1,7 @@
+using MacroCounter.Api.Data;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace MacroCounter.Api.Security;
 
@@ -32,6 +34,13 @@ public static class ProductionHardening
         {
             throw new InvalidOperationException(
                 "AllowedHosts must list the real host name in Production, never \"*\" (docs/deploy.md).");
+        }
+        // The identity store is reached over the internet: encrypt and verify the server's certificate (R12).
+        var connection = new NpgsqlConnectionStringBuilder(app.Configuration.GetConnectionString(IdentityServices.ConnectionStringName));
+        if (connection.SslMode != SslMode.VerifyFull)
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:Identity must use SSL Mode=VerifyFull (with the Supabase root certificate) in Production (docs/deploy.md).");
         }
         var origins = app.Services.GetRequiredService<IOptions<SecurityOptions>>().Value.AllowedOrigins;
         if (!origins.Any(o => !string.IsNullOrWhiteSpace(o)))

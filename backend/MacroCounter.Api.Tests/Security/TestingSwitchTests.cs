@@ -27,7 +27,7 @@ public class TestingSwitchTests(PostgresFixture db)
                 var settings = new Dictionary<string, string?>
                 {
                     ["Anthropic:ApiKey"] = "test-key-not-real",
-                    ["ConnectionStrings:Identity"] = db.AppConnectionString,
+                    ["ConnectionStrings:Identity"] = db.AppConnectionString + (environment == "Production" ? ";SSL Mode=VerifyFull" : ""),
                     ["Testing:FakeEstimator"] = "true",
                     ["Testing:BreachedPasswords:0"] = "password1234",
                 };

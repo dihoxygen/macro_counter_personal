@@ -664,7 +664,7 @@ The built app runs under the CSP with zero violations. Quickstart V12 passes on 
 
 **Purpose**: Supply chain, docs, deployment, and the governance gates
 
-- [ ] T117 Update `scripts/check.ps1`:
+- [X] T117 (The secret-scan pattern uses … so the script stays ASCII-only: Windows PowerShell 5.1 reads BOM-less UTF-8 scripts as ANSI. On a Windows checkout with core.autocrlf=true, `dotnet format` reports line endings for every file, including older ones; CI on Linux is the authoritative gate.) Update `scripts/check.ps1`:
   - run `dotnet restore backend --locked-mode` first;
   - add `dotnet list backend package --vulnerable --include-transitive` and fail if its output contains `High` or `Critical`;
   - add `npm --prefix frontend audit --audit-level=high`;
@@ -673,19 +673,19 @@ The built app runs under the CSP with zero violations. Quickstart V12 passes on 
   - add a **secret scan** step (FR-030) that fails if any git-tracked file, or any file in the built `backend/MacroCounter.Api/wwwroot/`, matches `sk-ant-[A-Za-z0-9_-]{20,}`, `Password=[^;"'<\s]{4,}`, `-----BEGIN (RSA |EC )?PRIVATE KEY-----` or `"ApiKey"\s*:\s*"[^"]+"`. The public CA `.crt` (T118) and documented placeholders such as `Password=<pw>` are allowlisted by exact path or pattern.
 
   Run it and fix or risk-accept any high or critical finding in writing in plan.md (Constitution VII).
-- [ ] T118 [P] Add the Supabase root CA as `backend/MacroCounter.Api/certs/supabase-root-ca.crt`. **Ask the user** to download it from Supabase Dashboard → Database Settings → SSL; it is public, not a secret. Copy it to the output in `MacroCounter.Api.csproj`, and document `Root Certificate=certs/supabase-root-ca.crt;SSL Mode=VerifyFull` for `ConnectionStrings:Identity` in `README.md`.
-- [ ] T119 [P] Write a test in `backend/MacroCounter.Api.Tests/Security/ProductionConfigTests.cs`: in Production, startup fails with a clear error when `ConnectionStrings:Identity` has `SSL Mode` other than `VerifyFull` (including missing), and succeeds with `VerifyFull`.
-- [ ] T120 Add that startup check to `backend/MacroCounter.Api/Program.cs`. Make T119 pass.
-- [ ] T121 [P] Update `README.md`:
+- [ ] T118 (Waiting on the owner: the csproj copies `certs/*.crt`, and README and docs/deploy.md document VerifyFull with the root certificate. Only the downloaded certificate file is missing.) [P] Add the Supabase root CA as `backend/MacroCounter.Api/certs/supabase-root-ca.crt`. **Ask the user** to download it from Supabase Dashboard → Database Settings → SSL; it is public, not a secret. Copy it to the output in `MacroCounter.Api.csproj`, and document `Root Certificate=certs/supabase-root-ca.crt;SSL Mode=VerifyFull` for `ConnectionStrings:Identity` in `README.md`.
+- [X] T119 [P] Write a test in `backend/MacroCounter.Api.Tests/Security/ProductionConfigTests.cs`: in Production, startup fails with a clear error when `ConnectionStrings:Identity` has `SSL Mode` other than `VerifyFull` (including missing), and succeeds with `VerifyFull`.
+- [X] T120 Add that startup check to `backend/MacroCounter.Api/Program.cs`. Make T119 pass.
+- [X] T121 [P] Update `README.md`:
   - prerequisites (PostgreSQL 17, `MACROCOUNTER_TEST_PG`, `scripts/dev-db.ps1`);
   - first sign-in as the owner;
   - the owner runbook, linked to contracts/owner-procedures.md;
   - remove the "Using it on your phone over LAN HTTP" section and say to use the HTTPS deployment instead (plan, Spec Follow-ups 3);
   - update the architecture blurb: the backend now stores identity and security data only;
   - say what is sent to Claude (Constitution VII Accountability).
-- [ ] T122 [P] Apply plan.md's Spec Follow-up 2 to `specs/003-auth-security-foundations/spec.md`: add the "What is sent to Claude" acknowledgement step to FR-004. Follow-up 1 (FR-018: owner only) was applied on 2026-10-14.
-- [ ] T123 [P] Update `specs/001-ai-macro-logging/contracts/estimates-api.yaml` with a note pointing to `specs/003-auth-security-foundations/contracts/auth-api.yaml` for authentication, CSRF and the 401/403/429 responses.
-- [ ] T124 Write `docs/deploy.md` following quickstart.md § "Production deployment":
+- [X] T122 [P] Apply plan.md's Spec Follow-up 2 to `specs/003-auth-security-foundations/spec.md`: add the "What is sent to Claude" acknowledgement step to FR-004. Follow-up 1 (FR-018: owner only) was applied on 2026-10-14.
+- [X] T123 [P] Update `specs/001-ai-macro-logging/contracts/estimates-api.yaml` with a note pointing to `specs/003-auth-security-foundations/contracts/auth-api.yaml` for authentication, CSRF and the 401/403/429 responses.
+- [X] T124 Write `docs/deploy.md` following quickstart.md § "Production deployment":
   - Supabase: Data API off, Network Restrictions, applying the idempotent migration script, creating the `macro_app` login and `grant_app_role('macro_app')`, enabling `pg_cron`, and MFA on the owner's Supabase account;
   - Azure App Service: Linux B1, one instance, Always On, HTTPS Only, and App Settings or Key Vault references for every secret;
   - generating the Data Protection PFX with `New-SelfSignedCertificate` and base64-encoding it;
