@@ -171,7 +171,7 @@ When the app is served over the internet, the browser is told to use secure conn
 
 - **FR-016**: Data stored on a device MUST be separated per account so that people sharing a browser never see each other's data.
 - **FR-017**: Signing out MUST NOT delete local data and MUST make it inaccessible until the owning account signs in again.
-- **FR-018**: Pre-existing single-user local data MUST be adopted by the first account that signs in on that browser, only once, without loss.
+- **FR-018**: Pre-existing single-user local data MUST be adopted only by the owner account, the first time the owner signs in on that browser, only once and without loss. No other account can adopt it, even if it signs in on that browser first.
 - **FR-019**: The server MUST NOT store users' food logs, photos, or goals. It stores only identity, credential, session, usage, and audit information.
 
 **Abuse and cost protection**

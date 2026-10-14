@@ -1,0 +1,399 @@
+openapi: 3.1.0
+info:
+  title: Macro Counter API (auth & security)
+  version: 2.0.0
+  description: >
+    Adds sign-in, first-time setup, sessions and AI quotas to the 001 API
+    (specs/001-ai-macro-logging/contracts/estimates-api.yaml). The request and response bodies of
+    /estimates/* do not change; this contract adds the security requirements and new error
+    responses for them.
+
+
+    **Deny by default (FR-013).** Every endpoint requires a *full* session unless it is marked
+    `x-access: public` (no session), `x-access: setup` (a setup session only), or
+    `x-access: any-session` (a setup or full session). A test lists every endpoint registered in the app and
+    fails if one is missing from this contract or has the wrong access level (SC-003). A second
+    test fails if any registered route looks like account creation, for example `register`,
+    `sign-up`, `signup`, `invite`, or `POST /users` (SC-004).
+
+
+    **Cookies.** `__Host-mc_session` (HttpOnly; Secure; SameSite=Strict; Path=/) carries the
+    session. `__Host-mc_af` (HttpOnly; Secure; SameSite=Strict) is the antiforgery cookie. Scripts
+    can read neither (FR-010).
+
+
+    **CSRF.** Every non-GET request MUST send `X-CSRF-Token`, using the `csrfToken` from the most
+    recent `GET /auth/session`, `/auth/sign-in` or `/auth/setup/*` response. Unsafe requests from
+    an origin that is not allowed are refused (see http-hardening.md).
+
+
+    **Limits.** JSON bodies on /auth/* are at most 4 KB. Unknown JSON properties are rejected.
+    All errors are RFC 9457 problem+json with a machine-readable `code` (see components).
+servers:
+  - url: /api
+
+paths:
+  /health:
+    get:
+      x-access: public
+      summary: Minimal availability check. Reveals nothing about users or configuration (R16).
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                additionalProperties: false
+                properties:
+                  status: { const: ok }
+
+  /status:
+    get:
+      summary: "Whether AI lookup is configured. CHANGED: now requires a full session (R16)."
+      operationId: getStatus
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [aiAvailable]
+                properties:
+                  aiAvailable: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /auth/session:
+    get:
+      x-access: public
+      summary: Current sign-in state plus a fresh CSRF token. Called at app launch and after a page is restored from the back/forward cache.
+      operationId: getSession
+      responses:
+        "200": { $ref: "#/components/responses/SessionState" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /auth/sign-in:
+    post:
+      x-access: public
+      summary: Sign in with username, password and authenticator code; or start first-time setup with a temporary code
+      description: >
+        Normal accounts must send a valid `password` and `code` together. Any failure returns the
+        same 401 `sign_in_failed`: unknown user, wrong password, wrong or missing code, disabled
+        account, expired setup, or an incomplete account (FR-006).
+
+
+        For an account in setup, put the temporary code (or the password already chosen during an
+        unfinished setup) in `password` and leave out `code`. The response is then `state: setup`
+        and a setup session is issued.
+
+
+        Rate limited per IP, per username (whether or not the account exists) and per account
+        (R7). Every limit returns the same 429.
+      operationId: signIn
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              additionalProperties: false
+              properties:
+                username:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: Trimmed and compared case-insensitively.
+                password: { type: string, minLength: 1, maxLength: 128 }
+                code: { type: string, pattern: "^[0-9]{6}$" }
+      responses:
+        "200": { $ref: "#/components/responses/SessionState" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401":
+          description: "`sign_in_failed`. The message is always \"Could not sign in. Check your details and try again.\""
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /auth/setup/password:
+    post:
+      x-access: setup
+      summary: "Setup step 1: choose a password (FR-004, FR-005). Uses up the temporary code."
+      operationId: setupPassword
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newPassword]
+              additionalProperties: false
+              properties:
+                newPassword: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { $ref: "#/components/responses/SessionState" }
+        "400":
+          description: "`password_rejected`, with `reasons` from: too_short, too_long, contains_username, breached."
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Problem"
+                  - type: object
+                    properties:
+                      reasons:
+                        type: array
+                        items: { enum: [too_short, too_long, contains_username, breached] }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "409": { $ref: "#/components/responses/WrongSetupStep" }
+        "503":
+          description: "`breach_check_unavailable` (fail closed, R2) or `service_unavailable`."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /auth/setup/totp:
+    post:
+      x-access: setup
+      summary: "Setup step 2a: get (or re-get) the authenticator secret for enrolment"
+      operationId: setupTotpStart
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: The secret, shown only while the setup session is valid.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [setupKey, otpauthUri]
+                additionalProperties: false
+                properties:
+                  setupKey:
+                    type: string
+                    description: Base32 secret, grouped in 4s for display.
+                  otpauthUri:
+                    type: string
+                    description: "otpauth://totp/Macro%20Counter:<username>?secret=…&issuer=Macro%20Counter&digits=6&period=30"
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "409": { $ref: "#/components/responses/WrongSetupStep" }
+
+  /auth/setup/totp/confirm:
+    post:
+      x-access: setup
+      summary: "Setup step 2b: confirm a code from the authenticator app"
+      description: After 5 wrong codes the setup session is revoked and the person must sign in again (R3).
+      operationId: setupTotpConfirm
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              additionalProperties: false
+              properties:
+                code: { type: string, pattern: "^[0-9]{6}$" }
+      responses:
+        "200": { $ref: "#/components/responses/SessionState" }
+        "400":
+          description: "`invalid_code`, with `attemptsLeft`."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "409": { $ref: "#/components/responses/WrongSetupStep" }
+
+  /auth/setup/notice:
+    post:
+      x-access: setup
+      summary: "Setup step 3: acknowledge what is sent to Claude. Swaps the setup session for a new full session."
+      operationId: setupAcknowledgeNotice
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [acknowledged]
+              additionalProperties: false
+              properties:
+                acknowledged: { const: true }
+      responses:
+        "200": { $ref: "#/components/responses/SessionState" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "409": { $ref: "#/components/responses/WrongSetupStep" }
+
+  /auth/sign-out:
+    post:
+      x-access: any-session
+      summary: End this session (works for setup and full sessions). Local data is kept on the device (FR-017).
+      operationId: signOut
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204": { description: Signed out. Both cookies are cleared. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+
+  /auth/sign-out-everywhere:
+    post:
+      summary: End all of this user's sessions on every device and rotate the security stamp (FR-011)
+      operationId: signOutEverywhere
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204": { description: All sessions revoked. }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+
+  /estimates/text:
+    post:
+      summary: "Unchanged body (see 001 contract). NOW requires a full session, CSRF and quota."
+      operationId: estimateFromText
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200": { description: See 001 contract (EstimateOk). }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "429": { $ref: "#/components/responses/QuotaOrRateLimited" }
+
+  /estimates/photo:
+    post:
+      summary: "Unchanged body (see 001 contract). NOW requires a full session, CSRF and quota."
+      operationId: estimateFromPhoto
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200": { description: See 001 contract (EstimateOk). }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "429": { $ref: "#/components/responses/QuotaOrRateLimited" }
+
+components:
+  parameters:
+    CsrfHeader:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: { type: string }
+
+  schemas:
+    Problem:
+      type: object
+      required: [code, title]
+      properties:
+        code:
+          enum:
+            # 001 codes
+            - invalid_request
+            - image_too_large
+            - unsupported_media_type
+            - invalid_ai_response
+            - ai_unavailable
+            - ai_timeout
+            # 003 codes
+            - unauthenticated
+            - csrf_failed
+            - sign_in_failed
+            - rate_limited
+            - quota_exceeded
+            - password_rejected
+            - breach_check_unavailable
+            - invalid_code
+            - wrong_setup_step
+            - service_unavailable
+        title: { type: string }
+        detail: { type: string, description: Human-readable. Never contains stack traces, SQL, paths or configuration (FR-031). }
+        status: { type: integer }
+
+    SessionState:
+      type: object
+      required: [state, csrfToken]
+      additionalProperties: false
+      properties:
+        state: { enum: [signed_out, setup, signed_in] }
+        csrfToken: { type: string }
+        setupStep:
+          enum: [password, totp, notice]
+          description: Present only when state = setup.
+        user:
+          description: Present only when state = signed_in. Exposes no other user's data.
+          type: object
+          required: [id, username, role]
+          additionalProperties: false
+          properties:
+            id: { type: string, format: uuid }
+            username: { type: string }
+            role: { enum: [owner, user] }
+
+  responses:
+    SessionState:
+      description: Sign-in state and a new CSRF token.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SessionState" }
+    Problem:
+      description: problem+json
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Unauthenticated:
+      description: "`unauthenticated`. The session is missing, expired, idle too long, revoked, has a changed security stamp, or belongs to a disabled user. The client shows sign-in and keeps any draft."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    CsrfFailed:
+      description: "`csrf_failed`. The token is missing or invalid, or the Origin is not allowed."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    WrongSetupStep:
+      description: "`wrong_setup_step`. The setup step was called out of order; includes `setupStep` (the expected step)."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    RateLimited:
+      description: "`rate_limited`. Identical for every limiter and every username (R7)."
+      headers:
+        Retry-After: { schema: { type: integer }, description: Seconds. }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    QuotaOrRateLimited:
+      description: "`rate_limited` (burst, 6 per minute) or `quota_exceeded`. For `quota_exceeded` the body includes `scope` and `resetAt`. Manual entry is unaffected (FR-022)."
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Problem"
+              - type: object
+                properties:
+                  scope: { enum: [user_daily, global_daily, global_monthly] }
+                  resetAt: { type: string, format: date-time }
+    ServiceUnavailable:
+      description: "`service_unavailable`. The identity database is unreachable. The client falls back to offline grace (R9)."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
