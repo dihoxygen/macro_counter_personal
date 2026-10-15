@@ -1,7 +1,15 @@
-import { openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction, type StoreNames } from 'idb';
+import {
+  openDB,
+  type DBSchema,
+  type IDBPDatabase,
+  type IDBPTransaction,
+  type StoreNames,
+} from 'idb';
+import { z } from 'zod';
 import type { LogEntry, ProteinGoal, SavedFood } from './records';
 import { runMigrations, type Migration } from './migrations';
 
+/** The single-user database from before feature 003; adopted once by the owner (legacyAdoption.ts). */
 export const DB_NAME = 'macro-counter';
 export const SCHEMA_VERSION = 1;
 
@@ -42,4 +50,13 @@ export function openDb(name: string = DB_NAME): Promise<Db> {
       void tx.objectStore('meta').put(SCHEMA_VERSION, 'schemaVersion');
     },
   });
+}
+
+/** Each account's food data lives in its own database, named by the account's id (FR-016, R9). */
+export function userDbName(userId: string): string {
+  return `${DB_NAME}.u.${z.uuid().parse(userId)}`;
+}
+
+export function openUserDb(userId: string): Promise<Db> {
+  return openDb(userDbName(userId));
 }

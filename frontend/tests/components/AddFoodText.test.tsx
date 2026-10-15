@@ -180,6 +180,22 @@ describe('AddFoodText', () => {
     },
   );
 
+  it.each<EstimateErrorCode>(['quota_exceeded', 'rate_limited'])(
+    'a %s refusal keeps manual entry one click away (FR-022)',
+    async (code) => {
+      const { user, onManual } = await setup(async () => {
+        throw new EstimateError(code, { scope: 'user_daily', resetAt: '2026-10-15T00:00:00Z' });
+      });
+      await describeFood(user);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        code === 'quota_exceeded' ? /reached today's AI lookup limit/ : /wait a minute/i,
+      );
+      await user.click(screen.getByRole('button', { name: /enter manually/i }));
+      expect(onManual).toHaveBeenCalled();
+    },
+  );
+
   it('does not submit an empty description', async () => {
     const { user, services } = await setup(async () => estimateOf(bananaItem));
     await user.click(screen.getByRole('button', { name: /estimate/i }));

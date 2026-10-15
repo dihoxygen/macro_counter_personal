@@ -35,7 +35,8 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/api': 'http://localhost:5080',
+      // MACRO_API_PORT lets end-to-end runs use another backend port (playwright.config.ts).
+      '/api': `http://localhost:${process.env.MACRO_API_PORT ?? '5080'}`,
     },
   },
   build: {

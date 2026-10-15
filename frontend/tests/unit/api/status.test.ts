@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { authEvents } from '../../../src/api/http';
 import { getStatus } from '../../../src/api/status';
 
 function stubFetch(impl: () => Promise<Response>) {
@@ -28,6 +29,24 @@ describe('getStatus', () => {
       throw new TypeError('Failed to fetch');
     });
     expect(await getStatus()).toEqual({ aiAvailable: false });
+  });
+
+  it('treats a 401 (signed out) as not available, and asks for sign-in', async () => {
+    stubFetch(
+      async () =>
+        new Response(JSON.stringify({ title: 'x', status: 401, code: 'unauthenticated' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/problem+json' },
+        }),
+    );
+    const expired = vi.fn();
+    authEvents.addEventListener('session-expired', expired);
+    try {
+      expect(await getStatus()).toEqual({ aiAvailable: false });
+      expect(expired).toHaveBeenCalledTimes(1);
+    } finally {
+      authEvents.removeEventListener('session-expired', expired);
+    }
   });
 
   it('returns false on a non-2xx response', async () => {
