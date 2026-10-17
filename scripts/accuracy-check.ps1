@@ -8,6 +8,7 @@
 
   Posts each food in accuracy-reference.json to /api/estimates/text and reports how many calorie
   estimates fall within +/-20% of the USDA reference value. SC-007 target: at least 80%.
+  Also reports the p90 response time against the plan target (15 s) and SC-001 (30 s).
 
   Start the app first (with your API key set via dotnet user-secrets):
     dotnet run --project backend/MacroCounter.Api
@@ -42,10 +43,13 @@ if (-not $status.aiAvailable) {
 }
 
 $results = @()
+$latencies = @()
 foreach ($food in $foods) {
     $body = @{ description = $food.description } | ConvertTo-Json
     try {
+        $sw = [Diagnostics.Stopwatch]::StartNew()
         $estimate = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/estimates/text" -ContentType 'application/json' -Body $body
+        $latencies += $sw.Elapsed.TotalSeconds
         $kcal = [double]$estimate.total.kcal
         $relativeError = [math]::Abs($kcal - $food.kcal) / $food.kcal
         $within = $relativeError -le $reference.tolerance
@@ -65,6 +69,13 @@ foreach ($food in $foods) {
 }
 
 $results | Format-Table -AutoSize
+# Latency is informational (SC-001); only successful requests are timed, and it does not affect the exit code.
+if ($latencies.Count -gt 0) {
+    $sorted = $latencies | Sort-Object
+    $p90 = $sorted[[math]::Ceiling(0.9 * $sorted.Count) - 1]
+    $color = if ($p90 -le 15) { 'Green' } elseif ($p90 -le 30) { 'Yellow' } else { 'Red' }
+    Write-Host ("Text latency p90: {0:N1}s over {1} requests (plan target <= 15s, SC-001 <= 30s)." -f $p90, $sorted.Count) -ForegroundColor $color
+}
 $passed = ($results | Where-Object { $_.Within }).Count
 $share = $passed / $foods.Count
 $percent = [math]::Round($share * 100)

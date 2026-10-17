@@ -28,7 +28,7 @@ effort, edit `Anthropic:Model` / `Anthropic:Effort` in `backend/MacroCounter.Api
 ## 2. Run the tests (no key or network needed)
 
 ```powershell
-dotnet test backend --collect:"XPlat Code Coverage"   # xUnit; Claude is mocked; 100% on Nutrition/
+dotnet test backend /p:CollectCoverage=true           # xUnit; Claude is mocked; fails below 100% on Nutrition/
 cd frontend
 npm ci
 npm test -- --coverage                               # Vitest; 100% on src/domain/nutrition/
