@@ -34,6 +34,17 @@ photo handling) still apply unless this file says otherwise.
     `enumerateDevices()` lists `videoinput` devices. If there are 2 or more, show "Switch camera".
     It stops the current tracks and restarts with `deviceId: { exact: next }`, cycling in list order.
   - The preview is **not mirrored**, so the preview and the captured image look the same.
+  - **Remembered camera** (added after manual validation, FR-017): desktop webcams don't report a
+    facing mode, so Chrome falls back to the first camera in its list. On the owner's PC that was a
+    virtual camera (NVIDIA Broadcast) showing a black frame, while Switch camera reached the real
+    C922 webcam. After each snapshot the camera's `deviceId` is saved in the `meta` store, and the
+    next start asks for it with `deviceId: { exact }`. If that fails with `OverconstrainedError` or
+    `NotFoundError` (the camera was unplugged or its ID changed), the start is retried once with the
+    default constraints; any other error is reported as usual. The first version used
+    `deviceId: { ideal }`, but on the owner's PC Chrome still opened NVIDIA Broadcast, apparently
+    weighing the resolution `ideal`s against the device preference. Alternatives
+    considered: showing the camera's name next to Switch camera (helps explain a black preview, but
+    the user still switches every time); detecting black frames (fragile and needs frame analysis).
 - **Rationale**: The platform API covers everything the spec needs (preview, still capture,
   switching). Principle V prefers the platform. `ImageCapture.takePhoto()` would give higher
   resolution, but it is Chromium-only and the 1568 px cap makes the extra resolution useless.

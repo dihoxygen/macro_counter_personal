@@ -2,12 +2,24 @@
 
 **Feature**: `002-add-photo-from-source` | **Plan**: [plan.md](./plan.md)
 
-**No persisted data changes.** IndexedDB stores, record shapes and `schemaVersion` are unchanged, and
-no migration is needed. Photo entries are saved exactly as in feature 001
+**No schema changes.** IndexedDB stores, record shapes and `schemaVersion` are unchanged, and no
+migration is needed. Photo entries are saved exactly as in feature 001
 ([001 data-model](../001-ai-macro-logging/data-model.md)). The photo source is **not** recorded on the
 entry (spec Key Entities: "not stored").
 
-Everything below is in-memory UI state for the photo step. It is discarded when the step unmounts.
+The one new persisted value is the [Device Preference](#device-preference) below, a key in the
+existing `meta` key/value store. Everything else is in-memory UI state for the photo step and is
+discarded when the step unmounts.
+
+## Device Preference
+
+| Key (`meta` store) | Value | Rules |
+|--------------------|-------|-------|
+| `preferredCameraId` | `string` | The `deviceId` of the camera the last snapshot was taken with (FR-017). Written after each snapshot; empty IDs are ignored. Any non-string or empty value reads as "no preference" |
+
+Accessed only through the `DevicePreferences` repository (`src/data/devicePreferences.ts`,
+Principle III). It is device-local on purpose: a camera ID means nothing on another device, so it has
+no `id`/timestamps, is never synced, and is not part of a data export. It contains no personal data.
 
 ## Photo Source
 

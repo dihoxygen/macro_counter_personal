@@ -32,8 +32,14 @@ export interface CameraSession {
 export interface CameraService {
   /** Never prompts for permission. */
   detectSupport(): Promise<CameraSupport>;
-  /** The only call that may prompt. Rejects with CameraStartError. Without deviceId, prefers the rear camera. */
-  start(options?: { deviceId?: string }): Promise<CameraSession>;
+  /**
+   * The only call that may prompt. Rejects with CameraStartError.
+   * - `deviceId`: exactly this camera (Switch camera).
+   * - `preferredDeviceId`: exactly this camera if it still exists, otherwise the default one (the
+   *   remembered camera, so a virtual camera listed first doesn't win on desktops).
+   * - neither: prefer the rear camera (phones).
+   */
+  start(options?: { deviceId?: string; preferredDeviceId?: string }): Promise<CameraSession>;
 }
 
 export class CameraStartError extends Error {
@@ -126,6 +132,12 @@ function firstFrame(video: HTMLVideoElement): Promise<void> {
 }
 const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
 
+/** True when a requested camera no longer exists (unplugged, or its ID changed). */
+function isMissingCamera(error: unknown): boolean {
+  const name = typeof error === 'object' && error !== null && 'name' in error ? String(error.name) : '';
+  return name === 'OverconstrainedError' || name === 'NotFoundError';
+}
+
 /** The real camera, built from injected browser objects so it can be unit tested. */
 export function createBrowserCameraService(env: {
   isSecureContext: boolean;
@@ -158,14 +170,24 @@ export function createBrowserCameraService(env: {
       if (typeof mediaDevices?.getUserMedia !== 'function') {
         throw new CameraStartError(describeCameraError(new TypeError('getUserMedia is unavailable')));
       }
+      const open = (video: MediaTrackConstraints) => mediaDevices.getUserMedia({ audio: false, video });
+      const byDefault: MediaTrackConstraints = { facingMode: { ideal: 'environment' }, ...size };
       let stream: MediaStream;
       try {
-        stream = await mediaDevices.getUserMedia({
-          audio: false,
-          video: options?.deviceId
-            ? { deviceId: { exact: options.deviceId }, ...size }
-            : { facingMode: { ideal: 'environment' }, ...size },
-        });
+        if (options?.deviceId) {
+          stream = await open({ deviceId: { exact: options.deviceId }, ...size });
+        } else if (options?.preferredDeviceId) {
+          // Requested exactly: Chrome may ignore `ideal` and pick a virtual camera that matches the
+          // resolution better. If the remembered camera is gone, use the default one instead.
+          try {
+            stream = await open({ deviceId: { exact: options.preferredDeviceId }, ...size });
+          } catch (error) {
+            if (!isMissingCamera(error)) throw error;
+            stream = await open(byDefault);
+          }
+        } else {
+          stream = await open(byDefault);
+        }
       } catch (error) {
         throw new CameraStartError(describeCameraError(error));
       }

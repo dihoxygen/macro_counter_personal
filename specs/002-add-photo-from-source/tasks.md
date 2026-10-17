@@ -281,6 +281,19 @@ buttons. Choosing a file through `Existing photo file` previews it and logs it (
 
 ---
 
+## Phase 7: Follow-up from manual validation
+
+**Purpose**: Desktop validation found the live camera opening on a virtual camera (NVIDIA Broadcast,
+black preview) listed before the real webcam. The user chose to remember the last camera used
+(spec FR-017, research R2).
+
+- [X] T037 [P] Write failing tests: `frontend/tests/unit/data/devicePreferences.test.ts` (`IdbDevicePreferences`: null at first, remembers the latest ID, survives reopening, ignores '', malformed value reads as null); `frontend/tests/unit/media/browserCamera.test.ts` (`start({ preferredDeviceId })` requests `deviceId: { ideal }`); `frontend/tests/components/CameraCapture.test.tsx` (starts with the remembered camera; saves the camera after a snapshot, not after a switch; read failure starts the default camera; save failure doesn't block the snapshot; unmount while loading never starts the camera; Resume and Try again reopen the camera in use)
+- [X] T038 Add `DevicePreferences` to `frontend/src/data/repositories.ts`, implement `IdbDevicePreferences` (key `preferredCameraId` in the `meta` store) in `frontend/src/data/devicePreferences.ts`, expose it as `services.devicePreferences` (`frontend/src/app/services.tsx`, `frontend/src/main.tsx`, `frontend/tests/components/testServices.tsx`), add `preferredDeviceId` to `CameraService.start` in `frontend/src/media/camera.ts` and the fake, and use it in `frontend/src/features/add-food/CameraCapture.tsx`. Make T037 pass
+- [X] T039 Add an e2e test to `frontend/tests/e2e/camera.spec.ts`: after a snapshot and a reload, Take photo starts the remembered camera. Run `.\scripts\check.ps1`; all steps must pass
+- [X] T040 Desktop recheck failed: the saved camera was the C922, but Chrome still opened NVIDIA Broadcast with `deviceId: { ideal }`. Write failing tests in `frontend/tests/unit/media/browserCamera.test.ts` (the remembered camera is requested with `exact`; `OverconstrainedError`/`NotFoundError` retries once with the default constraints; `NotAllowedError` is not retried; a failing fallback reports its own error), then implement in `frontend/src/media/camera.ts`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

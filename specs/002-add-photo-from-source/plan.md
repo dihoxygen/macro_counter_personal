@@ -25,7 +25,7 @@ change: the backend, API contract and stored data stay the same
 `enumerateDevices`, `HTMLVideoElement`, canvas `toBlob`, `createImageBitmap`, Page Visibility
 ([research R2](./research.md#r2-in-app-live-camera-fr-003-fr-005-fr-006-us2))
 
-**Storage**: None new. IndexedDB schema unchanged, no migration. Photos and frames live only in memory
+**Storage**: IndexedDB schema unchanged, no migration. One device-local key (`preferredCameraId`) in the existing `meta` store (FR-017). Photos and frames live only in memory
 ([data-model](./data-model.md))
 
 **Testing**: Vitest (unit: `src/media/camera.ts` helpers), React Testing Library with an injected
@@ -63,7 +63,7 @@ interactions, which meets the clarified limit of 5 ([spec Clarifications](./spec
 |-----------|------|--------|
 | I. Test-First | Every new behavior has a failing unit, component or e2e test first (quickstart P1–P15). The changed 001 test (it asserted `capture="environment"` on the single input) is updated before the component changes | ✅ Planned. `/speckit-tasks` must order tests first |
 | II. Correct Nutrition Math | No nutrition math touched. `src/domain/**` coverage at 100% is unaffected | ✅ N/A |
-| III. Local-First, Sync-Ready | No new persisted data, no schema change. Photos are never stored. Works offline except AI lookup (unchanged) | ✅ |
+| III. Local-First, Sync-Ready | No schema change. One device-local setting (the last camera used, FR-017) is kept in the existing `meta` store through the `DevicePreferences` repository; it is deliberately not synced or exported. Photos are never stored. Works offline except AI lookup (unchanged) | ✅ |
 | IV. Fast Logging on Desktop & Mobile | Both sources on both device types (FR-014). 44 px targets, keyboard, 360 px, checked in e2e at both viewports. SC-001 = 5 interactions (clarified limit) | ✅ |
 | V. Simplicity | No new dependencies. Platform APIs over a camera library (R2). One new service seam (`CameraService`), needed because jsdom has no camera. No hosting/TLS work pulled in (R7) | ✅ |
 | VI. AI-Assisted Food Lookup | Same single AI client (`src/api/estimates.ts`), same schema, validator and confirmation. Every source goes through `reencodePhoto` (EXIF stripped) before upload. A photo is sent only on an explicit Estimate tap. Existing tests for oversized, unsupported and non-food photos remain | ✅ |

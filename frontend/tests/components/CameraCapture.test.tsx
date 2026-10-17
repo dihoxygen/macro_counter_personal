@@ -3,6 +3,7 @@ import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CameraCapture } from '../../src/features/add-food/CameraCapture';
 import { describeCameraError, type CameraErrorReason, type CameraSession } from '../../src/media/camera';
+import type { Services } from '../../src/app/services';
 import { FakeCameraService } from './fakeCamera';
 import { renderWithServices } from './testServices';
 
@@ -21,7 +22,7 @@ afterEach(() => {
   setVisibility('visible');
 });
 
-async function setup(camera = new FakeCameraService()) {
+async function setup(camera = new FakeCameraService(), devicePreferences?: Services['devicePreferences']) {
   const user = userEvent.setup();
   const props = {
     onCaptured: vi.fn<(blob: Blob) => void>(),
@@ -29,7 +30,10 @@ async function setup(camera = new FakeCameraService()) {
     onChooseExisting: vi.fn(),
     onUseCameraApp: vi.fn(),
   };
-  const rendered = await renderWithServices(<CameraCapture {...props} />, { camera });
+  const rendered = await renderWithServices(<CameraCapture {...props} />, {
+    camera,
+    ...(devicePreferences ? { devicePreferences } : {}),
+  });
   return { user, camera, ...props, ...rendered };
 }
 
@@ -49,7 +53,8 @@ describe('CameraCapture', () => {
     );
     await setup(camera);
 
-    expect(camera.start).toHaveBeenCalledExactlyOnceWith(undefined);
+    // The remembered camera is read first (none here), then the default camera starts.
+    await vi.waitFor(() => expect(camera.start).toHaveBeenCalledExactlyOnceWith(undefined));
     expect(screen.getByRole('status')).toHaveTextContent('Starting camera…');
 
     await act(async () => release(camera.sessions[0]!));
@@ -128,6 +133,7 @@ describe('CameraCapture', () => {
       return realStart(options);
     });
     const { unmount } = await setup(camera);
+    await vi.waitFor(() => expect(camera.start).toHaveBeenCalled()); // the start is in flight
     unmount();
     await act(async () => release());
     expect(camera.sessions).toHaveLength(1);
@@ -221,3 +227,82 @@ function cameraErrorFor(reason: CameraErrorReason) {
   };
   return describeCameraError(name[reason]);
 }
+
+describe('CameraCapture: remembers the last camera (desktop virtual cameras)', () => {
+  const prefs = (stored: string | null) => ({
+    getCameraId: vi.fn(async () => stored),
+    setCameraId: vi.fn<(id: string) => Promise<void>>(async () => {}),
+  });
+
+  it('starts with the camera last used for a snapshot, as a preference', async () => {
+    const camera = new FakeCameraService({ deviceIds: ['nvidia', 'c922'] });
+    await setup(camera, prefs('c922'));
+    await preview();
+    expect(camera.start).toHaveBeenCalledExactlyOnceWith({ preferredDeviceId: 'c922' });
+    expect(camera.sessions[0]!.deviceId).toBe('c922');
+  });
+
+  it('remembers the camera a snapshot was taken with', async () => {
+    const camera = new FakeCameraService({ deviceIds: ['nvidia', 'c922'] });
+    const stored = prefs(null);
+    const { user } = await setup(camera, stored);
+    await preview();
+    await user.click(screen.getByRole('button', { name: 'Switch camera' }));
+    await preview();
+    expect(stored.setCameraId).not.toHaveBeenCalled(); // switching alone doesn't save
+
+    await user.click(screen.getByRole('button', { name: 'Take snapshot' }));
+    await vi.waitFor(() => expect(stored.setCameraId).toHaveBeenCalledExactlyOnceWith('c922'));
+  });
+
+  it('starts the default camera if the preference cannot be read', async () => {
+    const camera = new FakeCameraService();
+    await setup(camera, {
+      getCameraId: vi.fn(async () => Promise.reject(new Error('db closed'))),
+      setCameraId: vi.fn(),
+    });
+    await preview();
+    expect(camera.start).toHaveBeenCalledExactlyOnceWith(undefined);
+  });
+
+  it('a failure to save the preference does not affect the snapshot', async () => {
+    const stored = {
+      getCameraId: vi.fn(async () => null),
+      setCameraId: vi.fn(async () => Promise.reject(new Error('quota'))),
+    };
+    const { user, onCaptured } = await setup(new FakeCameraService(), stored);
+    await preview();
+    await user.click(screen.getByRole('button', { name: 'Take snapshot' }));
+    await vi.waitFor(() => expect(onCaptured).toHaveBeenCalled());
+  });
+
+  it('never starts the camera if unmounted while the preference is loading', async () => {
+    let release!: (id: string | null) => void;
+    const camera = new FakeCameraService();
+    const { unmount } = await setup(camera, {
+      getCameraId: vi.fn(() => new Promise<string | null>((resolve) => (release = resolve))),
+      setCameraId: vi.fn(),
+    });
+    unmount();
+    await act(async () => release('c922'));
+    expect(camera.start).not.toHaveBeenCalled();
+  });
+
+  it('Resume and Try again reopen the camera that was in use', async () => {
+    const camera = new FakeCameraService({ deviceIds: ['nvidia', 'c922'] });
+    const { user } = await setup(camera, prefs(null));
+    await preview();
+    await user.click(screen.getByRole('button', { name: 'Switch camera' }));
+    await preview();
+
+    act(() => setVisibility('hidden'));
+    await user.click(screen.getByRole('button', { name: 'Resume camera' }));
+    await preview();
+    expect(camera.start).toHaveBeenLastCalledWith({ preferredDeviceId: 'c922' });
+
+    act(() => camera.sessions.at(-1)!.endUnexpectedly());
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await preview();
+    expect(camera.start).toHaveBeenLastCalledWith({ preferredDeviceId: 'c922' });
+  });
+});

@@ -9,6 +9,7 @@ import { IdbEntryRepository } from './data/entryRepository.ts';
 import { LogService } from './data/logService.ts';
 import { IdbProteinGoalRepository } from './data/proteinGoalRepository.ts';
 import { IdbSavedFoodRepository } from './data/savedFoodRepository.ts';
+import { IdbDevicePreferences } from './data/devicePreferences.ts';
 import { browserCameraService } from './media/camera.ts';
 import { reencodePhoto } from './media/reencodePhoto.ts';
 import './styles.css';
@@ -26,6 +27,7 @@ const services: Services = {
   estimateFromPhoto,
   reencodePhoto,
   camera: browserCameraService(),
+  devicePreferences: new IdbDevicePreferences(db),
   now: () => new Date(),
 };
 

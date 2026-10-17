@@ -182,6 +182,10 @@ step and confirm the estimate.
   widths of 360 px and up.
 - **FR-016**: The note field, cancel during analysis, and recovery options from feature 001
   (retry, switch to text, enter manually) MUST keep working for every photo source.
+- **FR-017**: The live camera SHOULD start with the camera the user last took a snapshot with on
+  that device. If that camera is no longer available, it MUST fall back to the default camera
+  without an error. (Added after manual validation: on a desktop with a virtual camera listed
+  first, such as NVIDIA Broadcast, the default camera showed a black preview.)
 
 ### Key Entities
 
