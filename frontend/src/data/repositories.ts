@@ -32,3 +32,14 @@ export interface ProteinGoalRepository {
   setGoal(effectiveFrom: DayKey, grams: number | null): Promise<ProteinGoal>;
   listAll(): Promise<ProteinGoal[]>;
 }
+
+/**
+ * Settings that only make sense on this device (feature 002). They are never synced or exported:
+ * a camera ID, for example, means nothing on another device.
+ */
+export interface DevicePreferences {
+  /** The camera last used for a snapshot, or null if none is remembered. */
+  getCameraId(): Promise<string | null>;
+  /** Ignores an empty ID (some browsers report none before permission). */
+  setCameraId(id: string): Promise<void>;
+}

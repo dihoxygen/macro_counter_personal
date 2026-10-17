@@ -126,3 +126,38 @@ terminal, `cd frontend; npm run dev` (http://localhost:5173, proxies `/api`).
 
    Open `https://<PC-IP>:5443` on the phone. Take photo now shows the in-app preview with the rear
    camera, and Switch camera toggles front and rear. Keep the certificate files outside the repo.
+
+## Validation results
+
+### 2026-10-14: phone over LAN HTTP (`http://192.168.1.30:5080`, production build)
+
+All checks below were done on the phone (mobile browser).
+
+| Check | Result |
+|-------|--------|
+| Choose existing photo opens the photo library; a photo taken earlier loads, previews and gets a Claude estimate (US1, FR-002, SC-006) | ✅ Pass |
+| Opening the picker and backing out without choosing returns to the photo step with no error (US1 AS5) | ✅ Pass |
+| Interaction count from the main screen to Estimate is 5 or fewer (SC-001) | ✅ Pass: 4 interactions |
+| Take photo opens the phone's camera app over HTTP (FR-004) | ✅ Pass |
+| HEIF photo is decoded and estimated | ✅ Pass |
+| HEIC photo is decoded or rejected with "This photo couldn't be used" | Not tested: no HEIC photos on the phone |
+| Phone and browser used | Not recorded |
+
+### 2026-10-14: desktop, Chrome, `http://localhost:5080`
+
+| Check | Result |
+|-------|--------|
+| Desktop opened at `http://192.168.1.30:5080` (LAN address): Take photo opened the file dialog, the same as Choose existing photo | Expected: the LAN address is not a secure context on the PC either, so the live camera is blocked. Use `http://localhost:5080` on the PC |
+| At `http://localhost:5080`, the photo step first showed only the old single file box | Chrome showed the feature 001 version cached by the service worker. Fixed by reloading. DevTools → Application → Service workers → Unregister also works. See the note below |
+| Live preview appears after allowing the camera | ✅ Pass |
+| First start showed a black preview; Switch camera showed the webcam | ❌ Fixed. Chrome listed the virtual camera "Camera (NVIDIA Broadcast)" before the "c922 Pro Stream Webcam" and opened it first. The app now remembers the camera of the last snapshot (FR-017, tasks T037–T039) |
+| Recheck: after a snapshot with the C922, a new visit still opened NVIDIA Broadcast | ❌ Fixed. Diagnosed in the DevTools console: the new build was loaded and the saved camera was the C922, but Chrome ignored `deviceId: { ideal }`. The remembered camera is now requested with `exact`, falling back to the default only if it's gone (task T040). Recheck pending |
+
+**Testing after a rebuild:** at `localhost`, the service worker can keep serving the previous build
+for a load or two. If the photo step looks out of date, reload, or unregister the service worker in
+DevTools. The LAN address never has a service worker, so it always shows the latest build.
+
+### Still to do
+
+- Desktop webcam checks (manual check 2): recheck the remembered camera (switch to the C922, take a snapshot, reload, Take photo should open the C922), preview within 3 s (SC-003), time to Estimate under 20 s (SC-002), webcam light off after snapshot and when minimized, permission denied, camera in use, unplugged camera.
+- Optional: in-app live camera on the phone over LAN HTTPS (manual check 3).

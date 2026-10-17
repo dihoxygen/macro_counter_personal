@@ -7,6 +7,7 @@ import { IdbEntryRepository } from '../../src/data/entryRepository';
 import { LogService } from '../../src/data/logService';
 import { IdbProteinGoalRepository } from '../../src/data/proteinGoalRepository';
 import { IdbSavedFoodRepository } from '../../src/data/savedFoodRepository';
+import { IdbDevicePreferences } from '../../src/data/devicePreferences';
 import { ServicesProvider, type Services } from '../../src/app/services';
 import { FakeCameraService } from './fakeCamera';
 
@@ -31,6 +32,7 @@ export async function createTestServices(overrides: Partial<Services> = {}): Pro
     }),
     reencodePhoto: vi.fn(async (file: Blob) => file),
     camera: new FakeCameraService(),
+    devicePreferences: new IdbDevicePreferences(db),
     now: () => new Date(),
     ...overrides,
   };

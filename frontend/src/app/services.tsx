@@ -3,7 +3,12 @@ import type { Estimate } from '../api/estimates';
 import type { Status } from '../api/status';
 import type { LogService } from '../data/logService';
 import type { CameraService } from '../media/camera';
-import type { EntryRepository, ProteinGoalRepository, SavedFoodRepository } from '../data/repositories';
+import type {
+  DevicePreferences,
+  EntryRepository,
+  ProteinGoalRepository,
+  SavedFoodRepository,
+} from '../data/repositories';
 
 /** Everything the UI needs from the outside world, injected so tests can swap it. */
 export interface Services {
@@ -19,6 +24,8 @@ export interface Services {
   reencodePhoto: (file: Blob) => Promise<Blob>;
   /** The only code that touches navigator.mediaDevices. */
   camera: CameraService;
+  /** Device-local settings such as the last camera used. */
+  devicePreferences: DevicePreferences;
   now: () => Date;
 }
 
