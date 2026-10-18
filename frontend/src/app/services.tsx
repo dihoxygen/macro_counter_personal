@@ -7,6 +7,7 @@ import type { AdoptionResult } from '../data/legacyAdoption';
 import type { LogService } from '../data/logService';
 import type { CameraService } from '../media/camera';
 import type {
+  DevicePreferences,
   EntryRepository,
   ProteinGoalRepository,
   SavedFoodRepository,
@@ -17,6 +18,8 @@ export interface UserData {
   entries: EntryRepository;
   savedFoods: SavedFoodRepository;
   goals: ProteinGoalRepository;
+  /** Settings such as the last camera used, kept with this account's data (FR-016). */
+  devicePreferences: DevicePreferences;
   /** Confirms entries into the log and remembers each food (FR-014). */
   log: LogService;
   close: () => void;

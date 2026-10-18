@@ -9,6 +9,7 @@ describe('lockedRepositories', () => {
     );
     await expect(locked.savedFoods.listRecent()).rejects.toThrow(/locked/);
     await expect(locked.goals.listAll()).rejects.toThrow(/locked/);
+    await expect(locked.devicePreferences.getCameraId()).rejects.toThrow(/locked/);
   });
 
   it('is not mistaken for a promise', () => {

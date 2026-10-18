@@ -102,6 +102,49 @@ describe('createBrowserCameraService: start', () => {
     });
   });
 
+  // Chrome may ignore `deviceId: { ideal }` in favour of a virtual camera that better matches the
+  // resolution (seen with NVIDIA Broadcast), so the remembered camera is requested exactly.
+  it('asks for the remembered camera exactly', async () => {
+    const { service, mediaDevices } = setup();
+    await service.start({ preferredDeviceId: 'c922' });
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledExactlyOnceWith({
+      audio: false,
+      video: { deviceId: { exact: 'c922' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    });
+  });
+
+  it.each(['OverconstrainedError', 'NotFoundError'])(
+    'falls back to the default camera when the remembered one is gone (%s)',
+    async (name) => {
+      const { service, mediaDevices } = setup();
+      mediaDevices.getUserMedia.mockRejectedValueOnce(new DOMException('x', name));
+      const session = await service.start({ preferredDeviceId: 'unplugged' });
+      expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(2);
+      expect(mediaDevices.getUserMedia).toHaveBeenLastCalledWith({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      expect(session.deviceId).toBe('rear');
+    },
+  );
+
+  it('does not retry the remembered camera on other failures, such as permission denied', async () => {
+    const { service, mediaDevices } = setup();
+    mediaDevices.getUserMedia.mockRejectedValueOnce(new DOMException('x', 'NotAllowedError'));
+    const error = await service.start({ preferredDeviceId: 'c922' }).catch((e: unknown) => e);
+    expect((error as CameraStartError).cameraError.reason).toBe('denied');
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports the fallback failure if the default camera also fails', async () => {
+    const { service, mediaDevices } = setup();
+    mediaDevices.getUserMedia
+      .mockRejectedValueOnce(new DOMException('x', 'OverconstrainedError'))
+      .mockRejectedValueOnce(new DOMException('x', 'NotReadableError'));
+    const error = await service.start({ preferredDeviceId: 'gone' }).catch((e: unknown) => e);
+    expect((error as CameraStartError).cameraError.reason).toBe('in-use');
+  });
+
   it('lists the cameras after permission and reports the active one', async () => {
     const { service, mediaDevices } = setup({
       activeDeviceId: 'front',

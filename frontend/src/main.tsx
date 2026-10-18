@@ -16,6 +16,7 @@ import { lockedRepositories } from './data/lockedData.ts';
 import { LogService } from './data/logService.ts';
 import { IdbProteinGoalRepository } from './data/proteinGoalRepository.ts';
 import { IdbSavedFoodRepository } from './data/savedFoodRepository.ts';
+import { IdbDevicePreferences } from './data/devicePreferences.ts';
 import { browserCameraService } from './media/camera.ts';
 import { reencodePhoto } from './media/reencodePhoto.ts';
 import './styles.css';
@@ -43,6 +44,7 @@ const services: Services = {
       entries,
       savedFoods,
       goals: new IdbProteinGoalRepository(db),
+      devicePreferences: new IdbDevicePreferences(db),
       log: new LogService(entries, savedFoods),
       close: () => db.close(),
     };

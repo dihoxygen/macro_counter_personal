@@ -225,7 +225,7 @@ describe('AuthGate', () => {
     }
 
     function userData(owner: string) {
-      return { entries: { owner }, savedFoods: {}, goals: {}, log: {}, close: vi.fn() } as never;
+      return { entries: { owner }, savedFoods: {}, goals: {}, log: {}, devicePreferences: {}, close: vi.fn() } as never;
     }
 
     it('signed in: remembers the account, offers adoption, and opens that account’s data', async () => {

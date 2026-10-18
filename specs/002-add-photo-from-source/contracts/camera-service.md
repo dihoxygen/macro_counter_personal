@@ -24,10 +24,13 @@ interface CameraService {
   /** Never prompts for permission (FR-008). Uses isSecureContext, getUserMedia presence, enumerateDevices. */
   detectSupport(): Promise<CameraSupport>;
   /**
-   * Prompts for permission if needed and starts a stream. With no deviceId, prefers the rear camera
-   * (facingMode ideal 'environment'). Rejects with CameraStartError (carries a CameraError).
+   * Prompts for permission if needed and starts a stream. Rejects with CameraStartError (carries a CameraError).
+   * - deviceId: exactly this camera (Switch camera) → video.deviceId { exact }
+   * - preferredDeviceId: the remembered camera → video.deviceId { exact }; on OverconstrainedError /
+   *   NotFoundError, retried once with the default constraints below (FR-017)
+   * - neither: prefer the rear camera → video.facingMode { ideal: 'environment' } (FR-006)
    */
-  start(options?: { deviceId?: string }): Promise<CameraSession>;
+  start(options?: { deviceId?: string; preferredDeviceId?: string }): Promise<CameraSession>;
 }
 
 interface CameraSession {
@@ -50,6 +53,20 @@ Guarantees:
 - A session's tracks are all stopped after `stop()`, `snapshot()` resolving (the view calls `stop()`
   right after), or the owning view unmounting.
 - No frame is kept other than the one returned by `snapshot()`. No `MediaRecorder`, no storage.
+
+## `DevicePreferences` (`src/data/repositories.ts`, `src/data/devicePreferences.ts`)
+
+```ts
+interface DevicePreferences {
+  getCameraId(): Promise<string | null>;   // null when nothing (valid) is stored
+  setCameraId(id: string): Promise<void>;  // ignores ''
+}
+```
+
+Exposed as `services.devicePreferences`. The camera view reads it once before the first start and
+writes `session.deviceId` after each snapshot. A read failure means "no preference"; a write failure is
+ignored and never blocks the snapshot. Resume and Try again reopen the camera that was last streaming
+(as a preference).
 
 ## Pure helpers (`src/media/camera.ts`, unit tested)
 

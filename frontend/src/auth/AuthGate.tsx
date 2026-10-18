@@ -167,6 +167,7 @@ function AccountData({
         savedFoods: data.savedFoods,
         goals: data.goals,
         log: data.log,
+        devicePreferences: data.devicePreferences,
         aiBlockedReason: offline ? 'offline' : undefined,
       },
     [services, data, offline],

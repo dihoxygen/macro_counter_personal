@@ -83,45 +83,77 @@ specs/001-ai-macro-logging/
 
 ### Source Code (repository root)
 
+As built (updated after implementation to match the code):
+
 ```text
 backend/
 ├── MacroCounter.Api/
-│   ├── Program.cs                 # Minimal API endpoints, config binding, static files (wwwroot)
-│   ├── appsettings.json           # Anthropic:Model, Anthropic:Effort (no key)
+│   ├── Program.cs                     # Config binding, DI, GET /api/status, static files + SPA fallback
+│   ├── appsettings.json               # Anthropic:Model, Anthropic:Effort (no key)
 │   ├── Ai/
-│   │   ├── IEstimator.cs          # Seam for mocking
-│   │   ├── ClaudeEstimator.cs     # The only Anthropic SDK caller (Principle VI)
-│   │   └── EstimatePrompt.cs      # Stable system prompt + schema
-│   ├── Nutrition/                 # Pure functions, 100% coverage
-│   │   ├── EstimateValidator.cs   # Reject/flag rules (research R5)
-│   │   └── MacroMath.cs           # 4/4/9 kcal, total recomputation
-│   ├── Contracts/                 # Request/response records matching estimates-api.yaml
-│   └── wwwroot/                   # Frontend build output (git-ignored)
+│   │   ├── IEstimator.cs              # Seam the endpoints depend on (mocked in endpoint tests)
+│   │   ├── ClaudeEstimator.cs         # The only Anthropic SDK caller (Principle VI); IClaudeMessageSender seam
+│   │   ├── UnavailableEstimator.cs    # Registered when no API key is set → 503 ai_unavailable
+│   │   ├── EstimatePrompt.cs          # Stable system prompt + schema loader
+│   │   ├── ai-estimate.schema.json    # Embedded copy of contracts/ai-estimate.schema.json
+│   │   ├── AiEstimateDto.cs           # Raw structured-output shape (snake_case)
+│   │   ├── AnthropicOptions.cs        # ApiKey, Model, Effort
+│   │   └── AiExceptions.cs            # AiUnavailable / AiTimeout / InvalidAiResponse
+│   ├── Endpoints/
+│   │   ├── EstimateEndpoints.cs       # POST /api/estimates/text and /api/estimates/photo
+│   │   └── Problems.cs                # RFC 9457 problem responses with `code`
+│   ├── Nutrition/                     # Pure functions, 100% coverage
+│   │   ├── EstimateValidator.cs       # Hard checks (reject) + consistency flags (research R5)
+│   │   └── MacroMath.cs               # 4/4/9 kcal, total recomputation
+│   ├── Contracts/EstimateContracts.cs # Request/response records matching estimates-api.yaml
+│   └── wwwroot/                       # Frontend build output (git-ignored)
 └── MacroCounter.Api.Tests/
-    ├── Nutrition/                 # Unit + reference-value tests
-    ├── Ai/                        # ClaudeEstimator with a faked SDK response
-    └── Endpoints/                 # WebApplicationFactory integration tests, IEstimator mocked
+    ├── Nutrition/                     # Unit + reference-value tests
+    ├── Ai/                            # ClaudeEstimator text/photo tests via FakeClaudeSender
+    └── Endpoints/                     # WebApplicationFactory tests (ApiFactory), FakeEstimator
 
 frontend/
 ├── src/
-│   ├── domain/nutrition/          # Pure functions, 100% coverage: totals, scale, proteinProgress, format
-│   ├── domain/days.ts             # dayKey, goal-for-day lookup
-│   ├── data/                      # Repository interfaces + IndexedDB (idb) implementation, migrations
-│   ├── api/estimates.ts           # The only /api caller; zod-validates responses
-│   ├── media/reencodePhoto.ts     # Canvas re-encode: resize + strip EXIF (research R7)
+│   ├── domain/                        # Pure functions, 100% coverage across src/domain
+│   │   ├── nutrition/                 # totals, scale, proteinProgress, plausibility, validate, format
+│   │   ├── types.ts                   # zod schemas: Unit, Quantity, Macros, Source, DayKey
+│   │   ├── days.ts                    # toDayKey, previousDay, nextDay
+│   │   ├── goals.ts                   # goalForDay over the goal history
+│   │   └── review.ts                  # Estimate review state → entries
+│   ├── data/
+│   │   ├── db.ts, migrations.ts       # IndexedDB (idb) + schema migration runner
+│   │   ├── repositories.ts            # Repository interfaces
+│   │   ├── records.ts                 # Persisted record schemas (sync-ready metadata)
+│   │   ├── entryRepository.ts, savedFoodRepository.ts, proteinGoalRepository.ts
+│   │   ├── logService.ts              # confirmEntries: write entries + upsert saved foods
+│   │   └── ids.ts                     # UUID v4 that also works over plain HTTP on the LAN
+│   ├── api/
+│   │   ├── estimates.ts               # The only /api/estimates caller; zod-validates responses
+│   │   └── status.ts                  # GET /api/status
+│   ├── app/services.tsx               # Services context (repositories + API) for injection in tests
+│   ├── media/reencodePhoto.ts         # Canvas re-encode: resize + strip EXIF (research R7)
 │   ├── features/
-│   │   ├── today/                 # Main screen: protein progress, totals, entry list
-│   │   ├── add-food/              # Text / photo / manual input, review & confirm
-│   │   ├── recent/                # Saved foods quick re-log
-│   │   ├── history/               # Previous days
-│   │   └── goal/                  # Protein goal settings
-│   └── main.tsx
+│   │   ├── today/                     # TodayScreen, DayLog, TotalsPanel, ProteinProgress, EntryList,
+│   │   │                              #   EntryEditor, useCurrentDayKey
+│   │   ├── add-food/                  # AddFood (Text/Photo/Manual switch), AddFoodText, AddFoodPhoto,
+│   │   │                              #   ReviewEstimate, ManualEntryForm, useEstimateFlow
+│   │   ├── shared/                    # FormBits, entryForm, numberField (shared form validation)
+│   │   ├── recent/RecentFoods.tsx     # Saved foods quick re-log
+│   │   ├── history/DayView.tsx        # Previous days
+│   │   └── goal/GoalSettings.tsx      # Protein goal settings
+│   ├── App.tsx, main.tsx, styles.css
 ├── tests/
-│   ├── unit/                      # Mirrors src/domain, src/data (fake-indexeddb)
-│   ├── components/                # React Testing Library
-│   └── e2e/                       # Playwright, desktop + 360px, /api mocked via route()
-├── vite.config.ts                 # /api proxy → :5080, build outDir → ../backend/MacroCounter.Api/wwwroot
+│   ├── unit/                          # Mirrors src/domain, src/data, src/api, src/media (fake-indexeddb)
+│   ├── components/                    # React Testing Library
+│   └── e2e/                           # Playwright, desktop + 360px, /api mocked via route(); fixtures/
+├── vite.config.ts                     # /api proxy → :5080, build outDir → ../backend/MacroCounter.Api/wwwroot, PWA
+├── playwright.config.ts
 └── package.json
+
+scripts/
+├── check.ps1                          # Merge gate: format, tests + coverage, lint, typecheck, e2e
+├── accuracy-check.ps1                 # Manual, opt-in SC-007 accuracy + SC-001 latency check (spends credits)
+└── accuracy-reference.json
 ```
 
 **Structure Decision**: A web application with `backend/` (.NET) and `frontend/` (React), as the

@@ -8,6 +8,7 @@ import { IdbEntryRepository } from '../../src/data/entryRepository';
 import { LogService } from '../../src/data/logService';
 import { IdbProteinGoalRepository } from '../../src/data/proteinGoalRepository';
 import { IdbSavedFoodRepository } from '../../src/data/savedFoodRepository';
+import { IdbDevicePreferences } from '../../src/data/devicePreferences';
 import { ServicesProvider, type Services } from '../../src/app/services';
 import type { ActiveAccount, DeviceRepository } from '../../src/data/deviceRepository';
 import { FakeCameraService } from './fakeCamera';
@@ -75,11 +76,13 @@ export async function createTestServices(overrides: Partial<Services> = {}): Pro
   const savedFoods = new IdbSavedFoodRepository(db);
   const goals = new IdbProteinGoalRepository(db);
   const log = new LogService(entries, savedFoods);
+  const devicePreferences = new IdbDevicePreferences(db);
   return {
     entries,
     savedFoods,
     goals,
     log,
+    devicePreferences,
     getStatus: vi.fn(async () => ({ aiAvailable: true })),
     estimateFromText: vi.fn(async () => {
       throw new EstimateError('ai_unavailable');
@@ -94,7 +97,14 @@ export async function createTestServices(overrides: Partial<Services> = {}): Pro
     reload: vi.fn(),
     device: fakeDevice(),
     // Every account gets the same repositories here; AuthGate tests override this.
-    openUserData: vi.fn(async () => ({ entries, savedFoods, goals, log, close: () => undefined })),
+    openUserData: vi.fn(async () => ({
+      entries,
+      savedFoods,
+      goals,
+      log,
+      devicePreferences,
+      close: () => undefined,
+    })),
     adoptLegacyData: vi.fn(async () => 'not-owner' as const),
     ...overrides,
   };

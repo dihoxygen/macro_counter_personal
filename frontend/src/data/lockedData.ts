@@ -20,5 +20,6 @@ export function lockedRepositories(): Omit<UserData, 'close'> {
     savedFoods: locked('savedFoods') as UserData['savedFoods'],
     goals: locked('goals') as UserData['goals'],
     log: locked('log') as UserData['log'],
+    devicePreferences: locked('devicePreferences') as UserData['devicePreferences'],
   };
 }

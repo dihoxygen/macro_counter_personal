@@ -91,6 +91,19 @@ test.describe('Live camera (feature 002 US2)', () => {
     await expectCameraOff(page);
   });
 
+  test('after a snapshot, the remembered camera starts again on the next visit', async ({ page }) => {
+    await startCamera(page);
+    await page.getByRole('button', { name: 'Take snapshot' }).click();
+    await expect(page.getByRole('img', { name: 'Selected photo' })).toBeVisible();
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Add food' }).click();
+    await page.getByRole('button', { name: 'Photo' }).click();
+    await page.getByRole('button', { name: 'Take photo' }).click();
+    await expect(page.getByLabel('Camera preview')).toBeVisible({ timeout: 3_000 });
+    await expect.poll(() => liveTrackCount(page)).toBeGreaterThan(0);
+  });
+
   test('Cancel turns the camera off', async ({ page }) => {
     await startCamera(page);
     await page.getByRole('button', { name: 'Cancel' }).click();

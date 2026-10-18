@@ -56,9 +56,12 @@ export class FakeCameraService implements CameraService {
 
   detectSupport = vi.fn(async () => this.support);
 
-  start = vi.fn(async (options?: { deviceId?: string }): Promise<CameraSession> => {
+  start = vi.fn(async (options?: { deviceId?: string; preferredDeviceId?: string }): Promise<CameraSession> => {
     if (this.startError) throw new CameraStartError(this.startError);
-    const session = new FakeCameraSession(options?.deviceId ?? this.deviceIds[0]!, this.deviceIds);
+    // Like the browser: an exact deviceId is required, a preferred one is used only if it exists.
+    const preferred = options?.preferredDeviceId;
+    const id = options?.deviceId ?? (preferred && this.deviceIds.includes(preferred) ? preferred : this.deviceIds[0]!);
+    const session = new FakeCameraSession(id, this.deviceIds);
     this.sessions.push(session);
     return session;
   });

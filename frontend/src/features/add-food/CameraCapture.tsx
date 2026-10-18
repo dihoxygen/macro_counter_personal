@@ -5,6 +5,7 @@ import {
   describeCameraError,
   nextCameraId,
   type CameraError,
+  type CameraService,
   type CameraSession,
 } from '../../media/camera';
 
@@ -16,6 +17,8 @@ interface Props {
   onUseCameraApp: () => void;
 }
 
+type StartOptions = Parameters<CameraService['start']>[0];
+
 type View = { kind: 'starting' } | { kind: 'live' } | { kind: 'paused' } | { kind: 'error'; error: CameraError };
 
 /**
@@ -23,13 +26,15 @@ type View = { kind: 'starting' } | { kind: 'live' } | { kind: 'paused' } | { kin
  * snapshot, on cancel, on unmount and when the page is hidden (FR-007, research R5).
  */
 export function CameraCapture({ onCaptured, onCancel, onChooseExisting, onUseCameraApp }: Props) {
-  const { camera } = useServices();
+  const { camera, devicePreferences } = useServices();
   const [view, setView] = useState<View>({ kind: 'starting' });
   const [canSwitch, setCanSwitch] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const session = useRef<CameraSession | null>(null);
   // Bumped on every start and on stop/unmount, so a start that resolves late knows it is stale.
   const generation = useRef(0);
+  // The camera to reopen on Resume / Try again: the one last streaming, else the remembered one.
+  const inUse = useRef<string | null>(null);
 
   const stop = useCallback(() => {
     generation.current++;
@@ -40,12 +45,12 @@ export function CameraCapture({ onCaptured, onCancel, onChooseExisting, onUseCam
 
   /** Starts a camera; the caller has already shown the `starting` view. */
   const open = useCallback(
-    async (deviceId?: string) => {
+    async (options?: StartOptions) => {
       stop();
       const mine = generation.current;
       let started: CameraSession;
       try {
-        started = await camera.start(deviceId ? { deviceId } : undefined);
+        started = await camera.start(options);
       } catch (error) {
         if (mine !== generation.current) return;
         setView({
@@ -59,6 +64,7 @@ export function CameraCapture({ onCaptured, onCancel, onChooseExisting, onUseCam
         return;
       }
       session.current = started;
+      if (started.deviceId) inUse.current = started.deviceId;
       started.onEnded(() => {
         if (session.current !== started) return;
         stop();
@@ -70,16 +76,30 @@ export function CameraCapture({ onCaptured, onCancel, onChooseExisting, onUseCam
     [camera, stop],
   );
 
-  const start = (deviceId?: string) => {
+  const start = (options?: StartOptions) => {
     setView({ kind: 'starting' });
-    void open(deviceId);
+    void open(options);
   };
 
-  // Start once on mount (the initial view is already `starting`); always stop on unmount.
+  const reopen = () => start(inUse.current ? { preferredDeviceId: inUse.current } : undefined);
+
+  // On mount, start with the camera last used for a snapshot (the initial view is already
+  // `starting`), so a virtual camera listed first doesn't win on desktops. Always stop on unmount.
   useEffect(() => {
-    void open();
-    return stop;
-  }, [open, stop]);
+    let cancelled = false;
+    void devicePreferences
+      .getCameraId()
+      .catch(() => null)
+      .then((remembered) => {
+        if (cancelled) return;
+        if (remembered) inUse.current = remembered;
+        void open(remembered ? { preferredDeviceId: remembered } : undefined);
+      });
+    return () => {
+      cancelled = true;
+      stop();
+    };
+  }, [devicePreferences, open, stop]);
 
   // Attach the stream once the <video> is rendered.
   useEffect(() => {
@@ -112,13 +132,14 @@ export function CameraCapture({ onCaptured, onCancel, onChooseExisting, onUseCam
       return;
     }
     stop();
+    if (current.deviceId) void devicePreferences.setCameraId(current.deviceId).catch(() => {});
     onCaptured(photo);
   };
 
   const switchCamera = () => {
     const current = session.current;
     if (!current) return;
-    start(nextCameraId(current.deviceIds, current.deviceId));
+    start({ deviceId: nextCameraId(current.deviceIds, current.deviceId) });
   };
 
   const cancel = () => {
@@ -168,7 +189,7 @@ export function CameraCapture({ onCaptured, onCancel, onChooseExisting, onUseCam
         <>
           <p role="status">Camera paused</p>
           <div className="row">
-            <button type="button" onClick={() => start()}>
+            <button type="button" onClick={reopen}>
               Resume camera
             </button>
             <button type="button" onClick={chooseExisting}>
@@ -188,7 +209,7 @@ export function CameraCapture({ onCaptured, onCancel, onChooseExisting, onUseCam
           </p>
           <div className="row">
             {view.error.canRetry && (
-              <button type="button" onClick={() => start()}>
+              <button type="button" onClick={reopen}>
                 Try again
               </button>
             )}
