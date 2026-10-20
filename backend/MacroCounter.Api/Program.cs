@@ -22,6 +22,8 @@ builder.AddProductionHardening();
 
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.Section));
 builder.Services.AddProblemDetails();
+// A database outage is 503 service_unavailable, not a generic 500 (quickstart V9.2).
+builder.Services.AddExceptionHandler<DatabaseUnavailableHandler>();
 
 // The real Claude estimator only exists when a key is configured; otherwise every AI call
 // reports "unavailable" and the UI falls back to manual entry (FR-008).

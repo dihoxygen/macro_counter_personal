@@ -186,13 +186,20 @@ public sealed partial class SignInService(
     {
         var settings = options.Value.SignIn;
         user.AccessFailedCount++;
-        if (user.AccessFailedCount >= settings.LockoutFailures)
+        var lockedNow = user.AccessFailedCount >= settings.LockoutFailures;
+        if (lockedNow)
         {
             user.LockoutEnd = now + settings.LockoutDuration;
             user.AccessFailedCount = 0;
         }
         await db.SaveChangesAsync(cancellationToken);
         await audit.WriteAsync(AuditEvent.SignIn, AuditOutcome.Failure, user.Id, AuditReason.BadCredentials, sourceIp, cancellationToken);
+        // Audited when it starts: the name throttle usually refuses the next attempt before the lockout check runs,
+        // and that refusal never names the account (FR-024).
+        if (lockedNow)
+        {
+            await audit.WriteAsync(AuditEvent.SignInLocked, AuditOutcome.Failure, user.Id, AuditReason.Locked, sourceIp, cancellationToken);
+        }
         return SignInOutcome.Failed.Instance;
     }
 

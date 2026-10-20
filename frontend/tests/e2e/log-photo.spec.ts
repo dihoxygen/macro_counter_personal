@@ -101,8 +101,8 @@ test.describe('Log a food from a photo (feature 001 US3, feature 002 US1)', () =
   });
 });
 
-test('desktop: both sources, and a file chosen from disk (feature 002 US3)', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'the desktop file dialog flow');
+// The desktop file dialog flow: the mobile project leaves out @desktop-only tests (playwright.config.ts).
+test('desktop: both sources, and a file chosen from disk (feature 002 US3)', { tag: '@desktop-only' }, async ({ page }) => {
   const uploads = await capturePhotoUploads(page);
   await openPhotoStep(page);
   // The fake camera exists, so the live camera is offered next to the file dialog.

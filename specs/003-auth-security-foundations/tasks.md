@@ -692,7 +692,11 @@ The built app runs under the CSP with zero violations. Quickstart V12 passes on 
   - zip deploy.
 
   Link it from `README.md`. Never include real secrets or hostnames.
-- [ ] T125 Run `scripts/check.ps1` until everything passes, with no skipped tests, and then run every manual scenario V1–V13 in quickstart.md locally. **Ask the user** to do the steps that need a phone authenticator app, and record the results in `specs/003-auth-security-foundations/checklists/validation.md`.
+- [X] T125 (Done 2026-10-19, results in `checklists/validation.md`. V12.1, HTTP→HTTPS, is left for T126 on the deployed host. Three fixes along the way:
+  - two feature-002 e2e tests no longer report as skipped;
+  - a database outage now returns `503 service_unavailable` instead of a generic 500 (V9.2);
+  - a lockout is now audited with the account when it starts (V13).)
+  Run `scripts/check.ps1` until everything passes, with no skipped tests, and then run every manual scenario V1–V13 in quickstart.md locally. **Ask the user** to do the steps that need a phone authenticator app, and record the results in `specs/003-auth-security-foundations/checklists/validation.md`.
 - [ ] T126 Before anyone other than the owner is invited (Constitution Governance), run `/security-review` on the branch and an ASVS L2 checklist pass, saved as `specs/003-auth-security-foundations/checklists/asvs-l2.md`, covering V2 Authentication, V3 Session, V4 Access Control, V5 Validation, V7 Errors and Logging, V8 Data Protection, V13 API and V14 Configuration. Resolve each finding or risk-accept it in writing in plan.md. Then deploy (`docs/deploy.md`) and run quickstart V12 against the live host.
 
 ---

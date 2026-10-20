@@ -109,7 +109,8 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
-      testIgnore: [/offline\.spec\.ts/, /[\\/]auth(-quota)?[\\/]/],
+      // Viewport-specific tests are split by project (not test.skip), so a run reports no skipped tests.
+      testIgnore: [/offline\.spec\.ts/, /touch-targets\.spec\.ts/, /[\\/]auth(-quota)?[\\/]/],
       use: {
         ...devices['Desktop Chrome'],
         baseURL: 'http://localhost:5173',
@@ -121,6 +122,7 @@ export default defineConfig({
     {
       name: 'mobile',
       testIgnore: [/offline\.spec\.ts/, /[\\/]auth(-quota)?[\\/]/],
+      grepInvert: /@desktop-only/,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: 'http://localhost:5173',

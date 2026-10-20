@@ -96,8 +96,27 @@ public class SignInLimitTests(PostgresFixture db) : IAsyncLifetime
         var response = await Attempt(after, "alice", alice.Password, alice.Code());
 
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
-        Assert.Equal(1L, await Sql.Scalar<long>(db.AdminConnectionString,
+        // One when the lockout started, one for the refused attempt after the restart.
+        Assert.Equal(2L, await Sql.Scalar<long>(db.AdminConnectionString,
             "select count(*) from macro.audit_events where event_type = 'sign_in_locked'"));
+    }
+
+    [Fact]
+    public async Task A_lockout_is_audited_against_the_account_when_it_starts_with_the_default_limits()
+    {
+        // The name throttle trips at the same count and is checked first, so the lockout check never runs for
+        // the next attempt; the lockout must be recorded when it is set (quickstart V13).
+        var alice = await TestUsers.ActivateDirectlyAsync(db, _factory, "alice");
+        var client = new AuthClient(_factory);
+        await client.SessionAsync();
+        for (var i = 0; i < 10; i++) await Attempt(client, "alice", "wrong password entirely");
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await Attempt(client, "alice", alice.Password, alice.Code())).StatusCode);
+        Assert.Equal(1L, await Sql.Scalar<long>(db.AdminConnectionString,
+            """
+            select count(*) from macro.audit_events a join macro.users u on u.id = a.user_id
+            where a.event_type = 'sign_in_locked' and a.reason = 'locked' and u.username = 'alice'
+            """));
     }
 
     [Fact]
