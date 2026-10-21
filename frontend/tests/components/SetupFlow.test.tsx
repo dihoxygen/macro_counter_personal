@@ -49,6 +49,20 @@ describe('SetupFlow', () => {
       expect(onSession).toHaveBeenCalledWith(nextStep('totp'));
     });
 
+    it('can show each new password field on its own (ASVS 2.1.12)', async () => {
+      const user = userEvent.setup();
+      await renderWithServices(<SetupFlow step="password" onSession={vi.fn()} />);
+
+      const fresh = screen.getByLabelText(/^new password$/i);
+      const confirm = screen.getByLabelText(/confirm new password/i);
+      const toggles = screen.getAllByRole('button', { name: 'Show' });
+      expect(toggles.map((t) => t.getAttribute('aria-controls'))).toEqual([fresh.id, confirm.id]);
+
+      await user.click(toggles[0]!);
+      expect(fresh).toHaveAttribute('type', 'text');
+      expect(confirm).toHaveAttribute('type', 'password');
+    });
+
     it('catches a mistyped confirmation before sending', async () => {
       const user = userEvent.setup();
       const auth = fakeAuth();

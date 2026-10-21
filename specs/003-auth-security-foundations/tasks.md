@@ -697,7 +697,11 @@ The built app runs under the CSP with zero violations. Quickstart V12 passes on 
   - a database outage now returns `503 service_unavailable` instead of a generic 500 (V9.2);
   - a lockout is now audited with the account when it starts (V13).)
   Run `scripts/check.ps1` until everything passes, with no skipped tests, and then run every manual scenario V1–V13 in quickstart.md locally. **Ask the user** to do the steps that need a phone authenticator app, and record the results in `specs/003-auth-security-foundations/checklists/validation.md`.
-- [ ] T126 Before anyone other than the owner is invited (Constitution Governance), run `/security-review` on the branch and an ASVS L2 checklist pass, saved as `specs/003-auth-security-foundations/checklists/asvs-l2.md`, covering V2 Authentication, V3 Session, V4 Access Control, V5 Validation, V7 Errors and Logging, V8 Data Protection, V13 API and V14 Configuration. Resolve each finding or risk-accept it in writing in plan.md. Then deploy (`docs/deploy.md`) and run quickstart V12 against the live host.
+- [ ] T126 (In progress. Review and checklist done 2026-10-21, see `checklists/asvs-l2.md`:
+  - `/security-review` found one MFA bypass at the notice step, fixed in `22cf4eb`.
+  - The ASVS pass found 14 gaps: G1, G2 (show-password), G8, G12 and G13 were fixed with tests; the rest are accepted in plan.md § Accepted risks.
+  - Remaining: deploy, then V12 and the "Deploy" rows on the live host.)
+  Before anyone other than the owner is invited (Constitution Governance), run `/security-review` on the branch and an ASVS L2 checklist pass, saved as `specs/003-auth-security-foundations/checklists/asvs-l2.md`, covering V2 Authentication, V3 Session, V4 Access Control, V5 Validation, V7 Errors and Logging, V8 Data Protection, V13 API and V14 Configuration. Resolve each finding or risk-accept it in writing in plan.md. Then deploy (`docs/deploy.md`) and run quickstart V12 against the live host.
 
 ---
 

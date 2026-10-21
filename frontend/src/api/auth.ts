@@ -36,6 +36,7 @@ export type AuthErrorCode =
   | 'breach_check_unavailable'
   | 'invalid_code'
   | 'wrong_setup_step'
+  | 'invalid_credentials'
   | 'unauthenticated'
   | 'csrf_failed'
   | 'invalid_request'
@@ -50,6 +51,7 @@ const knownCodes = new Set<string>([
   'breach_check_unavailable',
   'invalid_code',
   'wrong_setup_step',
+  'invalid_credentials',
   'unauthenticated',
   'csrf_failed',
   'invalid_request',
@@ -138,6 +140,15 @@ export async function signOutEverywhere(): Promise<void> {
   setCsrfToken(undefined);
 }
 
+/** Other sessions end; this one stays signed in with the same CSRF token. */
+export async function changePassword(
+  currentPassword: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  await call('/api/auth/password', json({ currentPassword, code: code.trim(), newPassword }));
+}
+
 /** Everything the UI needs from the auth endpoints, injected through Services so tests can swap it. */
 export const authApi = {
   getSession,
@@ -148,6 +159,7 @@ export const authApi = {
   acknowledgeNotice,
   signOut,
   signOutEverywhere,
+  changePassword,
 };
 export type AuthApi = typeof authApi;
 

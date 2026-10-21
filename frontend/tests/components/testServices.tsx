@@ -65,6 +65,7 @@ export function fakeAuth(overrides: Partial<AuthApi> = {}): AuthApi {
     acknowledgeNotice: vi.fn(async () => signedIn),
     signOut: vi.fn(async () => undefined),
     signOutEverywhere: vi.fn(async () => undefined),
+    changePassword: vi.fn(async () => undefined),
     ...overrides,
   };
 }

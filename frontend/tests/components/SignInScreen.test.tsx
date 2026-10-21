@@ -32,6 +32,20 @@ describe('SignInScreen', () => {
     expect(code).toHaveAttribute('autocomplete', 'one-time-code');
   });
 
+  it('can show the password while typing and hide it again (ASVS 2.1.12)', async () => {
+    const user = userEvent.setup();
+    await renderWithServices(<SignInScreen onSession={vi.fn()} />);
+    const password = screen.getByLabelText(/password or temporary code/i);
+
+    const toggle = screen.getByRole('button', { name: 'Show' });
+    expect(toggle).toHaveAttribute('aria-controls', password.id);
+
+    await user.click(toggle);
+    expect(password).toHaveAttribute('type', 'text');
+    await user.click(screen.getByRole('button', { name: 'Hide' }));
+    expect(password).toHaveAttribute('type', 'password');
+  });
+
   it('offers no way to sign up, register or request access', async () => {
     const { container } = await renderWithServices(<SignInScreen onSession={vi.fn()} />);
     const text = container.textContent ?? '';
@@ -39,7 +53,7 @@ describe('SignInScreen', () => {
       expect(text).not.toMatch(forbidden);
     }
     expect(screen.queryAllByRole('link')).toHaveLength(0);
-    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Sign in']);
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Show', 'Sign in']);
   });
 
   it('sends the details and reports the session state', async () => {

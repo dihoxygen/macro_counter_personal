@@ -152,6 +152,27 @@ The grants make account creation impossible from the app. No new violations.
 | T13 | Vulnerable dependencies (A06) | Lock files; vulnerability scans in the gate (high or critical blocks merging) | Zero-day vulnerabilities |
 | T14 | Shared-browser exposure after sign-out (privacy) | `no-store` on HTML; the `pageshow` session re-check; reload on sign-out; the active-account marker is cleared | A person who never signs out leaves their data open to the next user of that browser profile |
 
+### Accepted risks (T126, ASVS Level 2)
+
+The ASVS L2 pass ([checklists/asvs-l2.md](checklists/asvs-l2.md)) found 14 gaps. The owner decided on 2026-10-21:
+- **Fixed, with tests:** G1, G2 (show-password), G8, G12 and G13.
+- **Accepted:** the gaps below. Each should be looked at again before the app is opened beyond a small group of known friends.
+
+| Gap | ASVS | Accepted because |
+|---|---|---|
+| G2 (meter only) | 2.1.8 | No strength meter. The 12-character minimum and the breach check already reject weak passwords, and the error says why. |
+| G3 | 2.2.3, 2.5.5, 2.8.5 | No security notifications. The app keeps no email or phone number (data minimization), so there is no channel. Every event is audited, and the owner, who makes every reset, knows each person. |
+| G4 | 2.3.2 | No WebAuthn/FIDO2. TOTP was chosen in research R3; passkeys can come later. |
+| G5 | 2.4.5 | No password pepper. PBKDF2 at 210,000 iterations with per-user salts; a pepper is a second secret to keep and to lose, for little gain at this size. |
+| G6 | 2.10.1 | The database login and the Anthropic key are static. Supabase's pooler needs a password. Both live in Key Vault or App Settings (docs/deploy.md) and are rotated if exposed. |
+| G7 | 3.3.4 | No list of active sessions. "Sign out everywhere" covers a handful of people. |
+| G9 | 8.1.4 | No alerting. Rate limits and quotas stop abuse on their own, and the owner can read `ai_usage_today` and `recent_audit`. |
+| G10 | 8.3.2 | No data export or account deletion in the app. The food log stays on the person's device; the server keeps the account, usage counts and audit rows. The owner can disable an account. A `macro_admin.delete_user` is a follow-up. |
+| G11 | 8.3.6 | Secrets aren't zeroed in memory. Managed runtimes can't do it reliably. |
+| G14 | 14.5.4 | `X-Forwarded-For` is trusted one hop deep from any source. App Service is the only way in, and spoofing could only skew per-IP limits and audit IPs. |
+
+Partial items that are accepted as they stand, with the reason given in the checklist: 13.1.5 (a wrong content type gets 400 rather than 415, as the contract defines) and 14.1.1 (deployment is a documented manual step).
+
 ## Project Structure
 
 ### Documentation (this feature)

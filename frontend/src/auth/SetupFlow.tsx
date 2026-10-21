@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { encode } from 'uqr';
 import { AuthError, type Enrollment, type SessionState, type SetupStep } from '../api/auth';
 import { useServices } from '../app/services';
-import { FieldError } from '../features/shared/FormBits';
+import { FieldError, PasswordInput } from '../features/shared/FormBits';
 
 /** First-time setup: choose a password → add an authenticator → read what is sent to Claude (FR-004). */
 export function SetupFlow({
@@ -25,7 +25,8 @@ export function SetupFlow({
   );
 }
 
-const reasonMessages: Record<string, string> = {
+/** Why a new password was refused (contracts/auth-api.yaml `reasons`); also used by the password change form. */
+export const reasonMessages: Record<string, string> = {
   too_short: 'Use at least 12 characters.',
   too_long: 'Use 128 characters or fewer.',
   contains_username: "Don't include your username.",
@@ -69,24 +70,18 @@ function PasswordStep({ onSession }: { onSession: (session: SessionState) => voi
       <p className="muted">
         At least 12 characters. A few unrelated words make a strong, memorable password.
       </p>
-      <label>
-        New password
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="new-password"
-        />
-      </label>
-      <label>
-        Confirm new password
-        <input
-          type="password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          autoComplete="new-password"
-        />
-      </label>
+      <PasswordInput
+        label="New password"
+        value={password}
+        onChange={setPassword}
+        autoComplete="new-password"
+      />
+      <PasswordInput
+        label="Confirm new password"
+        value={confirm}
+        onChange={setConfirm}
+        autoComplete="new-password"
+      />
       <FieldError message={error} />
       <button type="submit" className="primary" disabled={busy || !password}>
         Set password

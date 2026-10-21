@@ -266,6 +266,47 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/CsrfFailed" }
 
+  /auth/password:
+    post:
+      summary: Change the password (ASVS 2.1.5, 2.1.6, 3.3.3)
+      description: >
+        Needs the current password and a current authenticator code, so a stolen session alone can't take
+        over the account. The new password goes through the same rules as in setup (FR-005). On success the
+        security stamp rotates: every other session of this user ends, and this one stays signed in.
+        Rate limited like sign-in.
+      operationId: changePassword
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, code, newPassword]
+              additionalProperties: false
+              properties:
+                currentPassword: { type: string, minLength: 1, maxLength: 128 }
+                code: { type: string, pattern: "^[0-9]{6}$" }
+                newPassword: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "204": { description: Password changed; other sessions ended. }
+        "400":
+          description: >
+            `invalid_credentials` (the current password or the code is wrong; one message for both), or
+            `password_rejected` with `reasons` as in /auth/setup/password, or `invalid_request`.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503":
+          description: "`breach_check_unavailable` (fail closed, R2) or `service_unavailable`."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
   /estimates/text:
     post:
       summary: "Unchanged body (see 001 contract). NOW requires a full session, CSRF and quota."
@@ -323,6 +364,7 @@ components:
             - invalid_code
             - wrong_setup_step
             - service_unavailable
+            - invalid_credentials
         title: { type: string }
         detail: { type: string, description: Human-readable. Never contains stack traces, SQL, paths or configuration (FR-031). }
         status: { type: integer }

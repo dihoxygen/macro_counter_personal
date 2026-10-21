@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { AuthError, type AuthErrorCode, type SessionState } from '../api/auth';
 import { useServices } from '../app/services';
-import { FieldError } from '../features/shared/FormBits';
+import { FieldError, PasswordInput } from '../features/shared/FormBits';
 
 export const SIGN_IN_FAILED = 'Could not sign in. Check your details and try again.';
 export const SIGN_IN_UNAVAILABLE = 'Sign-in is temporarily unavailable.';
@@ -63,17 +63,13 @@ export function SignInScreen({
           required
         />
       </label>
-      <label>
-        Password or temporary code
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          maxLength={128}
-          required
-        />
-      </label>
+      <PasswordInput
+        label="Password or temporary code"
+        value={password}
+        onChange={setPassword}
+        autoComplete="current-password"
+        maxLength={128}
+      />
       <label>
         Authenticator code (leave blank on first sign-in)
         <input

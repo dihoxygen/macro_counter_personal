@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AuthError,
   acknowledgeNotice,
+  changePassword,
   getSession,
   setupPassword,
   setupTotpConfirm,
@@ -181,6 +182,24 @@ describe('auth client', () => {
       '/api/auth/sign-out',
       '/api/auth/sign-out-everywhere',
     ]);
+  });
+
+  it('changePassword POSTs exactly the three fields and expects 204', async () => {
+    const fetchMock = stubFetch(async () => new Response(null, { status: 204 }));
+    await changePassword('the old passphrase', ' 123456 ', 'a new and private passphrase');
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('/api/auth/password');
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual({
+      currentPassword: 'the old passphrase',
+      code: '123456',
+      newPassword: 'a new and private passphrase',
+    });
+  });
+
+  it('surfaces invalid_credentials from a password change', async () => {
+    stubFetch(async () => problem(400, { code: 'invalid_credentials' }));
+    expect((await caught(changePassword('x', '123456', 'y'))).code).toBe('invalid_credentials');
   });
 
   it('surfaces password_rejected reasons', async () => {

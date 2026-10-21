@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AuthError } from '../api/auth';
 import { useServices } from '../app/services';
 import { FieldError } from '../features/shared/FormBits';
+import { ChangePasswordForm } from './ChangePasswordForm';
 import { useCurrentUser } from './currentUser';
 
 /** Sign out here, or everywhere (FR-011). Local entries stay on the device, locked to this account. */
@@ -53,6 +54,7 @@ export function AccountMenu() {
           Sign out everywhere
         </button>
       </div>
+      <ChangePasswordForm />
     </div>
   );
 }

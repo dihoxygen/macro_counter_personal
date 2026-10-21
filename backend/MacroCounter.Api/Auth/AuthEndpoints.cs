@@ -23,6 +23,8 @@ public sealed record CodeRequest(string? Code);
 
 public sealed record NoticeRequest(bool? Acknowledged);
 
+public sealed record ChangePasswordRequest(string? CurrentPassword, string? Code, string? NewPassword);
+
 public sealed record SessionUser(Guid Id, string Username, string Role);
 
 public sealed record SessionState(
@@ -51,6 +53,7 @@ public static partial class AuthEndpoints
         setup.MapPost("/notice", AcknowledgeNotice);
         auth.MapPost("/sign-out", SignOut).RequireAuthorization(AccessPolicies.AnySession);
         auth.MapPost("/sign-out-everywhere", SignOutEverywhere).RequireAuthorization(AccessPolicies.FullSession);
+        auth.MapPost("/password", ChangePassword).RequireAuthorization(AccessPolicies.FullSession).RequireRateLimiting(RateLimits.SignIn);
     }
 
     private static async Task<IResult> GetSession(HttpContext context, UserManager<AppUser> users, IAntiforgery antiforgery)
@@ -151,6 +154,32 @@ public static partial class AuthEndpoints
         if (user is null) return Problems.Unauthenticated();
         var result = await setup.AcknowledgeNoticeAsync(user, context.Connection.RemoteIpAddress, context.RequestAborted);
         return await Respond(context, user, result, antiforgery, options, clock);
+    }
+
+    private static async Task<IResult> ChangePassword(HttpContext context, UserManager<AppUser> users, SetupService setup)
+    {
+        var (request, problem) = await StrictJson.ReadAsync<ChangePasswordRequest>(context, MaxBodyBytes);
+        if (problem is not null) return problem;
+        if (request!.CurrentPassword is not { Length: > 0 and <= MaxPasswordLength } currentPassword
+            || request.Code is not { } code || !SixDigits().IsMatch(code)
+            || request.NewPassword is not { Length: > 0 and <= MaxPasswordLength * 4 } newPassword)
+        {
+            return Problems.InvalidRequest("Enter your current password, a 6-digit code and a new password.");
+        }
+
+        var user = await CurrentUser(context, users);
+        if (user is null) return Problems.Unauthenticated();
+        var result = await setup.ChangePasswordAsync(user, currentPassword, code, newPassword, SessionKey(context),
+            context.Connection.RemoteIpAddress, context.RequestAborted);
+        return result switch
+        {
+            SetupResult.PasswordChanged => Results.NoContent(),
+            SetupResult.CurrentCredentialsWrong => Problems.InvalidCredentials(),
+            SetupResult.PasswordRejected rejected => Problems.PasswordRejected(rejected.Reasons),
+            SetupResult.BreachCheckUnavailable => Problems.BreachCheckUnavailable(),
+            SetupResult.WrongStep wrong => Problems.WrongSetupStep(wrong.Expected),
+            _ => throw new InvalidOperationException($"Unexpected password change result {result.GetType().Name}."),
+        };
     }
 
     private static async Task<IResult> SignOut(HttpContext context, IAuditLog audit)

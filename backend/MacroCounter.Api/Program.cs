@@ -55,6 +55,8 @@ if (app.Environment.IsProduction())
 }
 // First, so every response (errors included) carries the protective headers (FR-028).
 app.UseMiddleware<SecurityHeadersMiddleware>();
+// Outside everything that can refuse a request, so it sees the final status.
+app.UseMiddleware<RefusedRequestLogging>();
 // Production gives a generic problem with no stack trace, type name, path or SQL (FR-031).
 app.UseExceptionHandler();
 // Outside Production only: http://localhost counts as a secure context, as browsers treat it.

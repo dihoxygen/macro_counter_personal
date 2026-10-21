@@ -91,6 +91,12 @@ public class AccessMatrixTests(PostgresFixture db) : IAsyncLifetime
         "/api/auth/setup/password" => JsonContent.Create(new { newPassword = "a long and unbreached test passphrase" }),
         "/api/auth/setup/totp/confirm" => JsonContent.Create(new { code = "123456" }),
         "/api/auth/setup/notice" => JsonContent.Create(new { acknowledged = true }),
+        "/api/auth/password" => JsonContent.Create(new
+        {
+            currentPassword = "a long and unbreached test passphrase",
+            code = "123456",
+            newPassword = "another long test passphrase",
+        }),
         _ => null,
     };
 

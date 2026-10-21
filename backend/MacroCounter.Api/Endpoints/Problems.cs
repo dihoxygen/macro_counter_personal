@@ -61,6 +61,11 @@ public static class Problems
         Create(StatusCodes.Status503ServiceUnavailable, "breach_check_unavailable", "Password check unavailable.",
             "We couldn't check this password right now. Please try again in a minute.");
 
+    /// <summary>A password change with a wrong current password or code; one message for both.</summary>
+    public static IResult InvalidCredentials() =>
+        Create(StatusCodes.Status400BadRequest, "invalid_credentials", "Check your current details.",
+            "Your current password or authenticator code didn't match.");
+
     public static IResult InvalidCode(int attemptsLeft) =>
         Create(StatusCodes.Status400BadRequest, "invalid_code", "The code didn't match.",
             "Code didn't match.", new() { ["attemptsLeft"] = attemptsLeft });

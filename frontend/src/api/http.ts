@@ -23,6 +23,7 @@ export const API_ERROR_CODES = [
   'invalid_code',
   'wrong_setup_step',
   'service_unavailable',
+  'invalid_credentials',
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number] | 'network' | 'unknown';

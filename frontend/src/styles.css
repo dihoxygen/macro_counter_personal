@@ -347,6 +347,16 @@ button.entry {
   max-width: 420px;
 }
 
+.password-field {
+  display: flex;
+  gap: var(--gap);
+  align-items: flex-end;
+}
+
+.password-field label {
+  flex: 1;
+}
+
 .link-button {
   display: inline-flex;
   align-items: center;

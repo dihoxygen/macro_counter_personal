@@ -33,6 +33,11 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvi
 
             var path = context.Request.Path;
             var html = context.Response.ContentType?.StartsWith("text/html", StringComparison.OrdinalIgnoreCase) == true;
+            if (path.StartsWithSegments("/api"))
+            {
+                // A browser opening an API URL directly downloads it instead of rendering it (ASVS 14.4.2).
+                headers.ContentDisposition = "attachment; filename=\"api.json\"";
+            }
             if (path.StartsWithSegments("/api") || html)
             {
                 // Never cache the API or the app page: no stale signed-in screen after sign-out (US1.3).

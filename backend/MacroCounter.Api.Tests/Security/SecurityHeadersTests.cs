@@ -88,6 +88,20 @@ public class SecurityHeadersTests(PostgresFixture db) : IAsyncLifetime
         if (!noStore) Assert.Contains("immutable", cacheControl);
     }
 
+    [Theory]
+    [InlineData("/api/health", true)]
+    [InlineData("/api/status", true)]
+    [InlineData("/", false)]
+    [InlineData("/assets/app-1234.js", false)]
+    public async Task Api_responses_are_attachments_so_a_browser_never_renders_them(string path, bool attachment)
+    {
+        // ASVS 14.4.2 (checklists/asvs-l2.md G13).
+        await using var factory = Factory();
+        var response = await factory.CreateDefaultClient(AuthClient.BaseAddress).GetAsync(path);
+
+        Assert.Equal(attachment ? "attachment; filename=\"api.json\"" : null, Header(response, "Content-Disposition"));
+    }
+
     [Fact]
     public async Task Outside_production_the_csp_allows_the_dev_server_and_does_not_upgrade_requests()
     {

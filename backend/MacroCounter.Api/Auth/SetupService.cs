@@ -40,6 +40,12 @@ public abstract record SetupResult
 
     /// <summary>Too many wrong codes: the setup session was ended; the person signs in again.</summary>
     public sealed record SetupSessionRevoked : SetupResult;
+
+    /// <summary>A signed-in password change succeeded.</summary>
+    public sealed record PasswordChanged : SetupResult;
+
+    /// <summary>The current password or authenticator code was wrong (one result for both).</summary>
+    public sealed record CurrentCredentialsWrong : SetupResult;
 }
 
 /// <summary>Password → authenticator → "what is sent to Claude" notice (FR-004, research R3/R4).</summary>
@@ -62,13 +68,50 @@ public sealed class SetupService(
     {
         if (SetupSteps.Next(user) != SetupSteps.Password) return Wrong(user);
 
-        var normalized = PasswordPolicy.Normalize(newPassword);
+        if (await RejectNewPasswordAsync(user, newPassword, sourceIp, cancellationToken) is { } rejected) return rejected;
+        user.TempCodeHash = null; // the temporary code is single-use (FR-008); saved with the new hash
+        await StorePasswordAsync(user, newPassword, sessionKey, sourceIp, cancellationToken);
+        return await Advance(user, cancellationToken);
+    }
+
+    /// <summary>
+    /// A signed-in person changes their password (ASVS 2.1.5, 2.1.6). The current password and an unused
+    /// authenticator code are both required, so a stolen session alone cannot take over the account.
+    /// </summary>
+    public async Task<SetupResult> ChangePasswordAsync(AppUser user, string currentPassword, string code, string newPassword,
+        string sessionKey, IPAddress? sourceIp, CancellationToken cancellationToken)
+    {
+        if (SetupSteps.Next(user) is { } step) return new SetupResult.WrongStep(step);
+
+        var currentOk = hasher.VerifyHashedPassword(user, user.PasswordHash!, PasswordPolicy.Normalize(currentPassword))
+                        != PasswordVerificationResult.Failed
+                        && await users.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code)
+                        && await store.TryConsumeTotpAsync(user, code, clock.GetUtcNow(), cancellationToken);
+        if (!currentOk)
+        {
+            await audit.WriteAsync(AuditEvent.PasswordRejected, AuditOutcome.Failure, user.Id, AuditReason.BadCredentials,
+                sourceIp, cancellationToken);
+            return new SetupResult.CurrentCredentialsWrong();
+        }
+
+        if (await RejectNewPasswordAsync(user, newPassword, sourceIp, cancellationToken) is { } rejected) return rejected;
+        await StorePasswordAsync(user, newPassword, sessionKey, sourceIp, cancellationToken);
+        return new SetupResult.PasswordChanged();
+    }
+
+    /// <summary>Length, username and breach rules (FR-005); null when the password can be used.</summary>
+    private async Task<SetupResult?> RejectNewPasswordAsync(AppUser user, string newPassword, IPAddress? sourceIp,
+        CancellationToken cancellationToken)
+    {
         var reasons = policy.Check(newPassword, user.UserName!).ToList();
         if (reasons.Count == 0)
         {
             try
             {
-                if (await breachChecker.IsBreachedAsync(normalized, cancellationToken)) reasons.Add(PasswordPolicy.Breached);
+                if (await breachChecker.IsBreachedAsync(PasswordPolicy.Normalize(newPassword), cancellationToken))
+                {
+                    reasons.Add(PasswordPolicy.Breached);
+                }
             }
             catch (BreachCheckUnavailableException)
             {
@@ -77,20 +120,21 @@ public sealed class SetupService(
                 return new SetupResult.BreachCheckUnavailable();
             }
         }
-        if (reasons.Count > 0)
-        {
-            await audit.WriteAsync(AuditEvent.PasswordRejected, AuditOutcome.Failure, user.Id, null, sourceIp, cancellationToken);
-            return new SetupResult.PasswordRejected(reasons);
-        }
+        if (reasons.Count == 0) return null;
 
-        user.PasswordHash = hasher.HashPassword(user, normalized);
-        user.TempCodeHash = null; // the temporary code is single-use (FR-008)
+        await audit.WriteAsync(AuditEvent.PasswordRejected, AuditOutcome.Failure, user.Id, null, sourceIp, cancellationToken);
+        return new SetupResult.PasswordRejected(reasons);
+    }
+
+    /// <summary>Saves the new hash and rotates the security stamp: other sessions end, this one follows the new stamp.</summary>
+    private async Task StorePasswordAsync(AppUser user, string newPassword, string sessionKey, IPAddress? sourceIp,
+        CancellationToken cancellationToken)
+    {
+        user.PasswordHash = hasher.HashPassword(user, PasswordPolicy.Normalize(newPassword));
         user.SecurityStamp = NewStamp();
         await db.SaveChangesAsync(cancellationToken);
-        // Other sessions end; this one follows the new stamp.
         await sessions.UpdateStampAsync(sessionKey, user.SecurityStamp, cancellationToken);
         await audit.WriteAsync(AuditEvent.PasswordSet, AuditOutcome.Success, user.Id, null, sourceIp, cancellationToken);
-        return await Advance(user, cancellationToken);
     }
 
     public async Task<SetupResult> StartTotpAsync(AppUser user, CancellationToken cancellationToken)

@@ -71,3 +71,18 @@ jobs:
           MACROCOUNTER_TEST_PG: Host=localhost;Username=postgres;Password=${{ env.PG_CI_PASSWORD }}
           CI: "true"
         run: ./scripts/check.ps1
+
+      # ASVS 14.2.5 (specs/003-auth-security-foundations/checklists/asvs-l2.md G12): a CycloneDX bill of
+      # materials for every build, kept as a download on the run. The frontend one includes the build tools.
+      - name: Software bill of materials
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force sbom | Out-Null
+          dotnet dotnet-CycloneDX backend/MacroCounter.Api/MacroCounter.Api.csproj --output sbom --filename backend.cdx.json --output-format Json
+          npm --prefix frontend sbom --sbom-format cyclonedx | Out-File -Encoding utf8NoBOM sbom/frontend.cdx.json
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: sbom/
+          if-no-files-found: error
