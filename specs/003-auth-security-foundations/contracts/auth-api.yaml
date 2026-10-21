@@ -86,8 +86,9 @@ paths:
 
 
         For an account in setup, put the temporary code (or the password already chosen during an
-        unfinished setup) in `password` and leave out `code`. The response is then `state: setup`
-        and a setup session is issued.
+        unfinished setup) in `password` and leave out `code`. Once the authenticator is confirmed
+        (setup stopped at `notice`), `code` is required as in a normal sign-in. The response is then
+        `state: setup` and a setup session is issued.
 
 
         Rate limited per IP, per username (whether or not the account exists) and per account

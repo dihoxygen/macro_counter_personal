@@ -252,7 +252,7 @@ credentials of every kind give the same generic message. Quickstart V1, V2, V4.1
   - an active user with the correct password and a valid TOTP gives `SignedIn` and sets `last_sign_in_at`;
   - each of these gives the **same** `Failed` result: wrong password, wrong code, missing code, unknown user, disabled user, an INCOMPLETE account (no password hash and no temp code), and an invited user after `setup_expires_at`. The INCOMPLETE case writes audit reason `account_incomplete`;
   - an invited user with the right temp code (with or without dashes, any case) gives `SetupRequired(step: password)`;
-  - a user who set a password but did not finish setup, signing in with that password and no code before the deadline, gives `SetupRequired(step: totp or notice)`;
+  - a user who set a password but did not finish setup, signing in with that password and no code before the deadline, gives `SetupRequired(step: totp)`. Once the authenticator is confirmed, a valid code is also needed to reach `SetupRequired(step: notice)`; without one the result is `Failed` (T126 security review);
   - ` Alice ` matches `alice`;
   - the password hasher is called exactly once on **every** path, including unknown users and the temp-code path (verify with a counting `IPasswordHasher` decorator).
 - [X] T034 [P] [US1] Write `SetupService` tests in `backend/MacroCounter.Api.Tests/Auth/SetupServiceTests.cs`:

@@ -118,6 +118,35 @@ public class AuthEndpointsTests(PostgresFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_setup_left_at_the_notice_cannot_be_finished_with_the_password_alone()
+    {
+        // T126 security review: the authenticator is already enrolled, so resuming must need its code.
+        var code = await TestUsers.InviteAsync(db, "carol");
+        var first = new AuthClient(_factory);
+        await first.SessionAsync();
+        first.Csrf = (await AuthClient.Json(await first.PostAsync("/api/auth/sign-in", new { username = "carol", password = code })))
+            .GetProperty("csrfToken").GetString();
+        await first.PostForStateAsync("/api/auth/setup/password", new { newPassword = TestUsers.DefaultPassword });
+        var secret = (await AuthClient.Json(await first.PostAsync("/api/auth/setup/totp"))).GetProperty("setupKey").GetString()!.Replace(" ", "");
+        await first.PostForStateAsync("/api/auth/setup/totp/confirm", new { code = Totp.Compute(secret, DateTimeOffset.UtcNow) });
+        // The tab is closed here, before the notice.
+
+        var attacker = new AuthClient(_factory);
+        await attacker.SessionAsync();
+        await AssertProblem(await attacker.PostAsync("/api/auth/sign-in", new { username = "carol", password = TestUsers.DefaultPassword }),
+            HttpStatusCode.Unauthorized, "sign_in_failed");
+        await AssertProblem(await attacker.PostAsync("/api/auth/setup/notice", new { acknowledged = true }),
+            HttpStatusCode.Unauthorized, "unauthenticated");
+        Assert.Equal(0L, await Sql.Scalar<long>(db.AdminConnectionString, "select count(*) from macro.sessions where kind = 'full'"));
+
+        var owner = new AuthClient(_factory);
+        await owner.SessionAsync();
+        var resumed = await owner.SignInAsync("carol", TestUsers.DefaultPassword, Totp.Compute(secret, DateTimeOffset.UtcNow.AddSeconds(30)));
+        Assert.Equal("setup", resumed.GetProperty("state").GetString());
+        Assert.Equal("notice", resumed.GetProperty("setupStep").GetString());
+    }
+
+    [Fact]
     public async Task Normal_sign_in_works_and_a_wrong_password_gets_the_generic_message()
     {
         var (_, carol) = await TestUsers.ActivateAsync(db, _factory, "carol");

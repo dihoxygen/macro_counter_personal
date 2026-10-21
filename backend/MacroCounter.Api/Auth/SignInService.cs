@@ -92,7 +92,7 @@ public sealed partial class SignInService(
         var step = SetupSteps.Next(user);
         return step is null
             ? await SignInActive(user, password, code, now, sourceIp, cancellationToken)
-            : await SignInDuringSetup(user, step, password, now, sourceIp, cancellationToken);
+            : await SignInDuringSetup(user, step, password, code, now, sourceIp, cancellationToken);
 
         async Task<SignInOutcome> Fail(Guid? userId, AuditReason reason)
         {
@@ -112,9 +112,7 @@ public sealed partial class SignInService(
         }
 
         var passwordOk = VerifyPassword(user, password);
-        var codeOk = code is not null
-            && await users.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code);
-        if (passwordOk && codeOk && await store.TryConsumeTotpAsync(user, code!, now, cancellationToken))
+        if (passwordOk && await CodeAccepted(user, code, now, cancellationToken))
         {
             user.AccessFailedCount = 0;
             user.LockoutEnd = null;
@@ -127,8 +125,8 @@ public sealed partial class SignInService(
         return await RecordFailure(user, now, sourceIp, cancellationToken);
     }
 
-    private async Task<SignInOutcome> SignInDuringSetup(AppUser user, string step, string password, DateTimeOffset now,
-        IPAddress? sourceIp, CancellationToken cancellationToken)
+    private async Task<SignInOutcome> SignInDuringSetup(AppUser user, string step, string password, string? code,
+        DateTimeOffset now, IPAddress? sourceIp, CancellationToken cancellationToken)
     {
         if (user.SetupExpiresAt is not { } deadline || (user.PasswordHash is null && user.TempCodeHash is null))
         {
@@ -153,6 +151,9 @@ public sealed partial class SignInService(
         else
         {
             ok = VerifyPassword(user, password);
+            // Once the authenticator is confirmed it guards the rest of setup too; otherwise the password alone
+            // would reach the notice step, and acknowledging it ends in a full session.
+            if (ok && user.TwoFactorEnabled) ok = await CodeAccepted(user, code, now, cancellationToken);
         }
 
         if (!ok) return await RecordFailure(user, now, sourceIp, cancellationToken);
@@ -169,6 +170,12 @@ public sealed partial class SignInService(
         var normalized = new string(code.Where(c => c is not ('-' or ' ')).ToArray()).ToUpperInvariant();
         return SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
     }
+
+    /// <summary>A valid authenticator code that has not been used before (replay protection).</summary>
+    private async Task<bool> CodeAccepted(AppUser user, string? code, DateTimeOffset now, CancellationToken cancellationToken) =>
+        code is not null
+        && await users.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code)
+        && await store.TryConsumeTotpAsync(user, code, now, cancellationToken);
 
     private bool VerifyPassword(AppUser user, string password)
     {

@@ -149,14 +149,31 @@ public class SignInServiceTests(PostgresFixture db) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_notice_step_is_reported_when_only_it_remains()
+    public async Task The_notice_step_is_reported_when_only_it_remains_and_the_code_is_right()
     {
-        await TestUsers.ActivateDirectlyAsync(db, _factory, "carol");
+        var carol = await TestUsers.ActivateDirectlyAsync(db, _factory, "carol");
         await Sql.Execute(db.AdminConnectionString,
             "update macro.users set ai_notice_ack_at = null, setup_expires_at = now() + interval '1 day'");
 
-        var outcome = Assert.IsType<SignInOutcome.SetupRequired>(await SignIn("carol", TestUsers.DefaultPassword, null));
+        var outcome = Assert.IsType<SignInOutcome.SetupRequired>(await SignIn("carol", carol.Password, carol.Code()));
         Assert.Equal(SetupSteps.Notice, outcome.Step);
+    }
+
+    [Fact]
+    public async Task Once_the_authenticator_is_confirmed_resuming_setup_needs_the_code()
+    {
+        // Otherwise the password alone reaches the notice step, and acknowledging it gives a full session (T126 review).
+        var carol = await TestUsers.ActivateDirectlyAsync(db, _factory, "carol");
+        await Sql.Execute(db.AdminConnectionString,
+            "update macro.users set ai_notice_ack_at = null, setup_expires_at = now() + interval '1 day'");
+        var wrongCode = carol.Code() == "000000" ? "111111" : "000000";
+
+        Assert.Same(SignInOutcome.Failed.Instance, await SignIn("carol", carol.Password, null));
+        Assert.Same(SignInOutcome.Failed.Instance, await SignIn("carol", carol.Password, wrongCode));
+        Assert.Equal(1, _hasher.Verifications);
+        Assert.Equal(2, await Sql.Scalar<int>(db.AdminConnectionString, "select access_failed_count from macro.users"));
+        Assert.Equal(2L, await Sql.Scalar<long>(db.AdminConnectionString,
+            "select count(*) from macro.audit_events where event_type = 'sign_in' and reason = 'bad_credentials'"));
     }
 
     [Fact]
