@@ -30,9 +30,8 @@ async function expectTouchTargets(page: Page, view: string) {
   expect(small, `targets smaller than ${MIN}px on ${view}`).toEqual([]);
 }
 
+// Touch targets are checked at the mobile viewport: the desktop project leaves this file out (playwright.config.ts).
 test.describe('Touch targets', () => {
-  test.skip(({ isMobile }) => !isMobile, 'touch targets are checked at the mobile viewport');
-
   test('every view meets the 44×44 px minimum', async ({ page, context }) => {
     await context.grantPermissions(['camera']);
     await recordMediaStreams(page);

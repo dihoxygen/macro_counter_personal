@@ -2,10 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using MacroCounter.Api.Ai;
+using MacroCounter.Api.Tests.Infrastructure;
 
 namespace MacroCounter.Api.Tests.Endpoints;
 
-public class PhotoEstimateEndpointTests
+[Collection("Postgres")]
+public class PhotoEstimateEndpointTests(PostgresFixture db)
 {
     private const string Key = "test-key-not-real";
     private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00];
@@ -23,10 +25,10 @@ public class PhotoEstimateEndpointTests
         return form;
     }
 
-    private static async Task<HttpResponseMessage> Post(IEstimator estimator, HttpContent content, string? apiKey = Key)
+    private async Task<HttpResponseMessage> Post(IEstimator estimator, HttpContent content, string? apiKey = Key)
     {
-        var factory = new ApiFactory(apiKey, estimator);
-        return await factory.CreateClient().PostAsync("/api/estimates/photo", content);
+        var factory = new ApiFactory(db, apiKey, estimator);
+        return await (await factory.SignedInClientAsync()).PostAsync("/api/estimates/photo", content);
     }
 
     private static async Task AssertProblem(HttpResponseMessage response, HttpStatusCode status, string code)
@@ -145,8 +147,8 @@ public class PhotoEstimateEndpointTests
     [Fact]
     public async Task No_key_is_ai_unavailable()
     {
-        var factory = new ApiFactory(apiKey: null);
-        var response = await factory.CreateClient().PostAsync("/api/estimates/photo", Form(Jpeg));
+        var factory = new ApiFactory(db, apiKey: null);
+        var response = await (await factory.SignedInClientAsync()).PostAsync("/api/estimates/photo", Form(Jpeg));
         await AssertProblem(response, HttpStatusCode.ServiceUnavailable, "ai_unavailable");
     }
 
@@ -162,5 +164,17 @@ public class PhotoEstimateEndpointTests
     {
         var estimator = FakeEstimator.Throwing(new InvalidAiResponseException("refused"));
         await AssertProblem(await Post(estimator, Form(Jpeg)), HttpStatusCode.BadGateway, "invalid_ai_response");
+    }
+
+    [Fact]
+    public async Task Without_a_session_it_is_refused_and_claude_is_never_called()
+    {
+        var estimator = FakeEstimator.Returning(FakeEstimator.Banana);
+        var factory = new ApiFactory(db, Key, estimator);
+
+        var response = await factory.CreateClient().PostAsync("/api/estimates/photo", Form(Jpeg));
+
+        await AssertProblem(response, HttpStatusCode.Unauthorized, "unauthenticated");
+        Assert.Equal(0, estimator.Calls);
     }
 }

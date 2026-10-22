@@ -1,0 +1,6 @@
+<Project>
+  <!-- Constitution VII (supply chain): pin every dependency, including transitive ones. -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+</Project>

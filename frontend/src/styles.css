@@ -14,7 +14,12 @@
   --warn-border: #c99a00;
   --error: #b3261e;
   color-scheme: light dark;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   line-height: 1.4;
 }
 
@@ -335,4 +340,59 @@ button.entry {
   background: #000;
   object-fit: contain;
   border-radius: var(--radius);
+}
+
+/* Sign-in and setup (feature 003) */
+.auth-form {
+  max-width: 420px;
+}
+
+.password-field {
+  display: flex;
+  gap: var(--gap);
+  align-items: flex-end;
+}
+
+.password-field label {
+  flex: 1;
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  width: fit-content;
+}
+
+.qr-code {
+  width: 220px;
+  height: 220px;
+  max-width: 100%;
+}
+
+.setup-key {
+  word-break: break-all;
+  font-size: 1rem;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgb(0 0 0 / 55%);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.overlay > .card {
+  width: 100%;
+  max-width: 460px;
 }

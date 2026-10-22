@@ -2,12 +2,24 @@
 
 A protein-focused macro logger for desktop and phone browsers. Describe what you ate, or take a
 photo, and Claude estimates calories, protein, carbs and fat. You review and confirm every estimate
-before it is logged. Your data stays in your browser (IndexedDB). The small .NET backend only holds
-the Claude API key and validates AI responses; it stores nothing.
+before it is logged. It is invite-only: the owner adds each person, and everyone signs in with a
+password and an authenticator app.
+
+**Where data lives.** Your food log, saved foods and goals stay in your browser (IndexedDB), in a
+database of your own account. Nobody else signing in on that browser can see them. The .NET backend
+holds the Claude API key, validates AI responses, and stores **identity and security data only**:
+accounts, sign-in sessions, AI usage counts and a security audit log. That store is PostgreSQL
+(Supabase in production). It never receives your food log, photos or goals.
+
+**What is sent to Claude.** Only the food description or photo (and its note) that you choose to
+look up, sent to Claude, Anthropic's AI model. Your name, account, food log and goals are never
+sent. The owner runs the server.
 
 - `frontend/`: React 19 + TypeScript (Vite), installable as a PWA, works offline except AI lookup.
-- `backend/`: ASP.NET Core (.NET 10) minimal API: `/api/status`, `/api/estimates/text`, `/api/estimates/photo`.
-- `specs/001-ai-macro-logging/`: the spec, plan, data model, API contracts and validation scenarios.
+- `backend/`: ASP.NET Core (.NET 10) minimal API: sign-in and setup (`/api/auth/*`), `/api/health`,
+  `/api/status`, `/api/estimates/text`, `/api/estimates/photo`.
+- `specs/001-ai-macro-logging/`, `specs/002-add-photo-from-source/`, `specs/003-auth-security-foundations/`:
+  specs, plans, data models, API contracts and validation scenarios.
 
 ## Prerequisites
 
@@ -15,6 +27,7 @@ the Claude API key and validates AI responses; it stores nothing.
 |------|---------|-------|
 | .NET SDK | 10.x | `dotnet --list-sdks` |
 | Node.js | 24.x | `node --version` |
+| PostgreSQL | 17 or later, local (`winget install PostgreSQL.PostgreSQL.17`) | `psql --version` |
 | Anthropic API key | | Only needed to run the real app. Tests never use it. |
 
 First-time setup:
@@ -23,6 +36,23 @@ First-time setup:
 cd frontend
 npm ci
 npx playwright install chromium
+cd ..
+dotnet tool restore
+```
+
+Point the tests and local scripts at your **local** PostgreSQL superuser. Run this in your own
+terminal, so the password stays out of the repo and out of chats. Never use the Supabase database
+here: the tests create and drop throwaway databases.
+
+```powershell
+setx MACROCOUNTER_TEST_PG "Host=localhost;Username=postgres;Password=<your local postgres password>"
+```
+
+Then create the local development identity database. This applies the migrations and stores the
+app's connection string in User Secrets:
+
+```powershell
+.\scripts\dev-db.ps1
 ```
 
 ## Set the API key
@@ -55,33 +85,33 @@ cd ..; dotnet run --project backend/MacroCounter.Api
 
 Open http://localhost:5080.
 
-### Using it on your phone
+### First sign-in as the owner
 
-On the same home Wi-Fi network:
+Invite yourself in the local database and keep the one-time code it prints:
 
 ```powershell
-dotnet run --project backend/MacroCounter.Api --urls http://0.0.0.0:5080
+psql -d macro_dev -c "select macro_admin.invite_user('<you>', 'owner');"
 ```
 
-Then open `http://<your-PC's-LAN-IP>:5080` on the phone (find the IP with `ipconfig`). Windows
-Firewall may ask you to allow the port; allow it for **private** networks only.
+Open the app and enter your username and the code, leaving the authenticator field empty. Then
+choose a password, add the app to an authenticator (QR code, setup key or link), and read the note
+about what is sent to Claude. After that you sign in with your password and the 6-digit code.
 
-> **Do not expose this port to the internet.** The backend has no login. Anyone who can reach it can
-> spend your Anthropic credits.
+**Adding, resetting or removing friends** happens in the database, never in the app. See the
+[owner runbook](specs/003-auth-security-foundations/contracts/owner-procedures.md#owner-runbook-sc-011-each-task-takes-under-5-minutes):
+`invite_user`, `reset_user`, `disable_user`, `enable_user`, `unlock_user` and `revoke_sessions`.
 
-Note: browsers only install PWAs and keep service workers over HTTPS or `localhost`, so offline mode
-works on the PC itself; on the phone over plain HTTP the app works while connected.
+### Using it on your phone
+
+Use the deployed HTTPS site ([docs/deploy.md](docs/deploy.md)). Signing in uses `Secure`, `__Host-`
+cookies, which browsers only accept over HTTPS or on `localhost`. Opening the PC's address over
+plain HTTP on the home network **no longer works**.
 
 **Photos.** The photo step offers **Take photo** and **Choose existing photo** on every device:
 
 - **Choose existing photo** opens the phone's photo library (or the file dialog on a PC).
 - **Take photo** shows a live camera view inside the app wherever the browser allows it: on the PC at
-  `http://localhost:5080`, or over HTTPS. Browsers block the in-app camera over plain HTTP, so on the
-  phone over the LAN, Take photo opens the phone's own camera app instead.
-- To try the in-app camera on the phone, serve the app over LAN HTTPS with a locally trusted
-  certificate. The steps are in
-  [the feature 002 quickstart](specs/002-add-photo-from-source/quickstart.md#manual-checks-on-real-devices-sc-001-sc-002-sc-003-sc-007)
-  (manual check 3).
+  `http://localhost:5080`, or over HTTPS, including the deployed site on a phone.
 
 ## Change the model
 
@@ -94,6 +124,22 @@ The model is configured in exactly one place, `backend/MacroCounter.Api/appsetti
 Change `Model` (for example to `claude-sonnet-5-5` for lower cost) or `Effort` (`low` to `max`) and
 restart the backend.
 
+## Production configuration
+
+`backend/MacroCounter.Api/appsettings.Production.json` ships with placeholders that **must** be
+overridden on the host (App Settings or environment variables). Never put real values in the
+repository:
+
+- `AllowedHosts`: the real host name (never `*`)
+- `Security:AllowedOrigins:0`: the app's own `https://` origin
+- `ConnectionStrings:Identity`: the Supabase pooler connection as the `macro_app` role, with
+  `SSL Mode=VerifyFull;Root Certificate=certs/supabase-root-ca.crt`
+- `DataProtection:CertificatePfxBase64` and `DataProtection:CertificatePassword`
+- `Anthropic:ApiKey`
+
+The app refuses to start in Production if any of these is missing or permissive. The full guide is
+[docs/deploy.md](docs/deploy.md).
+
 ## Tests and the merge gate
 
 ```powershell
@@ -102,15 +148,19 @@ restart the backend.
 
 It runs, in order, and stops at the first failure:
 
-1. `dotnet format` (no changes allowed)
-2. Backend tests with 100% line/branch coverage on `Nutrition/`
-3. Frontend lint and type check
-4. Frontend unit and component tests with 100% coverage on `src/domain/`
-5. Playwright end-to-end tests at a desktop (1280×800) and phone (360×740) viewport, plus an
-   offline test against the production build
+1. A locked NuGet restore, then `dotnet format` (no changes allowed)
+2. Backend tests with 100% line/branch coverage on `Nutrition/`, against a throwaway local
+   PostgreSQL database, running as the least-privilege app role
+3. A NuGet vulnerability scan (any high or critical finding fails)
+4. Frontend lint, type check, and unit and component tests with 100% coverage on `src/domain/`
+5. An npm vulnerability scan (high or critical fails)
+6. Playwright end-to-end tests at a desktop (1280×800) and phone (360×740) viewport, an offline test
+   against the production build, and the sign-in, quota and CSP tests against the real backend
+7. A secret scan of every tracked file and of the built app
 
-Claude is mocked everywhere; the test suite never calls the Anthropic API. Merge a branch into
-`master` only when `check.ps1` passes.
+Claude, Have I Been Pwned and Supabase are never contacted: every test uses mocks, fakes and the
+local database. CI (`.github/workflows/ci.yml`) runs the same script, and `master` only accepts
+changes that pass it.
 
 ### Accuracy check (optional, costs credits)
 

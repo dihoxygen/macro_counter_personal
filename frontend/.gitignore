@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Written by scripts/e2e-db.ps1 (local throwaway database; never commit)
+tests/e2e/auth/.codes.json
+tests/e2e/auth/.e2e-db.json

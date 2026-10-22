@@ -21,6 +21,9 @@ export function TodayScreen({ onNavigate }: { onNavigate: (view: View) => void }
         <button type="button" onClick={() => onNavigate('history')}>
           Previous days
         </button>
+        <button type="button" onClick={() => onNavigate('account')}>
+          Account
+        </button>
       </div>
     </section>
   );
