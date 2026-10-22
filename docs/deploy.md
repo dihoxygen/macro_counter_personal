@@ -23,7 +23,7 @@ Before inviting anyone other than yourself, complete the security review in the 
 5. **Apply the migrations** as the owner (`postgres`). Generate the idempotent script:
 
    ```powershell
-   dotnet tool restore
+   dotnet tool install --global dotnet-ef   # once; skip if `dotnet ef --version` already works
    dotnet ef migrations script --idempotent --project backend/MacroCounter.Api --output migrate.sql
    ```
 
