@@ -55,7 +55,8 @@ Host=aws-0-<region>.pooler.supabase.com;Port=5432;Database=postgres;Username=mac
 
 ## 2. Azure App Service (one instance)
 
-1. **Create the app:** Linux, .NET 10, plan **B1**, in the same region as Supabase.
+1. **Create the app:** Linux, .NET 10, plan **B1**, in the same region as Supabase. Step by step,
+   with the Key Vault and a cost alert: `docs/azure-app-service.md`.
    - Settings → Configuration: **Always On** on, **HTTPS Only** on, minimum TLS 1.2, FTP state
      **Disabled**.
    - Scale out: **1 instance**. The per-IP and per-minute rate limits are kept in memory, so more
