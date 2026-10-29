@@ -140,7 +140,7 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - on confirm, clears `describeDraft` and focuses the field; on discard, keeps the draft;
   - reports pending protein in two steps: `reviewTotal(phase.state).proteinG` when the review opens (`ReviewEstimate`'s `onChange` skips its first render, T006), then the value from each `onChange`, and `0` when the card closes;
   - moves focus to the review region when it opens (R7);
-  - takes props `onLogged()` (called after a confirm or a manual save) and `onPendingChange(proteinG: number)`, which reports `reviewTotal(state).proteinG` while reviewing and `0` otherwise.
+  - takes props `onLogged()` (called after a confirm or a manual save) and `onPendingChange(proteinG: number)` (reported as above).
 - [ ] T017 [US1] In `frontend/src/features/today/TodayScreen.tsx`, render `<Composer>` after `DayLog`. Its `onLogged` increments `refreshKey`, and its `onPendingChange` sets a `pendingProteinG` state that is passed to `DayLog`. Keep the existing bottom button row (including **Add food**) for now. Make T009–T012 pass
 - [ ] T018 [US1] Add styles in `frontend/src/styles.css` for `.composer` (surface background, top border, padding 12px 16px), `.card-area`, `.goal-bar` as a flex row, and `.goal-bar-pending` (accent colour at 45 % opacity, using `repeating-linear-gradient` stripes). No layout grid yet (US4). Run `npx playwright test touch-targets` and fix any new target under 44 px
 
@@ -214,7 +214,7 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   Port every remaining assertion from `frontend/tests/components/AddFood.test.tsx` and `frontend/tests/components/AddFoodPhoto.test.tsx` into this file
 - [ ] T027 [P] [US3] Rewrite `frontend/tests/e2e/log-photo.spec.ts` and `frontend/tests/e2e/camera.spec.ts` to select **Photo** in `composer(page)` instead of **Add food** → **Photo**. Keep every assertion about re-encoding, EXIF stripping, camera permission and the camera stopping. Add one: after going to **Previous days** with the live camera open, `liveTrackCount(page)` is 0. Run them and confirm they fail
 - [ ] T028 [P] [US3] Rewrite `frontend/tests/e2e/offline.spec.ts` so offline logging uses the composer's **Manual** form, and add a quick-pick re-log while offline (Q11). For SC-006 and FR-018, record every request with `page.on('request')` from the first `page.goto`. Assert each request URL's origin equals the app's origin (`new URL(page.url()).origin`), with no Google Fonts or other third-party host. Run it and confirm it fails
-- [ ] T029 [P] [US3] Add failing assertions to `frontend/tests/components/TodayScreen.test.tsx` and `frontend/tests/components/App.test.tsx`: there is no **Add food** button on Today, and `App` has no `add` view. Search for `'add'` in `View`
+- [ ] T029 [P] [US3] Add failing assertions to `frontend/tests/components/TodayScreen.test.tsx` and `frontend/tests/components/App.test.tsx`: no button or heading named **Add food** is reachable from Today or from any of its header buttons. Removing `'add'` from the `View` type is checked by `npm run typecheck` in T032
 
 ### Implementation for User Story 3
 
@@ -258,11 +258,11 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - **both**: **Totals** is fully in the viewport at scroll 0, and `document.documentElement.scrollWidth <= innerWidth`, including with the long-named entry. The long-named entry's name element is one line high (its height is under 1.5 × its computed `line-height`).
   - **both**: the `<meta name="viewport">` content includes `interactive-widget=resizes-content` (FR-016).
 - [ ] T034 [P] [US4] Write failing `frontend/tests/e2e/keyboard.spec.ts` (desktop project only; skip in mobile with `test.skip(testInfo.project.name !== 'desktop')`):
-  - focus **What did you eat?** with Tab presses from the page start, type "banana" and press Enter;
+  - seed no entries and no saved foods, then from the page start press Tab until **What did you eat?** is focused (at most 10 presses), type "banana" and press Enter;
   - assert focus is inside **Review estimate**;
   - press Tab until **Confirm** is focused (at most 15 presses) and press Enter;
   - assert the entry is logged and focus is back in **What did you eat?**. Use no mouse calls.
-- [ ] T035 [P] [US4] Rewrite `frontend/tests/e2e/touch-targets.spec.ts` to walk the new views per [quickstart](./quickstart.md#scenarios): Today empty; Today with quick picks; the composer in Describe, Photo (live camera open) and Manual; the review card with a warning and the item editor open; and the re-log form. Remove the **Add food** steps. Run it before T037: it must fail on the views US1–US3 did not style. Once T037–T040 are done it passes and guards them from then on
+- [ ] T035 [P] [US4] Rewrite `frontend/tests/e2e/touch-targets.spec.ts` to walk the new views per [quickstart](./quickstart.md#scenarios): Today empty; Today with quick picks; the composer in Describe, Photo (live camera open) and Manual; the review card with a warning and the item editor open; and the re-log form. Remove the **Add food** steps. Run it before T037. If it fails, T037–T040 make it pass. If it already passes because T018 and T025 sized everything, record that in this task. Either way it is the regression guard for T037–T040
 - [ ] T036 [P] [US4] Write a failing test in `frontend/tests/components/Composer.test.tsx` for FR-016. Spy on `Element.prototype.scrollIntoView` (jsdom doesn't implement it, so assign a `vi.fn()` and restore it after). Focusing **What did you eat?** calls it once with `{ block: 'nearest' }` on the **Log food** region, and so does focusing **Note (optional)** in Photo
 
 ### Implementation for User Story 4
@@ -274,6 +274,7 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - Split the day's data from its layout. Move `DayLog`'s loading of entries and goals, its `selected` entry and its `reload` into a new hook, `useDayLog(dayKey, refreshKey)`, in `frontend/src/features/today/useDayLog.ts`. It returns `{ entries, totals, goalG, editing, select, closeEditor, changed }`.
   - `DayLog` uses the hook and renders exactly what it renders now, so `DayView` and `DayView.test.tsx` are unchanged.
   - `TodayScreen` uses the hook directly and places `TotalsPanel` (the `summary` area), `EntryEditor` and `EntryList` (the `entries` area) and `Composer` (the `composer` area) in the grid itself.
+  - `TodayScreen` passes `pendingProteinG` to `TotalsPanel` directly. `DayLog` keeps its optional `pendingG` prop, which `DayView` leaves unset.
 
   Make T033 pass, and keep `DayView.test.tsx`, `TodayScreen.test.tsx` and `App.test.tsx` green
 - [ ] T038 [US4] In `frontend/index.html`:

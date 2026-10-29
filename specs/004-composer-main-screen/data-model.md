@@ -72,4 +72,4 @@ Reference values: (96, 54, 150) → (64, 36). (96, 0, 150) → (64, 0). (140, 30
 |-------|-------|-------|
 | `view` | `App` (existing) | `'today' \| 'recent' \| 'history' \| 'goal' \| 'account'`. `'add'` is removed |
 | `active` | prop to `TodayScreen` | `view === 'today'`. On false → true, `refreshKey` increments. On true → false, the live camera closes |
-| `refreshKey` | `TodayScreen` | Passed to `DayLog` and `QuickPicks` to reload after confirm, re-log or returning to Today |
+| `refreshKey` | `TodayScreen` | Passed to `useDayLog` (through `DayLog` or Today) and `QuickPicks` to reload after confirm, re-log or returning to Today |
