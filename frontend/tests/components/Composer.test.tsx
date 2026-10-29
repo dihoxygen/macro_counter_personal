@@ -446,3 +446,59 @@ describe('Composer: entry methods', () => {
     vi.restoreAllMocks();
   });
 });
+
+// Feature 004 User Story 4 (FR-016): the composer scrolls into view when a field gets focus, so it stays
+// visible above the on-screen keyboard where the browser does not resize the layout (research R3).
+describe('Composer: keeps the input visible', () => {
+  it('scrolls the composer into view when the description or the photo note gets focus', async () => {
+    const original = Element.prototype.scrollIntoView;
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      const { user, composer } = await setup(async () => estimateOf(bananaItem));
+      await user.click(field(composer));
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView.mock.contexts[0]).toBe(composer);
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+
+      await user.click(within(composer).getByRole('button', { name: 'Photo' }));
+      await user.click(within(composer).getByLabelText('Note (optional)'));
+      expect(scrollIntoView).toHaveBeenCalledTimes(2);
+      expect(scrollIntoView.mock.contexts[1]).toBe(composer);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+});
+
+describe('Composer: after a manual save', () => {
+  const fill = async (user: ReturnType<typeof userEvent.setup>, composer: HTMLElement) => {
+    await user.type(within(composer).getByLabelText('Food name'), 'Boiled egg');
+    await user.type(within(composer).getByLabelText('Amount'), '50');
+    await user.type(within(composer).getByLabelText('Calories (kcal)'), '78');
+    await user.type(within(composer).getByLabelText('Protein (g)'), '6.3');
+    await user.type(within(composer).getByLabelText('Carbs (g)'), '0.6');
+    await user.type(within(composer).getByLabelText('Fat (g)'), '5.3');
+    await user.click(within(composer).getByRole('button', { name: /^save$/i }));
+  };
+  const pressed = (composer: HTMLElement, name: string) =>
+    within(within(composer).getByRole('group', { name: 'Entry method' })).getByRole('button', { name });
+
+  it('goes back to the compact Describe input when AI lookup can be used', async () => {
+    const { user, composer } = await setup(async () => estimateOf(bananaItem));
+    await user.click(pressed(composer, 'Manual'));
+    await fill(user, composer);
+    await vi.waitFor(() => expect(pressed(composer, 'Describe')).toHaveAttribute('aria-pressed', 'true'));
+    expect(within(composer).getByLabelText('Food name')).toHaveValue('');
+  });
+
+  it('stays on Manual when AI lookup is unavailable', async () => {
+    const { user, composer, services } = await setup(async () => estimateOf(bananaItem), {
+      getStatus: vi.fn(async () => ({ aiAvailable: false })),
+    });
+    await within(composer).findByText(/ai lookup is unavailable/i);
+    await fill(user, composer);
+    await vi.waitFor(async () => expect(await services.entries.listByDay(today())).toHaveLength(1));
+    expect(pressed(composer, 'Manual')).toHaveAttribute('aria-pressed', 'true');
+  });
+});

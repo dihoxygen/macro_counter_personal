@@ -252,22 +252,26 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T033 [P] [US4] Write failing `frontend/tests/e2e/layout.spec.ts`, run in the `desktop` and `mobile` projects, using `mockApi` and one seeded entry plus one with an 80-character name:
+- [X] T033 [P] [US4] Write failing `frontend/tests/e2e/layout.spec.ts`, run in the `desktop` and `mobile` projects, using `mockApi` and one seeded entry plus one with an 80-character name:
   - **desktop (1280 × 800)**: the `boundingBox()` of **Log food** has `x ≥` the right edge of **Entries**, and both have `y >` the bottom of **Totals**.
   - **mobile (360 × 740)**: the top of **Log food** is below the top of **Entries**, and **Log food** touches the viewport bottom: `y + height` is within 1 px of 740 when the page is scrolled to the top with 10 seeded entries.
   - **both**: **Totals** is fully in the viewport at scroll 0, and `document.documentElement.scrollWidth <= innerWidth`, including with the long-named entry. The long-named entry's name element is one line high (its height is under 1.5 × its computed `line-height`).
   - **both**: the `<meta name="viewport">` content includes `interactive-widget=resizes-content` (FR-016).
-- [ ] T034 [P] [US4] Write failing `frontend/tests/e2e/keyboard.spec.ts` (desktop project only; skip in mobile with `test.skip(testInfo.project.name !== 'desktop')`):
+
+  *(Done. The desktop and phone position checks are one test that branches on the viewport width, because the config avoids skipped tests. It caught a real problem: after a manual save the composer stayed on Manual, and its sticky 488 px form covered the log on a phone. The composer now returns to Describe after a manual save when AI is available (tested in `Composer.test.tsx`, red then green), and the sticky composer is capped at 60vh.)*
+- [X] T034 [P] [US4] Write failing `frontend/tests/e2e/keyboard.spec.ts` (desktop project only; skip in mobile with `test.skip(testInfo.project.name !== 'desktop')`):
   - seed no entries and no saved foods, then from the page start press Tab until **What did you eat?** is focused (at most 10 presses), type "banana" and press Enter;
   - assert focus is inside **Review estimate**;
   - press Tab until **Confirm** is focused (at most 15 presses) and press Enter;
   - assert the entry is logged and focus is back in **What did you eat?**. Use no mouse calls.
-- [ ] T035 [P] [US4] Rewrite `frontend/tests/e2e/touch-targets.spec.ts` to walk the new views per [quickstart](./quickstart.md#scenarios): Today empty; Today with quick picks; the composer in Describe, Photo (live camera open) and Manual; the review card with a warning and the item editor open; and the re-log form. Remove the **Add food** steps. Run it before T037. If it fails, T037–T040 make it pass. If it already passes because T018 and T025 sized everything, record that in this task. Either way it is the regression guard for T037–T040
-- [ ] T036 [P] [US4] Write a failing test in `frontend/tests/components/Composer.test.tsx` for FR-016. Spy on `Element.prototype.scrollIntoView` (jsdom doesn't implement it, so assign a `vi.fn()` and restore it after). Focusing **What did you eat?** calls it once with `{ block: 'nearest' }` on the **Log food** region, and so does focusing **Note (optional)** in Photo
+
+  *(Done. It passed as soon as it was written, because focus handling came with US1 (T016); it stays as the regression guard.)*
+- [X] T035 [P] [US4] Rewrite `frontend/tests/e2e/touch-targets.spec.ts` to walk the new views per [quickstart](./quickstart.md#scenarios): Today empty; Today with quick picks; the composer in Describe, Photo (live camera open) and Manual; the review card with a warning and the item editor open; and the re-log form. Remove the **Add food** steps. Run it before T037. If it fails, T037–T040 make it pass. If it already passes because T018 and T025 sized everything, record that in this task. Either way it is the regression guard for T037–T040 *(Done: it already passed. Earlier stories rewrote the walk as they changed each view (composer describe, review, photo with live camera, manual, quick-pick re-log, More recent foods), and T018/T025 sized everything)*
+- [X] T036 [P] [US4] Write a failing test in `frontend/tests/components/Composer.test.tsx` for FR-016. Spy on `Element.prototype.scrollIntoView` (jsdom doesn't implement it, so assign a `vi.fn()` and restore it after). Focusing **What did you eat?** calls it once with `{ block: 'nearest' }` on the **Log food** region, and so does focusing **Note (optional)** in Photo
 
 ### Implementation for User Story 4
 
-- [ ] T037 [US4] Implement the layout in `frontend/src/styles.css` per [research R3](./research.md#r3-one-responsive-layout-fr-013-fr-014-fr-016):
+- [X] T037 [US4] Implement the layout in `frontend/src/styles.css` per [research R3](./research.md#r3-one-responsive-layout-fr-013-fr-014-fr-016):
   - `.today` is a grid with areas `header`, `summary`, `entries` and `composer`.
   - Below 960 px it is a single column, and `.composer` is `position: sticky; bottom: 0` with `background: var(--surface)`.
   - `@media (min-width: 960px)`: `.app { max-width: 1120px }` and `.today { grid-template-columns: minmax(0, 1fr) minmax(360px, 420px) }`. Header and summary span both columns, entries go left and the composer right with `position: sticky; top: 12px`.
@@ -277,13 +281,13 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - `TodayScreen` passes `pendingProteinG` to `TotalsPanel` directly. `DayLog` keeps its optional `pendingG` prop, which `DayView` leaves unset.
 
   Make T033 pass, and keep `DayView.test.tsx`, `TodayScreen.test.tsx` and `App.test.tsx` green
-- [ ] T038 [US4] In `frontend/index.html`:
+- [X] T038 [US4] In `frontend/index.html`:
   - change the viewport meta tag to `width=device-width, initial-scale=1.0, interactive-widget=resizes-content`;
   - replace the single `theme-color` with two metas: `media="(prefers-color-scheme: light)" content="#1f6f50"` and `media="(prefers-color-scheme: dark)" content="#111312"`.
 
   In `frontend/src/features/add-food/Composer.tsx`, on focus of **What did you eat?** or **Note (optional)**, call `composerRef.current?.scrollIntoView({ block: 'nearest' })` (FR-016). Make T036 and the viewport assertion in T033 pass
-- [ ] T039 [US4] Fix the focus order and any remaining gaps until T034 and T035 pass. DOM order must be header → summary → entries → composer (card area, quick picks, method switch, input), as in [research R7](./research.md#r7-keyboard-fr-015)
-- [ ] T040 [US4] Update the dark palette in `frontend/src/styles.css` (`@media (prefers-color-scheme: dark)`) to the tokens in `docs/design/composer/README.md`:
+- [X] T039 [US4] Fix the focus order and any remaining gaps until T034 and T035 pass. DOM order must be header → summary → entries → composer (card area, quick picks, method switch, input), as in [research R7](./research.md#r7-keyboard-fr-015)
+- [X] T040 [US4] Update the dark palette in `frontend/src/styles.css` (`@media (prefers-color-scheme: dark)`) to the tokens in `docs/design/composer/README.md`:
   - `--bg: #111312`, `--surface: #1a1d1b`, `--text: #ececea`, `--muted: #a8a8a3`, `--border: #333734`;
   - `--accent: #5cc493`, `--accent-text: #0d1f17`;
   - `--warn-bg: #3a3014`, `--warn-border: #d9b13a`;

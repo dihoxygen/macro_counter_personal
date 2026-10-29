@@ -12,7 +12,10 @@
   --accent-text: #ffffff;
   --warn-bg: #fff4d6;
   --warn-border: #c99a00;
+  --warn-text: inherit;
   --error: #b3261e;
+  --surface-raised: #efefeb;
+  --border-subtle: #e5e5e0;
   color-scheme: light dark;
   font-family:
     system-ui,
@@ -23,17 +26,21 @@
   line-height: 1.4;
 }
 
+/* Dark tokens from the Composer design (docs/design/composer/README.md, feature 004). */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #161716;
-    --surface: #212321;
+    --bg: #111312;
+    --surface: #1a1d1b;
+    --surface-raised: #2a2e2b;
     --text: #ececea;
     --muted: #a8a8a3;
-    --border: #3a3c3a;
+    --border: #333734;
+    --border-subtle: #262927;
     --accent: #5cc493;
     --accent-text: #0d1f17;
     --warn-bg: #3a3014;
     --warn-border: #d9b13a;
+    --warn-text: #f2dd9a;
     --error: #ff8a80;
   }
 }
@@ -150,6 +157,7 @@ label {
 }
 
 .warning {
+  color: var(--warn-text);
   background: var(--warn-bg);
   border: 1px solid var(--warn-border);
   border-radius: var(--radius);
@@ -477,4 +485,67 @@ button.entry {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+
+/* Today layout (feature 004, research R3): one grid. A single column with the composer stuck to the bottom of
+   the screen on phones; entries beside the composer from 960 px. */
+.today {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'header'
+    'summary'
+    'entries'
+    'composer';
+  gap: var(--gap);
+}
+
+.today-header {
+  grid-area: header;
+  margin-bottom: 0;
+}
+
+.today-summary {
+  grid-area: summary;
+}
+
+.today-entries {
+  grid-area: entries;
+  min-width: 0;
+}
+
+.today > .composer {
+  grid-area: composer;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  /* The Manual form or a review card can be tall: scroll inside the composer rather than hide the whole log. */
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 960px) {
+  .app {
+    max-width: 1120px;
+  }
+
+  .today {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+    grid-template-areas:
+      'header header'
+      'summary summary'
+      'entries composer';
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .today > .composer {
+    top: 12px;
+    bottom: auto;
+    max-height: none;
+    overflow-y: visible;
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
 }

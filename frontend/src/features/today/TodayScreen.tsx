@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { View } from '../../App';
 import { Composer } from '../add-food/Composer';
-import { DayLog } from './DayLog';
+import { EntryEditor } from './EntryEditor';
+import { EntryList } from './EntryList';
+import { TotalsPanel } from './TotalsPanel';
 import { useCurrentDayKey } from './useCurrentDayKey';
+import { useDayLog } from './useDayLog';
 
 interface Props {
   /** False while another view is shown over the still-mounted Today (feature 004, research R1). */
@@ -15,6 +18,7 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [pendingProteinG, setPendingProteinG] = useState(0);
   const wasActive = useRef(active);
+  const day = useDayLog(dayKey, refreshKey);
 
   // Other views can change entries and goals; reload when Today becomes visible again.
   useEffect(() => {
@@ -23,16 +27,33 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
   }, [active]);
 
   return (
-    <section className="stack">
-      <header className="screen-header">
+    // One grid for every width: a single column on phones, entries beside the composer from 960 px (research R3).
+    <section className="today">
+      <header className="screen-header today-header">
         <h1>Today</h1>
       </header>
-      <DayLog
-        dayKey={dayKey}
-        refreshKey={refreshKey}
-        pendingG={pendingProteinG}
-        onSetGoal={() => onNavigate('goal')}
-      />
+      <div className="today-summary">
+        <TotalsPanel
+          totals={day.totals}
+          goalG={day.goalG}
+          pendingG={pendingProteinG}
+          onSetGoal={() => onNavigate('goal')}
+        />
+      </div>
+      <div className="today-entries stack">
+        {day.editing && (
+          <EntryEditor key={day.editing.id} entry={day.editing} onClose={day.closeEditor} onChanged={day.changed} />
+        )}
+        <EntryList entries={day.entries} onSelect={day.select} />
+        <div className="row">
+          <button type="button" onClick={() => onNavigate('history')}>
+            Previous days
+          </button>
+          <button type="button" onClick={() => onNavigate('account')}>
+            Account
+          </button>
+        </div>
+      </div>
       <Composer
         active={active}
         refreshKey={refreshKey}
@@ -40,14 +61,6 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
         onMoreRecent={() => onNavigate('recent')}
         onPendingChange={setPendingProteinG}
       />
-      <div className="row">
-        <button type="button" onClick={() => onNavigate('history')}>
-          Previous days
-        </button>
-        <button type="button" onClick={() => onNavigate('account')}>
-          Account
-        </button>
-      </div>
     </section>
   );
 }

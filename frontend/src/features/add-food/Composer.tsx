@@ -52,6 +52,9 @@ export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPending
   const focusInputNext = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const cardAreaRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLElement>(null);
+  // Keep the composer on screen above the on-screen keyboard where the browser doesn't resize for it (FR-016).
+  const keepInView = () => composerRef.current?.scrollIntoView({ block: 'nearest' });
   const flow = useEstimateFlow(() => undefined);
   const { phase } = flow;
   // One thing in the card area at a time: an estimate loading or under review, or a re-log (FR-005).
@@ -129,6 +132,8 @@ export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPending
 
   const manualSaved = () => {
     setManualKey((k) => k + 1); // a fresh, empty form
+    // Back to the compact Describe input when it can be used, so the form doesn't keep covering the log.
+    if (aiAvailable) setMethod('describe');
     onLogged();
   };
 
@@ -149,7 +154,7 @@ export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPending
   );
 
   return (
-    <section aria-label="Log food" className="composer stack">
+    <section ref={composerRef} aria-label="Log food" className="composer stack">
       <div ref={cardAreaRef} className="card-area">
         {phase.kind === 'loading' && (
           <div className="row">
@@ -221,6 +226,7 @@ export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPending
           onSend={estimateText}
           disabled={busy}
           inputRef={inputRef}
+          onFocus={keepInView}
         />
       </div>
       <div hidden={method !== 'photo'}>
@@ -231,6 +237,7 @@ export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPending
           onSend={estimatePhoto}
           disabled={busy}
           active={active && method === 'photo'}
+          onFocus={keepInView}
         />
       </div>
       {/* Kept mounted while hidden, so a half-typed entry survives switching method (FR-011). */}
