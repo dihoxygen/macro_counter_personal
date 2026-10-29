@@ -19,11 +19,13 @@ export function useDayLog(dayKey: DayKey, refreshKey = 0) {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([services.entries.listByDay(dayKey), services.goals.listAll()]).then(([list, history]) => {
-      if (!active) return;
-      setEntries(list);
-      setGoals(history);
-    });
+    void Promise.all([services.entries.listByDay(dayKey), services.goals.listAll()]).then(
+      ([list, history]) => {
+        if (!active) return;
+        setEntries(list);
+        setGoals(history);
+      },
+    );
     return () => {
       active = false;
     };

@@ -10,11 +10,19 @@ describe('ReviewEstimate onChange', () => {
   function setup(initial: ReviewState) {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<ReviewEstimate initial={initial} onConfirm={vi.fn()} onDiscard={vi.fn()} onChange={onChange} />);
+    render(
+      <ReviewEstimate
+        initial={initial}
+        onConfirm={vi.fn()}
+        onDiscard={vi.fn()}
+        onChange={onChange}
+      />,
+    );
     return { user, onChange };
   }
 
-  const lastState = (onChange: ReturnType<typeof vi.fn>) => onChange.mock.calls.at(-1)![0] as ReviewState;
+  const lastState = (onChange: ReturnType<typeof vi.fn>) =>
+    onChange.mock.calls.at(-1)![0] as ReviewState;
 
   it('is not called on first render', () => {
     const { onChange } = setup(startReview(estimateOf(bananaItem)));
@@ -35,7 +43,9 @@ describe('ReviewEstimate onChange', () => {
 
   it('reports a removed item', async () => {
     const { user, onChange } = setup(startReview(estimateOf(bananaItem, eggItem)));
-    await user.click(within(screen.getByRole('group', { name: 'Egg' })).getByRole('button', { name: 'Remove' }));
+    await user.click(
+      within(screen.getByRole('group', { name: 'Egg' })).getByRole('button', { name: 'Remove' }),
+    );
 
     expect(lastState(onChange).items.map((i) => i.name)).toEqual(['Banana']);
   });
@@ -56,7 +66,11 @@ describe('ReviewEstimate onChange', () => {
   });
 
   it('reports an accepted warning', async () => {
-    const flagged = { ...bananaItem, macros: { ...bananaItem.macros, kcal: 300 }, flags: ['calorie_macro_mismatch' as const] };
+    const flagged = {
+      ...bananaItem,
+      macros: { ...bananaItem.macros, kcal: 300 },
+      flags: ['calorie_macro_mismatch' as const],
+    };
     const { user, onChange } = setup(startReview(estimateOf(flagged)));
     await user.click(screen.getByRole('button', { name: 'Yes, these values are right' }));
 

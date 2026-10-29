@@ -79,7 +79,8 @@ export function RelogForm({ food, onLogged, onBack, backLabel = 'Back to list' }
       {macros && (
         <div role="group" aria-label="Will log" className="macro-list">
           <div>
-            <span className="total-label">Protein</span> <strong>{formatGrams(macros.proteinG)}</strong>
+            <span className="total-label">Protein</span>{' '}
+            <strong>{formatGrams(macros.proteinG)}</strong>
           </div>
           <div>
             <span className="total-label">Calories</span> <strong>{formatKcal(macros.kcal)}</strong>

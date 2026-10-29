@@ -1,8 +1,9 @@
 # UI direction: Composer
 
 The chosen redesign of the main screen. The AI lookup input is always on Today, and an estimate is
-reviewed inline as a card instead of on a separate Add food screen. This is a design reference for
-a future spec (`/speckit-specify`); nothing here is implemented yet.
+reviewed inline as a card instead of on a separate Add food screen. It is specified and built in
+[`specs/004-composer-main-screen/`](../../../specs/004-composer-main-screen/spec.md); where the build differs
+from this reference (system font instead of DM Sans, no typed corrections), the spec's Assumptions say why.
 
 Mockups: [canvas](https://claude.ai/artifact/MpLUN8JjxbDyHeq6ygAxR7) (private to the owner). The
 `.dc.html` files in this folder are the canvas sources for the two Composer screens; they render

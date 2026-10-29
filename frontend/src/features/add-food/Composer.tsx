@@ -94,7 +94,8 @@ export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPending
     void flow.run(request);
   };
 
-  const estimateText = (text: string) => lookUp((signal) => services.estimateFromText(text, signal));
+  const estimateText = (text: string) =>
+    lookUp((signal) => services.estimateFromText(text, signal));
   const estimatePhoto = (jpeg: Blob, photoNote: string | undefined) =>
     lookUp((signal) => services.estimateFromPhoto(jpeg, photoNote, signal));
 
@@ -183,7 +184,13 @@ export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPending
           </div>
         )}
         {relog && (
-          <RelogForm key={relog.id} food={relog} onLogged={relogged} onBack={() => setRelog(null)} backLabel="Cancel" />
+          <RelogForm
+            key={relog.id}
+            food={relog}
+            onLogged={relogged}
+            onBack={() => setRelog(null)}
+            backLabel="Cancel"
+          />
         )}
         {phase.kind === 'error' && (
           <div className="stack">

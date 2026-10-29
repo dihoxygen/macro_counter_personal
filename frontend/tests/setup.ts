@@ -8,6 +8,9 @@ let objectUrlCount = 0;
 URL.createObjectURL ??= () => `blob:test-${++objectUrlCount}`;
 URL.revokeObjectURL ??= () => {};
 
+// jsdom has no layout, so no scrollIntoView; the composer calls it on focus (feature 004). Tests may replace it.
+Element.prototype.scrollIntoView ??= () => {};
+
 afterEach(() => {
   cleanup();
 });

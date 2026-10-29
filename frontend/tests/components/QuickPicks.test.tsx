@@ -46,14 +46,11 @@ describe('QuickPicks', () => {
   it('(b) shows the 5 most recent foods, then More recent foods', async () => {
     await setup(['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven']);
     const group = await picks();
-    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual([
-      'Seven',
-      'Six',
-      'Five',
-      'Four',
-      'Three',
-      'More recent foods',
-    ]);
+    expect(
+      within(group)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Seven', 'Six', 'Five', 'Four', 'Three', 'More recent foods']);
   });
 
   it('(c) re-logs a food at its saved amount in 2 interactions', async () => {
@@ -116,7 +113,9 @@ describe('QuickPicks', () => {
     await user.click(await screen.findByRole('button', { name: 'Confirm' }));
 
     await vi.waitFor(async () => {
-      const names = within(await picks()).getAllByRole('button').map((b) => b.textContent);
+      const names = within(await picks())
+        .getAllByRole('button')
+        .map((b) => b.textContent);
       expect(names.slice(0, 2)).toEqual(['Banana', 'Greek yogurt']);
     });
   });

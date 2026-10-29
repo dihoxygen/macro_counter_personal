@@ -330,10 +330,10 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T045 [P] Search `README.md`, `docs/` and the `frontend/src` comments for "Add food" as a screen name, and update them to describe logging from Today
-- [ ] T046 [P] Run `npm run format` and `npm run lint` in `frontend/`, and fix anything they report. Delete any now-unused exports (for example `SubmitOrProgress` if it is unused) and unused CSS classes from the removed screen
-- [ ] T047 Run the full check: `.\scripts\check.ps1`, or the npm equivalents from T001 plus the `auth-*` Playwright projects when PostgreSQL is available. Confirm `src/domain/**` coverage is 100 % line and branch. Report any project that couldn't run and why. The `auth-*` projects (rewritten in T011 and T043) **must** pass on the owner's machine (`.\scripts\check.ps1` with `MACROCOUNTER_TEST_PG` set) before the branch is merged to `master`. If they weren't run here, say so in the final report and in the PR description
-- [ ] T048 Walk the manual checks in [quickstart.md](./quickstart.md#manual-checks-not-automated): phone keyboard on Android Chrome and the iOS Safari PWA, dark-mode contrast at 4.5:1, and the camera light off after leaving Today. Record the results in `specs/004-composer-main-screen/checklists/validation.md`, including anything that couldn't be checked
+- [X] T045 [P] Search `README.md`, `docs/` and the `frontend/src` comments for "Add food" as a screen name, and update them to describe logging from Today
+- [X] T046 [P] Run `npm run format` and `npm run lint` in `frontend/`, and fix anything they report. Delete any now-unused exports (for example `SubmitOrProgress` if it is unused) and unused CSS classes from the removed screen
+- [X] T047 Run the full check: `.\scripts\check.ps1`, or the npm equivalents from T001 plus the `auth-*` Playwright projects when PostgreSQL is available. Confirm `src/domain/**` coverage is 100 % line and branch. Report any project that couldn't run and why. The `auth-*` projects (rewritten in T011 and T043) **must** pass on the owner's machine (`.\scripts\check.ps1` with `MACROCOUNTER_TEST_PG` set) before the branch is merged to `master`. If they weren't run here, say so in the final report and in the PR description
+- [X] T048 Walk the manual checks in [quickstart.md](./quickstart.md#manual-checks-not-automated): phone keyboard on Android Chrome and the iOS Safari PWA, dark-mode contrast at 4.5:1, and the camera light off after leaving Today. Record the results in `specs/004-composer-main-screen/checklists/validation.md`, including anything that couldn't be checked
 
 ---
 

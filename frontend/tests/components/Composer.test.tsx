@@ -29,7 +29,11 @@ async function setup(
 
 const field = (composer: HTMLElement) => within(composer).getByLabelText('What did you eat?');
 
-async function describeFood(user: ReturnType<typeof userEvent.setup>, composer: HTMLElement, text = '1 medium banana') {
+async function describeFood(
+  user: ReturnType<typeof userEvent.setup>,
+  composer: HTMLElement,
+  text = '1 medium banana',
+) {
   await user.type(field(composer), text);
   await user.click(within(composer).getByRole('button', { name: 'Estimate' }));
 }
@@ -71,7 +75,9 @@ describe('Composer: describe on Today', () => {
     await describeFood(user, composer);
     await user.click(await screen.findByRole('button', { name: 'Confirm' }));
 
-    await vi.waitFor(() => expect(screen.queryByRole('region', { name: 'Review estimate' })).not.toBeInTheDocument());
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Review estimate' })).not.toBeInTheDocument(),
+    );
     expect(field(composer)).toHaveValue('');
     expect(field(composer)).toHaveFocus();
     const list = await screen.findByRole('list', { name: /entries/i });
@@ -120,24 +126,29 @@ describe('Composer: describe on Today', () => {
     expect(await services.entries.listByDay(today())).toEqual([]);
   });
 
-  it.each<EstimateErrorCode>(['invalid_request', 'invalid_ai_response', 'ai_unavailable', 'ai_timeout', 'network'])(
-    '(j) a %s error shows its message with Retry and Enter manually',
-    async (code) => {
-      const { user, composer, services } = await setup(async () => {
-        throw new EstimateError(code);
-      });
-      await describeFood(user, composer, 'banana');
+  it.each<EstimateErrorCode>([
+    'invalid_request',
+    'invalid_ai_response',
+    'ai_unavailable',
+    'ai_timeout',
+    'network',
+  ])('(j) a %s error shows its message with Retry and Enter manually', async (code) => {
+    const { user, composer, services } = await setup(async () => {
+      throw new EstimateError(code);
+    });
+    await describeFood(user, composer, 'banana');
 
-      expect(await within(composer).findByRole('alert')).toHaveTextContent(new EstimateError(code).message);
-      await user.click(within(composer).getByRole('button', { name: 'Retry' }));
-      await vi.waitFor(() => expect(services.estimateFromText).toHaveBeenCalledTimes(2));
-      expect(services.estimateFromText).toHaveBeenLastCalledWith('banana', expect.any(AbortSignal));
+    expect(await within(composer).findByRole('alert')).toHaveTextContent(
+      new EstimateError(code).message,
+    );
+    await user.click(within(composer).getByRole('button', { name: 'Retry' }));
+    await vi.waitFor(() => expect(services.estimateFromText).toHaveBeenCalledTimes(2));
+    expect(services.estimateFromText).toHaveBeenLastCalledWith('banana', expect.any(AbortSignal));
 
-      await user.click(await within(composer).findByRole('button', { name: 'Enter manually' }));
-      expect(within(composer).getByRole('textbox', { name: 'Food name' })).toBeVisible();
-      expect(field(composer)).toHaveValue('banana');
-    },
-  );
+    await user.click(await within(composer).findByRole('button', { name: 'Enter manually' }));
+    expect(within(composer).getByRole('textbox', { name: 'Food name' })).toBeVisible();
+    expect(field(composer)).toHaveValue('banana');
+  });
 
   it.each<EstimateErrorCode>(['quota_exceeded', 'rate_limited'])(
     '(j) a %s refusal keeps manual entry one click away (FR-019)',
@@ -160,7 +171,9 @@ describe('Composer: describe on Today', () => {
     await describeFood(user, composer, 'asdf');
 
     expect(
-      await within(composer).findByText('Couldn’t identify food. Try describing it differently, or enter it manually.'),
+      await within(composer).findByText(
+        'Couldn’t identify food. Try describing it differently, or enter it manually.',
+      ),
     ).toBeInTheDocument();
     await user.click(within(composer).getByRole('button', { name: 'Retry' }));
     await vi.waitFor(() => expect(services.estimateFromText).toHaveBeenCalledTimes(2));
@@ -169,9 +182,15 @@ describe('Composer: describe on Today', () => {
   });
 
   it('(l) shows the card’s protein as pending and follows edits', async () => {
-    const shake = { ...bananaItem, name: 'Shake', macros: { kcal: 216, proteinG: 54, carbsG: 0, fatG: 0 } };
+    const shake = {
+      ...bananaItem,
+      name: 'Shake',
+      macros: { kcal: 216, proteinG: 54, carbsG: 0, fatG: 0 },
+    };
     const user = userEvent.setup();
-    const services = await createTestServices({ estimateFromText: vi.fn(async () => estimateOf(shake)) as never });
+    const services = await createTestServices({
+      estimateFromText: vi.fn(async () => estimateOf(shake)) as never,
+    });
     await services.goals.setGoal(today(), 150);
     await services.entries.create({
       dayKey: today(),
@@ -201,7 +220,9 @@ describe('Composer: describe on Today', () => {
 
   it('(m) a card confirmed after midnight is logged to the new day and shown on Today', async () => {
     let clock = new Date(2026, 9, 8, 23, 59);
-    const { user, composer, services } = await setup(async () => estimateOf(bananaItem), { now: () => clock });
+    const { user, composer, services } = await setup(async () => estimateOf(bananaItem), {
+      now: () => clock,
+    });
     await describeFood(user, composer);
     await screen.findByRole('region', { name: 'Review estimate' });
 
@@ -212,7 +233,9 @@ describe('Composer: describe on Today', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }));
 
     await vi.waitFor(async () =>
-      expect((await services.entries.listByDay('2026-10-09')).map((e) => e.name)).toEqual(['Banana']),
+      expect((await services.entries.listByDay('2026-10-09')).map((e) => e.name)).toEqual([
+        'Banana',
+      ]),
     );
     const list = await screen.findByRole('list', { name: /entries/i });
     expect(await within(list).findByText('Banana')).toBeInTheDocument();
@@ -224,7 +247,10 @@ describe('Composer: review behaviour (ported)', () => {
   it('sends only the description', async () => {
     const { user, composer, services } = await setup(async () => estimateOf(bananaItem));
     await describeFood(user, composer, '1 medium banana');
-    expect(services.estimateFromText).toHaveBeenCalledWith('1 medium banana', expect.any(AbortSignal));
+    expect(services.estimateFromText).toHaveBeenCalledWith(
+      '1 medium banana',
+      expect.any(AbortSignal),
+    );
   });
 
   it('shows the item, the assumed portion, formatted macros and an AI estimate label', async () => {
@@ -253,7 +279,11 @@ describe('Composer: review behaviour (ported)', () => {
   });
 
   it('a calorie_macro_mismatch flag shows a warning and blocks Confirm until accepted', async () => {
-    const flagged = { ...bananaItem, macros: { ...bananaItem.macros, kcal: 400 }, flags: ['calorie_macro_mismatch' as const] };
+    const flagged = {
+      ...bananaItem,
+      macros: { ...bananaItem.macros, kcal: 400 },
+      flags: ['calorie_macro_mismatch' as const],
+    };
     const { user, composer, services } = await setup(async () => estimateOf(flagged));
     await describeFood(user, composer);
 
@@ -266,11 +296,17 @@ describe('Composer: review behaviour (ported)', () => {
     expect(confirm).toBeEnabled();
     await user.click(confirm);
 
-    await vi.waitFor(async () => expect((await services.entries.listByDay(today()))[0]!.macros.kcal).toBe(400));
+    await vi.waitFor(async () =>
+      expect((await services.entries.listByDay(today()))[0]!.macros.kcal).toBe(400),
+    );
   });
 
   it('a large_portion flag also needs acceptance', async () => {
-    const big = { ...bananaItem, portion: { amount: 2500, unit: 'g' as const }, flags: ['large_portion' as const] };
+    const big = {
+      ...bananaItem,
+      portion: { amount: 2500, unit: 'g' as const },
+      flags: ['large_portion' as const],
+    };
     const { user, composer } = await setup(async () => estimateOf(big));
     await describeFood(user, composer);
 
@@ -334,17 +370,31 @@ describe('Composer: review behaviour (ported)', () => {
 
 // Feature 004 User Story 3: every method in the composer (FR-009 to FR-011).
 describe('Composer: entry methods', () => {
-  const methods = (composer: HTMLElement) => within(composer).getByRole('group', { name: 'Entry method' });
+  const methods = (composer: HTMLElement) =>
+    within(composer).getByRole('group', { name: 'Entry method' });
 
   it('(a) offers Describe, Photo and Manual with aria-pressed', async () => {
     const { user, composer } = await setup(async () => estimateOf(bananaItem));
     const group = methods(composer);
-    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Describe', 'Photo', 'Manual']);
-    expect(within(group).getByRole('button', { name: 'Describe' })).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(group)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Describe', 'Photo', 'Manual']);
+    expect(within(group).getByRole('button', { name: 'Describe' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
 
     await user.click(within(group).getByRole('button', { name: 'Photo' }));
-    expect(within(group).getByRole('button', { name: 'Photo' })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(group).getByRole('button', { name: 'Describe' })).toHaveAttribute('aria-pressed', 'false');
+    expect(within(group).getByRole('button', { name: 'Photo' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(group).getByRole('button', { name: 'Describe' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('(c) keeps each method’s draft across switches, and only the selected one is visible', async () => {
@@ -360,7 +410,10 @@ describe('Composer: entry methods', () => {
     await user.click(within(group).getByRole('button', { name: 'Photo' }));
     expect(within(composer).getByLabelText('Food name')).not.toBeVisible();
     expect(field(composer)).not.toBeVisible();
-    await user.upload(within(composer).getByLabelText('Existing photo file'), new File(['x'], 'meal.jpg', { type: 'image/jpeg' }));
+    await user.upload(
+      within(composer).getByLabelText('Existing photo file'),
+      new File(['x'], 'meal.jpg', { type: 'image/jpeg' }),
+    );
     expect(await within(composer).findByRole('img', { name: 'Selected photo' })).toBeVisible();
 
     await user.click(within(group).getByRole('button', { name: 'Describe' }));
@@ -379,10 +432,15 @@ describe('Composer: entry methods', () => {
       getStatus: vi.fn(async () => ({ aiAvailable: false })),
     });
     expect(
-      await within(composer).findByText('AI lookup is unavailable right now. You can still enter the food manually.'),
+      await within(composer).findByText(
+        'AI lookup is unavailable right now. You can still enter the food manually.',
+      ),
     ).toBeInTheDocument();
     const group = methods(composer);
-    expect(within(group).getByRole('button', { name: 'Manual' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(group).getByRole('button', { name: 'Manual' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     expect(within(group).getByRole('button', { name: 'Describe' })).toBeDisabled();
     expect(within(group).getByRole('button', { name: 'Photo' })).toBeDisabled();
     expect(within(composer).getByLabelText('Food name')).toBeVisible();
@@ -395,7 +453,9 @@ describe('Composer: entry methods', () => {
       getStatus,
     });
     expect(
-      within(composer).getByText('Sign in or reconnect to use AI lookup. You can still enter the food manually.'),
+      within(composer).getByText(
+        'Sign in or reconnect to use AI lookup. You can still enter the food manually.',
+      ),
     ).toBeInTheDocument();
     const group = methods(composer);
     expect(within(group).getByRole('button', { name: 'Describe' })).toBeDisabled();
@@ -411,7 +471,9 @@ describe('Composer: entry methods', () => {
     await user.type(within(composer).getByLabelText('Fat (g)'), '5.3');
     await user.click(within(composer).getByRole('button', { name: /^save$/i }));
     await vi.waitFor(async () =>
-      expect((await services.entries.listByDay(today())).map((e) => e.name)).toEqual(['Boiled egg']),
+      expect((await services.entries.listByDay(today())).map((e) => e.name)).toEqual([
+        'Boiled egg',
+      ]),
     );
   });
 
@@ -482,13 +544,17 @@ describe('Composer: after a manual save', () => {
     await user.click(within(composer).getByRole('button', { name: /^save$/i }));
   };
   const pressed = (composer: HTMLElement, name: string) =>
-    within(within(composer).getByRole('group', { name: 'Entry method' })).getByRole('button', { name });
+    within(within(composer).getByRole('group', { name: 'Entry method' })).getByRole('button', {
+      name,
+    });
 
   it('goes back to the compact Describe input when AI lookup can be used', async () => {
     const { user, composer } = await setup(async () => estimateOf(bananaItem));
     await user.click(pressed(composer, 'Manual'));
     await fill(user, composer);
-    await vi.waitFor(() => expect(pressed(composer, 'Describe')).toHaveAttribute('aria-pressed', 'true'));
+    await vi.waitFor(() =>
+      expect(pressed(composer, 'Describe')).toHaveAttribute('aria-pressed', 'true'),
+    );
     expect(within(composer).getByLabelText('Food name')).toHaveValue('');
   });
 

@@ -16,7 +16,9 @@ test('a described food can be logged without the mouse @desktop-only', async ({ 
   await page.keyboard.press('Enter');
 
   await expect(reviewCard(page)).toBeVisible();
-  expect(await reviewCard(page).evaluate((card) => card.contains(document.activeElement))).toBe(true);
+  expect(await reviewCard(page).evaluate((card) => card.contains(document.activeElement))).toBe(
+    true,
+  );
 
   const confirm = reviewCard(page).getByRole('button', { name: 'Confirm' });
   for (let i = 0; i < 15 && !(await confirm.evaluate((el) => el === document.activeElement)); i++) {

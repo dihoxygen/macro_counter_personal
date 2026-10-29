@@ -3,12 +3,27 @@ import { composer, logManually, mockApi } from './helpers';
 
 // Feature 004 User Story 4 (FR-013, FR-014, FR-016): one layout from 360 px phones to 1280 px desktops.
 
-const longName = 'Grilled chicken thigh with roasted sweet potato, broccoli and a garlic yogurt dip';
+const longName =
+  'Grilled chicken thigh with roasted sweet potato, broccoli and a garlic yogurt dip';
 
 async function seed(page: Page, count: number) {
-  await logManually(page, { name: longName, amount: '400', kcal: '650', protein: '48', carbs: '55', fat: '22' });
+  await logManually(page, {
+    name: longName,
+    amount: '400',
+    kcal: '650',
+    protein: '48',
+    carbs: '55',
+    fat: '22',
+  });
   for (let i = 1; i < count; i++) {
-    await logManually(page, { name: `Snack ${i}`, amount: '100', kcal: '100', protein: '5', carbs: '10', fat: '3' });
+    await logManually(page, {
+      name: `Snack ${i}`,
+      amount: '100',
+      kcal: '100',
+      protein: '5',
+      carbs: '10',
+      fat: '3',
+    });
   }
 }
 
@@ -32,7 +47,9 @@ test.describe('Today layout', () => {
     expect(totals.y).toBeGreaterThanOrEqual(0);
     expect(totals.y + totals.height).toBeLessThanOrEqual(viewport.height);
 
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
 
     const name = page.getByRole('list', { name: /entries/i }).getByText(longName);
     const oneLine = await name.evaluate((el) => {
