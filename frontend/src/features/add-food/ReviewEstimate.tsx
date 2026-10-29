@@ -47,7 +47,7 @@ export function ReviewEstimate({ initial, onConfirm, onDiscard, onChange }: Prop
   };
 
   return (
-    <section className="stack" aria-label="Review estimate">
+    <section className="stack" aria-label="Review estimate" tabIndex={-1}>
       <p>
         <span className="badge">AI estimate</span>{' '}
         <span className="muted">Check the values and edit anything that looks wrong.</span>

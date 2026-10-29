@@ -14,9 +14,11 @@ interface Props {
   /** Changing it reloads the day (feature 004: Today refreshes after logging or when shown again). */
   refreshKey?: number;
   onSetGoal?: () => void;
+  /** Protein of an open estimate card on Today (feature 004). */
+  pendingG?: number;
 }
 
-export function DayLog({ dayKey, refreshKey = 0, onSetGoal }: Props) {
+export function DayLog({ dayKey, refreshKey = 0, onSetGoal, pendingG }: Props) {
   const services = useServices();
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [goals, setGoals] = useState<ProteinGoal[]>([]);
@@ -45,6 +47,7 @@ export function DayLog({ dayKey, refreshKey = 0, onSetGoal }: Props) {
         totals={sumMacros(entries.map((e) => e.macros))}
         goalG={goalForDay(goals, dayKey)}
         onSetGoal={onSetGoal}
+        pendingG={pendingG}
       />
       {editing && (
         <EntryEditor

@@ -63,9 +63,10 @@ describe('TodayScreen', () => {
     const user = userEvent.setup();
     await renderWithServices(<App />, { estimateFromText: vi.fn(async () => estimateOf(bananaItem)) });
 
-    await user.click(await screen.findByRole('button', { name: /add food/i }));
-    await user.type(await screen.findByLabelText(/what did you eat/i), '1 medium banana');
-    await user.click(screen.getByRole('button', { name: /estimate/i }));
+    // Feature 004: described and confirmed on Today, in the composer.
+    const composer = await screen.findByRole('region', { name: 'Log food' });
+    await user.type(within(composer).getByLabelText(/what did you eat/i), '1 medium banana');
+    await user.click(within(composer).getByRole('button', { name: /estimate/i }));
     await user.click(await screen.findByRole('button', { name: /confirm/i }));
 
     const totals = await screen.findByRole('region', { name: /totals/i });

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { banana, estimate, liveTrackCount, mockApi, recordMediaStreams } from './helpers';
+import { banana, describeFood, estimate, liveTrackCount, mockApi, recordMediaStreams } from './helpers';
 
 const photo = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'meal-with-gps.jpg');
 
@@ -44,11 +44,8 @@ test.describe('Touch targets', () => {
     await page.goto('/');
     await expectTouchTargets(page, 'Today (empty)');
 
-    // Add food: describe, review (with a warning and the editor open), photo, manual.
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await expectTouchTargets(page, 'Add food / describe');
-    await page.getByLabel(/what did you eat/i).fill('banana');
-    await page.getByRole('button', { name: 'Estimate' }).click();
+    // Describe and review on Today (feature 004), with a warning and the editor open.
+    await describeFood(page, 'banana');
     await page.getByRole('group', { name: 'Banana' }).waitFor();
     await expectTouchTargets(page, 'Review');
     await page.getByRole('button', { name: /edit/i }).click();

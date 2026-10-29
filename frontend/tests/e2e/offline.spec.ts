@@ -71,12 +71,13 @@ test('the app works offline: Today, history and manual entry; AI shows as unavai
   await expect(
     page.getByText('Sign in or reconnect to use AI lookup. You can still enter the food manually.'),
   ).toBeVisible();
-  await page.getByLabel(/food name/i).fill('Boiled egg');
-  await page.getByLabel(/amount/i).fill('50');
-  await page.getByLabel(/calories/i).fill('78');
-  await page.getByLabel(/protein/i).fill('6.3');
-  await page.getByLabel(/carbs/i).fill('0.6');
-  await page.getByLabel(/fat/i).fill('5.3');
+  // Role locators skip the hidden Today, whose totals carry the same labels (until US3 moves this into the composer).
+  await page.getByRole('textbox', { name: 'Food name' }).fill('Boiled egg');
+  await page.getByRole('spinbutton', { name: 'Amount' }).fill('50');
+  await page.getByRole('spinbutton', { name: 'Calories (kcal)' }).fill('78');
+  await page.getByRole('spinbutton', { name: 'Protein (g)' }).fill('6.3');
+  await page.getByRole('spinbutton', { name: 'Carbs (g)' }).fill('0.6');
+  await page.getByRole('spinbutton', { name: 'Fat (g)' }).fill('5.3');
   await page.getByRole('button', { name: /^save$/i }).click();
   await expect(page.getByRole('list', { name: /entries/i })).toContainText('Boiled egg');
 

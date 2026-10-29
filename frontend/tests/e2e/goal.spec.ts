@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { mockApi } from './helpers';
+import { logManually, mockApi } from './helpers';
 
 test.describe('Daily protein goal (User Story 5)', () => {
   test('V9: 90 of a 150 g goal shows "90 / 150 g" and "60 g left" without scrolling', async ({ page }) => {
@@ -15,15 +15,7 @@ test.describe('Daily protein goal (User Story 5)', () => {
     await page.getByLabel(/daily protein goal/i).fill('150');
     await page.getByRole('button', { name: /save/i }).click();
 
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByRole('button', { name: 'Manual' }).click();
-    await page.getByLabel(/food name/i).fill('Chicken and rice');
-    await page.getByLabel(/amount/i).fill('400');
-    await page.getByLabel(/calories/i).fill('680');
-    await page.getByLabel(/protein/i).fill('90');
-    await page.getByLabel(/carbs/i).fill('70');
-    await page.getByLabel(/fat/i).fill('8');
-    await page.getByRole('button', { name: /^save$/i }).click();
+    await logManually(page, { name: 'Chicken and rice', amount: '400', kcal: '680', protein: '90', carbs: '70', fat: '8' });
 
     // Reload so we measure the initial, unscrolled view (SC-009).
     await page.reload();

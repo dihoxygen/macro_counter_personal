@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { describeFood, reviewCard } from '../helpers';
 import { invite, uniqueUsername } from './db';
 import { completeSetup } from './flows';
 
@@ -39,12 +40,12 @@ test('sign-in, setup with the QR code, an estimate, a photo preview and the serv
   await completeSetup(page, username, invite(username));
 
   // A text estimate (the Testing-only fake estimator answers).
-  await page.getByRole('button', { name: 'Add food' }).click();
-  await page.getByLabel(/what did you eat/i).fill('1 medium banana');
-  await page.getByRole('button', { name: 'Estimate' }).click();
-  await expect(page.getByRole('group', { name: 'Banana' })).toBeVisible();
+  await describeFood(page, '1 medium banana');
+  await expect(reviewCard(page).getByRole('group', { name: 'Banana' })).toBeVisible();
+  await reviewCard(page).getByRole('button', { name: 'Discard' }).click();
 
   // A photo preview shown from a blob: URL.
+  await page.getByRole('button', { name: 'Add food' }).click();
   await page.getByRole('button', { name: 'Photo' }).click();
   await page.getByLabel('Existing photo file').setInputFiles(photo);
   await expect(page.getByRole('img', { name: 'Selected photo' })).toBeVisible();

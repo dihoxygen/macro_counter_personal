@@ -82,18 +82,18 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 > Write these tests FIRST and confirm they FAIL before implementation
 
-- [ ] T007 [P] [US1] Write failing unit tests in `frontend/tests/unit/domain/nutrition/proteinSegments.test.ts` for `proteinSegments(loggedG, pendingG, goalG)` from `src/domain/nutrition/proteinProgress.ts`, using the [data-model](./data-model.md#pending-projection-fr-004) rules verbatim:
+- [X] T007 [P] [US1] Write failing unit tests in `frontend/tests/unit/domain/nutrition/proteinSegments.test.ts` for `proteinSegments(loggedG, pendingG, goalG)` from `src/domain/nutrition/proteinProgress.ts`, using the [data-model](./data-model.md#pending-projection-fr-004) rules verbatim:
   - "`goalG === null` → `{ loggedPct: 0, pendingPct: 0 }`"
   - "`loggedPct = min(loggedG / goalG, 1) × 100`"
   - "`pendingPct = min((loggedG + pendingG) / goalG, 1) × 100 − loggedPct`"
   - Reference values: (96, 54, 150) → (64, 36). (96, 0, 150) → (64, 0). (140, 30, 150) → (93.33…, 6.66…) with `toBeCloseTo`. (160, 10, 150) → (100, 0). (0, 0, 150) → (0, 0).
   - `RangeError` for negative, `NaN` or `Infinity` `loggedG` or `pendingG`, and for a `goalG` that is ≤ 0 or non-finite (matching `proteinProgress`).
   - A property check: `loggedPct + pendingPct ≤ 100` for a sweep of inputs.
-- [ ] T008 [P] [US1] Write failing tests in `frontend/tests/components/ProteinProgress.test.tsx`:
+- [X] T008 [P] [US1] Write failing tests in `frontend/tests/components/ProteinProgress.test.tsx`:
   - With `loggedG=96`, `goalG=150` and `pendingG=54`, the text "+54 g pending" is shown and the **Protein toward goal** progressbar keeps `aria-valuenow="96"`.
   - With `pendingG=0` or omitted, no pending text is shown.
   - With no goal and `pendingG=54`, "+54 g pending" is shown next to the **Set a protein goal** prompt.
-- [ ] T009 [P] [US1] Write failing tests in `frontend/tests/components/Composer.test.tsx` (new file), rendering `TodayScreen` with test services whose `estimateFromText` resolves to `estimateOf(bananaItem)` from `fixtures.ts`:
+- [X] T009 [P] [US1] Write failing tests in `frontend/tests/components/Composer.test.tsx` (new file), rendering `TodayScreen` with test services whose `estimateFromText` resolves to `estimateOf(bananaItem)` from `fixtures.ts`:
   - (a) A **Log food** region exists, holding **What did you eat?** and an **Estimate** button.
   - (b) Typing "banana" and pressing Enter shows **Review estimate** on Today, and the **Today** heading stays.
   - (c) Shift+Enter inserts a newline and does not send.
@@ -109,9 +109,9 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - (m) Midnight while a card is open: open a card with `services.now` at 23:59 local time, advance `now` to 00:01 the next day and fire `visibilitychange`, then **Confirm**. The new entry's `dayKey` is the new day, and **Entries** on Today lists it (spec edge case).
 
   Port every review-related assertion from `frontend/tests/components/AddFoodText.test.tsx` into this file so nothing it covered is lost
-- [ ] T010 [P] [US1] Rewrite `frontend/tests/e2e/log-text.spec.ts` to log through the composer (`describeFood`, `reviewCard` from helpers) instead of clicking **Add food**. Keep every existing scenario (multi-item, edit, warning acceptance, totals), and add an assertion in each that `page.getByRole('heading', { name: 'Today' })` stays visible throughout. Run it and confirm it fails
-- [ ] T011 [P] [US1] Rewrite the describe-food steps in `frontend/tests/e2e/totals-persistence.spec.ts`, `frontend/tests/e2e/auth/flows.ts`, `frontend/tests/e2e/auth/csp.spec.ts` and `frontend/tests/e2e/auth-quota/quota.spec.ts` to use `describeFood` and `reviewCard` instead of **Add food** → **Describe**. In the quota spec, assert the quota message shows as an `alert` in the composer's card area (FR-019). Run the mocked ones and confirm they fail. The `auth/*` and `auth-quota` specs need local PostgreSQL and PowerShell. Where those aren't available, mark this task "rewritten, not run" and leave them for T047's final run on the owner's machine
-- [ ] T012 [P] [US1] Write a failing test in `frontend/tests/components/AuthGate.test.tsx` for the spec edge case "Session expires … while a card is open":
+- [X] T010 [P] [US1] Rewrite `frontend/tests/e2e/log-text.spec.ts` to log through the composer (`describeFood`, `reviewCard` from helpers) instead of clicking **Add food**. Keep every existing scenario (multi-item, edit, warning acceptance, totals), and add an assertion in each that `page.getByRole('heading', { name: 'Today' })` stays visible throughout. Run it and confirm it fails
+- [X] T011 [P] [US1] Rewrite the describe-food steps in `frontend/tests/e2e/totals-persistence.spec.ts`, `frontend/tests/e2e/auth/flows.ts`, `frontend/tests/e2e/auth/csp.spec.ts` and `frontend/tests/e2e/auth-quota/quota.spec.ts` to use `describeFood` and `reviewCard` instead of **Add food** → **Describe**. In the quota spec, assert the quota message shows as an `alert` in the composer's card area (FR-019). Run the mocked ones and confirm they fail. The `auth/*` and `auth-quota` specs need local PostgreSQL and PowerShell. Where those aren't available, mark this task "rewritten, not run" and leave them for T047's final run on the owner's machine. *(Done: `csp`, `quota` and `disable` describe through the composer, and `auth/flows.ts`'s `logManually` now uses the composer's Manual method. They are rewritten but not run here: no PostgreSQL or PowerShell in this environment. `totals-persistence`, `goal` and `recent` were moved to the composer too, because the hidden Today's labelled totals made their label lookups ambiguous.)*
+- [X] T012 [P] [US1] Write a failing test in `frontend/tests/components/AuthGate.test.tsx` for the spec edge case "Session expires … while a card is open":
   - render the signed-in app with `estimateFromText` resolving to `estimateOf(bananaItem)`;
   - describe "banana" and wait for **Review estimate**;
   - dispatch `authEvents.dispatchEvent(new Event('session-expired'))`, as the existing tests do, and check that the **Sign in again** dialog shows;
@@ -120,19 +120,19 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 ### Implementation for User Story 1
 
-- [ ] T013 [P] [US1] Make T007 pass: add `export function proteinSegments(loggedG: number, pendingG: number, goalG: number | null): { loggedPct: number; pendingPct: number }` to `frontend/src/domain/nutrition/proteinProgress.ts`. Use `assertNonNegative` from `./validate` for both amounts. Keep full precision with no rounding. Confirm `src/domain/**` coverage stays at 100 %
-- [ ] T014 [US1] Make T008 pass in `frontend/src/features/today/ProteinProgress.tsx`, `frontend/src/features/today/TotalsPanel.tsx` and `frontend/src/features/today/DayLog.tsx`:
+- [X] T013 [P] [US1] Make T007 pass: add `export function proteinSegments(loggedG: number, pendingG: number, goalG: number | null): { loggedPct: number; pendingPct: number }` to `frontend/src/domain/nutrition/proteinProgress.ts`. Use `assertNonNegative` from `./validate` for both amounts. Keep full precision with no rounding. Confirm `src/domain/**` coverage stays at 100 %
+- [X] T014 [US1] Make T008 pass in `frontend/src/features/today/ProteinProgress.tsx`, `frontend/src/features/today/TotalsPanel.tsx` and `frontend/src/features/today/DayLog.tsx`:
   - Add an optional `pendingG?: number` prop and thread it from `DayLog` through `TotalsPanel` to `ProteinProgress`.
   - Compute the widths with `proteinSegments`, render a second `.goal-bar-pending` segment after `.goal-bar-fill`, and show `+{formatGrams(pendingG)} pending` when `pendingG > 0`.
   - `aria-valuenow` stays at the logged amount.
-- [ ] T015 [US1] Create `frontend/src/features/add-food/DescribeInput.tsx` from the input half of `AddFoodText.tsx`:
+- [X] T015 [US1] Create `frontend/src/features/add-food/DescribeInput.tsx` from the input half of `AddFoodText.tsx`:
   - A form with the **What did you eat?** textarea (`maxLength={500}`, `rows={1}`, `enterKeyHint="send"`, placeholder kept) and an **Estimate** submit button.
   - Props: `value`, `onChange`, `onSend(text)`, `disabled`, and `inputRef` (so the composer can focus it).
   - In `onKeyDown`: Enter without Shift and with `!event.nativeEvent.isComposing` prevents default and sends.
   - Trimmed empty text does not send.
 
   `AddFoodText.tsx` stays as it is for now, because the Add food screen still uses it until US3
-- [ ] T016 [US1] Create `frontend/src/features/add-food/Composer.tsx`, a `<section aria-label="Log food">` that:
+- [X] T016 [US1] Create `frontend/src/features/add-food/Composer.tsx`, a `<section aria-label="Log food">` that:
   - owns one `useEstimateFlow`, a `method` state (`'describe' | 'manual'` for now; US3 adds `'photo'`) and the `describeDraft` state;
   - renders a **card area** above the inputs: progress with `SubmitOrProgress`-style "Estimating…" and **Cancel**; `ReviewEstimate` with `onConfirm={flow.confirm}`, `onDiscard={flow.reset}` and `onChange`; and the error and unrecognized messages with **Retry** and **Enter manually**, wording kept from `AddFoodText.tsx`;
   - renders `DescribeInput`, and `ManualEntryForm` when `method === 'manual'`;
@@ -141,8 +141,8 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - reports pending protein in two steps: `reviewTotal(phase.state).proteinG` when the review opens (`ReviewEstimate`'s `onChange` skips its first render, T006), then the value from each `onChange`, and `0` when the card closes;
   - moves focus to the review region when it opens (R7);
   - takes props `onLogged()` (called after a confirm or a manual save) and `onPendingChange(proteinG: number)` (reported as above).
-- [ ] T017 [US1] In `frontend/src/features/today/TodayScreen.tsx`, render `<Composer>` after `DayLog`. Its `onLogged` increments `refreshKey`, and its `onPendingChange` sets a `pendingProteinG` state that is passed to `DayLog`. Keep the existing bottom button row (including **Add food**) for now. Make T009–T012 pass
-- [ ] T018 [US1] Add styles in `frontend/src/styles.css` for `.composer` (surface background, top border, padding 12px 16px), `.card-area`, `.goal-bar` as a flex row, and `.goal-bar-pending` (accent colour at 45 % opacity, using `repeating-linear-gradient` stripes). No layout grid yet (US4). Run `npx playwright test touch-targets` and fix any new target under 44 px
+- [X] T017 [US1] In `frontend/src/features/today/TodayScreen.tsx`, render `<Composer>` after `DayLog`. Its `onLogged` increments `refreshKey`, and its `onPendingChange` sets a `pendingProteinG` state that is passed to `DayLog`. Keep the existing bottom button row (including **Add food**) for now. Make T009–T012 pass
+- [X] T018 [US1] Add styles in `frontend/src/styles.css` for `.composer` (surface background, top border, padding 12px 16px), `.card-area`, `.goal-bar` as a flex row, and `.goal-bar-pending` (accent colour at 45 % opacity, using `repeating-linear-gradient` stripes). No layout grid yet (US4). Run `npx playwright test touch-targets` and fix any new target under 44 px
 
 **Checkpoint**: Describing, reviewing and confirming works on Today. The old Add food screen still works too
 

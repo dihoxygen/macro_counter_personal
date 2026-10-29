@@ -1,4 +1,4 @@
-import type { Page, Route } from '@playwright/test';
+import { expect, type Page, type Route } from '@playwright/test';
 
 export const banana = {
   name: 'Banana',
@@ -79,6 +79,23 @@ export function composer(page: Page) {
 export async function describeFood(page: Page, text: string) {
   await composer(page).getByLabel('What did you eat?').fill(text);
   await composer(page).getByLabel('What did you eat?').press('Enter');
+}
+
+/** Logs a food by hand from the composer's Manual method and waits for it in the entry list. */
+export async function logManually(
+  page: Page,
+  food: { name: string; amount: string; kcal: string; protein: string; carbs: string; fat: string },
+) {
+  const box = composer(page);
+  await box.getByRole('button', { name: 'Manual' }).click();
+  await box.getByLabel('Food name').fill(food.name);
+  await box.getByLabel('Amount').fill(food.amount);
+  await box.getByLabel('Calories (kcal)').fill(food.kcal);
+  await box.getByLabel('Protein (g)').fill(food.protein);
+  await box.getByLabel('Carbs (g)').fill(food.carbs);
+  await box.getByLabel('Fat (g)').fill(food.fat);
+  await box.getByRole('button', { name: /^save$/i }).click();
+  await expect(page.getByRole('list', { name: /entries/i })).toContainText(food.name);
 }
 
 /** The inline review card for an AI estimate. */

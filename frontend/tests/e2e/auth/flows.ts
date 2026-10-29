@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { logManually as logFoodManually } from '../helpers';
 import { totp } from './totp';
 
 export const PASSWORD = 'a long and private test passphrase';
@@ -42,19 +43,9 @@ export function nextCode(setupKey: string, stepsAhead = 1): string {
   return totp(setupKey, new Date(Date.now() + 30_000 * stepsAhead));
 }
 
-/** Logs a food by hand from Today and returns to Today. */
+/** Logs a food by hand from the composer on Today (feature 004). */
 export async function logManually(page: Page, name: string, protein: number) {
-  await page.getByRole('button', { name: 'Add food' }).click();
-  const manual = page.getByRole('button', { name: 'Manual' });
-  if (await manual.isVisible()) await manual.click();
-  await page.getByLabel(/food name/i).fill(name);
-  await page.getByLabel(/amount/i).fill('100');
-  await page.getByLabel(/calories/i).fill('200');
-  await page.getByLabel(/protein/i).fill(String(protein));
-  await page.getByLabel(/carbs/i).fill('10');
-  await page.getByLabel(/fat/i).fill('5');
-  await page.getByRole('button', { name: /^save$/i }).click();
-  await expect(page.getByRole('list', { name: /entries/i })).toContainText(name);
+  await logFoodManually(page, { name, amount: '100', kcal: '200', protein: String(protein), carbs: '10', fat: '5' });
 }
 
 export async function setProteinGoal(page: Page, grams: number) {

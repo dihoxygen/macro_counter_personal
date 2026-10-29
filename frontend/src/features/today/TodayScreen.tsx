@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { View } from '../../App';
+import { Composer } from '../add-food/Composer';
 import { DayLog } from './DayLog';
 import { useCurrentDayKey } from './useCurrentDayKey';
 
@@ -12,6 +13,7 @@ interface Props {
 export function TodayScreen({ active = true, onNavigate }: Props) {
   const dayKey = useCurrentDayKey();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pendingProteinG, setPendingProteinG] = useState(0);
   const wasActive = useRef(active);
 
   // Other views can change entries and goals; reload when Today becomes visible again.
@@ -25,7 +27,13 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
       <header className="screen-header">
         <h1>Today</h1>
       </header>
-      <DayLog dayKey={dayKey} refreshKey={refreshKey} onSetGoal={() => onNavigate('goal')} />
+      <DayLog
+        dayKey={dayKey}
+        refreshKey={refreshKey}
+        pendingG={pendingProteinG}
+        onSetGoal={() => onNavigate('goal')}
+      />
+      <Composer onLogged={() => setRefreshKey((k) => k + 1)} onPendingChange={setPendingProteinG} />
       <div className="row">
         <button type="button" className="primary" onClick={() => onNavigate('add')}>
           Add food
