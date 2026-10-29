@@ -143,6 +143,13 @@ settings in plain text.
 
 **CLI** for steps 1–3 (add the secret values in the portal):
 
+On a new subscription, `az keyvault create` fails with `MissingSubscriptionRegistration` until the
+Key Vault provider is registered. That is a one-time, free step (the portal does it for you):
+
+```powershell
+az provider register --namespace Microsoft.KeyVault --wait
+```
+
 ```powershell
 $principal = az webapp identity assign --name <app> --resource-group <group> --query principalId -o tsv
 az keyvault create --name <vault> --resource-group <group> --location <region> --enable-rbac-authorization true

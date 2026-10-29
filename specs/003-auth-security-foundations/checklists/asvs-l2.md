@@ -13,6 +13,7 @@
 - **Risk-accepted**: it doesn't hold, and the owner accepted that in writing ([plan.md](../plan.md#accepted-risks-t126-asvs-level-2)). "(partial)" means it partly holds.
 - **Partial**: it mostly holds; the row says what differs and why that is accepted.
 - **Deploy**: met by a step in [docs/deploy.md](../../../docs/deploy.md). It is confirmed on the live host as part of T126.
+- **Met (live)**: a Deploy row confirmed on the live host.
 
 Paths are relative to `backend/MacroCounter.Api/` unless they start with `frontend/` or `specs/`.
 
@@ -76,7 +77,7 @@ No other finding met the review's confidence bar.
 | 2.9.1–2.9.3 | Cryptographic verifiers | N/A | No smart cards or FIDO (see 2.3.2) |
 | 2.10.1 | Service secrets not unchanging credentials | Risk-accepted | The database login and the Anthropic key are static secrets ([G6](#g6-static-service-credentials-2101)) |
 | 2.10.2 | Service accounts not default credentials | Met | `macro_app` is created with a long random password (deploy.md step 1.6); never `postgres` |
-| 2.10.3 | Service passwords protected from offline recovery | Deploy | App Service settings or Key Vault references (deploy.md step 2.4) |
+| 2.10.3 | Service passwords protected from offline recovery | Met (live) | All four secrets are Key Vault references (deploy.md step 2.4), all `Resolved` for the app's managed identity, 2026-10-29 |
 | 2.10.4 | No secrets in source code | Met | Config only; `scripts/check.ps1` secret scan (350 files clean); User Secrets in development |
 
 ## V3 Session Management
@@ -211,7 +212,7 @@ No other finding met the review's confidence bar.
 | 14.1.1 | Secure, repeatable build and deploy | Partial | CI gate on every PR (`.github/workflows/ci.yml`); deployment is a documented manual zip deploy (deploy.md §3) |
 | 14.1.2 | Compiler protections | Met | Managed code; `TreatWarningsAsErrors`; no `AllowUnsafeBlocks` |
 | 14.1.3 | Server hardened | Met | `Security/ProductionHardening.cs`: no `Server` header, HSTS, 308 redirect, refuses `AllowedHosts=*`, no allowed origin, or non-VerifyFull TLS |
-| 14.1.4 | Re-deployable from a runbook or backups | Deploy | `docs/deploy.md`; idempotent migration script |
+| 14.1.4 | Re-deployable from a runbook or backups | Met (live) | `docs/deploy.md`; idempotent migration script. First live deploy 2026-10-28; §3 corrected for the zip-path issue it found |
 | 14.2.1 | Components up to date, checked at build | Met | Lock files; NuGet and npm vulnerability scans in the gate (high or critical blocks merging) |
 | 14.2.2 | Unneeded features removed | Met | No Swagger or developer pages; test switches only in the `Testing` environment (`Testing/TestingSwitches.cs`) |
 | 14.2.3 | SRI for externally hosted assets | N/A | Everything is self-hosted |
@@ -224,7 +225,7 @@ No other finding met the review's confidence bar.
 | 14.4.2 | `Content-Disposition: attachment` on API responses | Met (fixed, [G13](#g13-no-content-disposition-on-api-responses-1442)) | `attachment; filename="api.json"` on every `/api` response (`SecurityHeadersMiddleware`; `SecurityHeadersTests.Api_responses_are_attachments_so_a_browser_never_renders_them`; http-hardening.md) |
 | 14.4.3 | CSP | Met | `SecurityHeadersMiddleware`; no inline script |
 | 14.4.4 | `nosniff` | Met | Every response |
-| 14.4.5 | HSTS with subdomains | Deploy | `max-age` 365 days, `includeSubDomains` in Production (`ProductionHardening`); checked live in V12 |
+| 14.4.5 | HSTS with subdomains | Met (live) | `max-age` 365 days, `includeSubDomains` in Production (`ProductionHardening`); live V12 2026-10-29: `Strict-Transport-Security: max-age=31536000; includeSubDomains` |
 | 14.4.6 | Referrer-Policy | Met | `no-referrer` |
 | 14.4.7 | No framing | Met | `frame-ancestors 'none'` and `X-Frame-Options: DENY` |
 | 14.5.1 | Only methods in use accepted | Met | Others are refused (401, deny by default) and logged (G8) |

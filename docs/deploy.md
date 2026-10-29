@@ -111,10 +111,19 @@ Host=aws-0-<region>.pooler.supabase.com;Port=5432;Database=postgres;Username=mac
 npm --prefix frontend ci
 npm --prefix frontend run build                    # writes the app into backend/MacroCounter.Api/wwwroot
 dotnet publish backend/MacroCounter.Api -c Release -o publish
-Compress-Archive -Path publish\* -DestinationPath app.zip -Force
-az webapp deploy --resource-group <group> --name <app> --src-path app.zip --type zip
+tar -a -c -f app.zip -C publish .                 # not Compress-Archive: see below
+az webapp deploy --resource-group <group> --name <app> --src-path app.zip --type zip --clean true
 Remove-Item -Recurse publish, app.zip
 ```
+
+Use `tar` (built into Windows 10 and later), not `Compress-Archive`. Windows PowerShell 5.1's
+`Compress-Archive` writes `\` between folder names, and the Linux host can't unpack those: the
+deploy fails with `rsync ... failed to stat "/home/site/wwwroot/wwwroot\sw.js"`. `--clean true`
+removes files left behind by an earlier or failed deploy.
+
+The owner's invite code from step 1.8 expires after 72 hours. If it has expired, sign-in fails
+with the same message as a wrong password: run `select macro_admin.reset_user('<you>');` for a new
+code.
 
 Then sign in as the owner with the code from step 1.8.
 
