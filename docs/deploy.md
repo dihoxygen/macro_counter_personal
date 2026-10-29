@@ -90,18 +90,18 @@ Host=aws-0-<region>.pooler.supabase.com;Port=5432;Database=postgres;Username=mac
    | `DataProtection__CertificatePfxBase64` | the base64 PFX (secret) |
    | `DataProtection__CertificatePassword` | its password (secret) |
    | `Anthropic__ApiKey` | your Anthropic API key (secret) |
-   | `Limits__Ai__GlobalMonthly` | `71` (a $25 monthly worst case: 71 × $0.35) |
-   | `Limits__Ai__GlobalDaily` | `10` (a $3.50 daily worst case, so one day can't use up the month) |
+   | `Limits__Ai__GlobalMonthly` | `285` (a $100 monthly worst case: 285 × $0.35) |
+   | `Limits__Ai__GlobalDaily` | `40` (a $14 daily worst case, so one day can't use up the month) |
 
    The app **refuses to start** in Production if `AllowedHosts` is `*` or missing, if no allowed
    origin is set, if the connection is not `SSL Mode=VerifyFull`, or if the Data Protection
    certificate is missing. At startup it logs the worst-case AI spend its limits allow. With the
-   settings above that is $3.50 a day and $24.85 a month; check that the log says so. The built-in
+   settings above that is $14.00 a day and $99.75 a month; check that the log says so. The built-in
    defaults (200 a day, 3,000 a month) allow about $70 a day and $1,050 a month, so don't leave
-   these two settings out. The owner's initial budget is $25 a month. To raise it, set
+   these two settings out. The owner's budget is $100 a month (raised from $25). To raise it, set
    `GlobalMonthly` to the budget divided by `Limits__Ai__WorstCaseCostPerRequestUsd`, rounded down.
 
-   Also set a **$25 monthly spend limit** for the API key's workspace in the Claude Console. It is
+   Also set a **$100 monthly spend limit** for the API key's workspace in the Claude Console. It is
    the backstop if the app's worst-case estimate is ever wrong, for example if a retried call
    is billed twice (research R8).
 
