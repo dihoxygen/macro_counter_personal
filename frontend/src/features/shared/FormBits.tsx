@@ -1,3 +1,46 @@
+import { useId, useState } from 'react';
+
+/**
+ * A password field the person can reveal while typing (ASVS 2.1.12). Paste and password managers still work.
+ * The button is named just "Show"/"Hide" (tied to its field by aria-controls), so the field's label stays unique.
+ */
+export function PasswordInput({
+  label,
+  value,
+  onChange,
+  autoComplete,
+  maxLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: 'current-password' | 'new-password';
+  maxLength?: number;
+}) {
+  const [shown, setShown] = useState(false);
+  const id = useId();
+  return (
+    <div className="password-field">
+      <label>
+        {label}
+        <input
+          id={id}
+          type={shown ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={maxLength}
+        />
+      </label>
+      <button type="button" aria-controls={id} onClick={() => setShown(!shown)}>
+        {shown ? 'Hide' : 'Show'}
+      </button>
+    </div>
+  );
+}
+
 export function NumberInput({
   label,
   value,

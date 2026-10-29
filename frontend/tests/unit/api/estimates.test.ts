@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EstimateError, estimateFromPhoto, estimateFromText } from '../../../src/api/estimates';
+import { setCsrfToken } from '../../../src/api/http';
 
 export const bananaEstimate = {
   recognized: true,
@@ -84,9 +85,15 @@ describe('estimateFromText', () => {
 
   it('turns a malformed 200 body into invalid_ai_response', async () => {
     stubFetch(async () => Response.json({ ...bananaEstimate, total: { kcal: -1 } }));
-    await expectError(estimateFromText('banana', new AbortController().signal), 'invalid_ai_response');
+    await expectError(
+      estimateFromText('banana', new AbortController().signal),
+      'invalid_ai_response',
+    );
     stubFetch(async () => new Response('<html>', { status: 200 }));
-    await expectError(estimateFromText('banana', new AbortController().signal), 'invalid_ai_response');
+    await expectError(
+      estimateFromText('banana', new AbortController().signal),
+      'invalid_ai_response',
+    );
   });
 
   it('maps a network failure to network', async () => {
@@ -109,6 +116,93 @@ describe('estimateFromText', () => {
     const promise = estimateFromText('banana', controller.signal);
     controller.abort();
     await expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('maps a 401 to unauthenticated with a sign-in-again message', async () => {
+    stubFetch(async () => problem(401, 'unauthenticated'));
+    const error = await estimateFromText('banana', new AbortController().signal).catch((e) => e);
+    expect((error as EstimateError).code).toBe('unauthenticated');
+    expect((error as EstimateError).message).toBe(
+      'Sign in again to use AI lookup. Your entries are safe.',
+    );
+  });
+
+  it('sends the CSRF token and same-origin credentials', async () => {
+    const fetchMock = stubFetch(async () => Response.json(bananaEstimate));
+    setCsrfToken('csrf-1');
+    try {
+      await estimateFromText('banana', new AbortController().signal);
+    } finally {
+      setCsrfToken(undefined);
+    }
+    const init = fetchMock.mock.calls[0]![1];
+    expect(new Headers(init?.headers).get('X-CSRF-Token')).toBe('csrf-1');
+    expect(init?.credentials).toBe('same-origin');
+  });
+
+  describe('AI limits (FR-021)', () => {
+    const resetAt = '2026-10-15T00:00:00Z';
+    const quota = (scope: string) =>
+      new Response(
+        JSON.stringify({ title: 'x', status: 429, code: 'quota_exceeded', scope, resetAt }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '3600' },
+        },
+      );
+
+    it('the daily personal limit says when it resets, in local time, and that manual entry still works', async () => {
+      stubFetch(async () => quota('user_daily'));
+      const error = (await estimateFromText('banana', new AbortController().signal).catch(
+        (e) => e,
+      )) as EstimateError;
+
+      const time = new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(new Date(resetAt));
+      expect(error.code).toBe('quota_exceeded');
+      expect(error.message).toBe(
+        `You've reached today's AI lookup limit. It resets at ${time}. You can still add food manually.`,
+      );
+    });
+
+    it.each(['global_daily', 'global_monthly'])(
+      'the overall %s limit says so, with the date and time',
+      async (scope) => {
+        stubFetch(async () => quota(scope));
+        const error = (await estimateFromText('banana', new AbortController().signal).catch(
+          (e) => e,
+        )) as EstimateError;
+
+        const when = new Intl.DateTimeFormat(undefined, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date(resetAt));
+        expect(error.message).toBe(
+          `AI lookup has reached its overall limit for now. It resets at ${when}. You can still add food manually.`,
+        );
+      },
+    );
+
+    it('a quota problem without a usable reset time still explains itself', async () => {
+      stubFetch(async () => problem(429, 'quota_exceeded'));
+      const error = (await estimateFromText('banana', new AbortController().signal).catch(
+        (e) => e,
+      )) as EstimateError;
+      expect(error.message).toBe(
+        "You've reached the AI lookup limit for now. You can still add food manually.",
+      );
+    });
+
+    it('the per-minute limit asks to wait a minute', async () => {
+      stubFetch(async () => problem(429, 'rate_limited'));
+      await expectError(estimateFromText('banana', new AbortController().signal), 'rate_limited');
+      const error = (await estimateFromText('banana', new AbortController().signal).catch(
+        (e) => e,
+      )) as EstimateError;
+      expect(error.message).toBe('Too many lookups in a short time. Wait a minute and try again.');
+    });
   });
 
   it('gives every error a human-readable message', async () => {
@@ -155,7 +249,9 @@ describe('estimateFromPhoto', () => {
 
   it('parses the estimate like the text path', async () => {
     stubFetch(async () => Response.json(bananaEstimate));
-    expect(await estimateFromPhoto(jpeg, undefined, new AbortController().signal)).toEqual(bananaEstimate);
+    expect(await estimateFromPhoto(jpeg, undefined, new AbortController().signal)).toEqual(
+      bananaEstimate,
+    );
   });
 
   it.each([
@@ -169,6 +265,9 @@ describe('estimateFromPhoto', () => {
 
   it('maps a malformed 200 body to invalid_ai_response', async () => {
     stubFetch(async () => Response.json({ nope: true }));
-    await expectError(estimateFromPhoto(jpeg, undefined, new AbortController().signal), 'invalid_ai_response');
+    await expectError(
+      estimateFromPhoto(jpeg, undefined, new AbortController().signal),
+      'invalid_ai_response',
+    );
   });
 });

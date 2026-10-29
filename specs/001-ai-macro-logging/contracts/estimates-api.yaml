@@ -3,9 +3,14 @@ info:
   title: Macro Counter AI Proxy
   version: 1.0.0
   description: >
-    Stateless backend for AI macro estimates. It stores no user data. Requests carry only the food
+    Backend for AI macro estimates. It stores no food data. Requests carry only the food
     description and/or photo and an optional note (FR-015). Client cancellation (request abort)
     cancels the upstream Claude call.
+
+
+    Since feature 003, every endpoint here needs a signed-in session, a CSRF token on POST, and is
+    subject to rate limits and AI quotas, with 401, 403 and 429 responses. /status needs a session
+    too, and the public check is /health. See specs/003-auth-security-foundations/contracts/auth-api.yaml.
 servers:
   - url: /api
 paths:
