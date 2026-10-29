@@ -549,3 +549,27 @@ button.entry {
     border-radius: var(--radius);
   }
 }
+
+.today-header {
+  flex-wrap: wrap;
+}
+
+.today-date {
+  font-size: 0.9rem;
+}
+
+.today-nav {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch);
+  height: var(--touch);
+  padding: 0;
+  border-radius: 12px;
+}

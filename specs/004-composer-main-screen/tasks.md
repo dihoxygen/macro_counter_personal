@@ -307,16 +307,18 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T041 [P] [US5] Add failing tests to `frontend/tests/components/TodayScreen.test.tsx`:
+- [X] T041 [P] [US5] Add failing tests to `frontend/tests/components/TodayScreen.test.tsx`:
   - the header holds buttons **Previous days**, **Goal settings** and **Account**, each calling `onNavigate` with `'history'`, `'goal'` and `'account'`;
   - each contains an `svg` with `aria-hidden="true"` and has no visible text;
   - no other navigation buttons remain below the entries.
-- [ ] T042 [P] [US5] Add a failing test to `frontend/tests/components/App.test.tsx` (Q14): open a review card, edit its protein, click **Goal settings**, save a new goal and go back. Today shows the same card with the edit, and the progress bar uses the new goal (`aria-valuemax`)
-- [ ] T043 [P] [US5] Update `frontend/tests/e2e/goal.spec.ts` to reach the goal through **Goal settings** in the header (and the kept **Set a protein goal** / **Change goal** buttons). Check that `frontend/tests/e2e/auth/first-sign-in.spec.ts`, `auth/password-change.spec.ts`, `auth/disable.spec.ts` and `auth/flows.ts` still find **Account** and **Previous days** by name and need no change; if they do, update them. Run and confirm the goal spec fails
+
+  *(Done. The header is found through the **Today** heading: a `<header>` inside a `<section>` has no banner role)*
+- [X] T042 [P] [US5] Add a failing test to `frontend/tests/components/App.test.tsx` (Q14): open a review card, edit its protein, click **Goal settings**, save a new goal and go back. Today shows the same card with the edit, and the progress bar uses the new goal (`aria-valuemax`)
+- [X] T043 [P] [US5] Update `frontend/tests/e2e/goal.spec.ts` to reach the goal through **Goal settings** in the header (and the kept **Set a protein goal** / **Change goal** buttons). Check that `frontend/tests/e2e/auth/first-sign-in.spec.ts`, `auth/password-change.spec.ts`, `auth/disable.spec.ts` and `auth/flows.ts` still find **Account** and **Previous days** by name and need no change; if they do, update them. Run and confirm the goal spec fails
 
 ### Implementation for User Story 5
 
-- [ ] T044 [US5] In `frontend/src/features/today/TodayScreen.tsx`:
+- [X] T044 [US5] In `frontend/src/features/today/TodayScreen.tsx`:
   - replace the bottom button row with a header holding the **Today** heading, the local date (`Intl.DateTimeFormat` with weekday, day and month), and three 44 × 44 icon buttons with `aria-label`s **Previous days**, **Goal settings** and **Account**;
   - the icons are inline stroke SVGs with `aria-hidden="true"` (calendar, target, person, as in `docs/design/composer/ComposerToday.dc.html`).
 

@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../../src/App';
 import { toDayKey } from '../../src/domain/days';
 import type { NewEntry } from '../../src/data/repositories';
 import { createTestServices, renderWithServices } from './testServices';
+import { bananaItem, estimateOf } from './fixtures';
 
 const entry = (name: string): NewEntry => ({
   dayKey: toDayKey(new Date()),
@@ -86,5 +87,35 @@ describe('App shell', () => {
 
     const list = await screen.findByRole('list', { name: /entries/i });
     expect(within(list).getByText('Logged while away')).toBeInTheDocument();
+  });
+
+  it('an open card keeps its edits across a visit to Goal settings, and uses the new goal (Q14)', async () => {
+    const user = userEvent.setup();
+    const services = await createTestServices({ estimateFromText: vi.fn(async () => estimateOf(bananaItem)) as never });
+    await services.goals.setGoal(toDayKey(new Date()), 150);
+    await renderWithServices(<App />, services);
+    const composer = await screen.findByRole('region', { name: 'Log food' });
+    await user.type(within(composer).getByLabelText('What did you eat?'), 'banana{Enter}');
+
+    const item = await screen.findByRole('group', { name: 'Banana' });
+    await user.click(within(item).getByRole('button', { name: 'Edit' }));
+    const protein = within(item).getByLabelText('Protein (g)');
+    await user.clear(protein);
+    await user.type(protein, '20');
+    await user.click(within(item).getByRole('button', { name: 'Done' }));
+    expect(await screen.findByText('+20 g pending')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Goal settings' }));
+    const goal = await screen.findByLabelText(/daily protein goal/i);
+    await user.clear(goal);
+    await user.type(goal, '120');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
+    expect(within(screen.getByRole('group', { name: 'Banana' })).getByText('20 g')).toBeInTheDocument();
+    expect(screen.getByText('+20 g pending')).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(screen.getByRole('progressbar', { name: 'Protein toward goal' })).toHaveAttribute('aria-valuemax', '120'),
+    );
   });
 });

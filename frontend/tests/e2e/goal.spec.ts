@@ -32,4 +32,15 @@ test.describe('Daily protein goal (User Story 5)', () => {
     expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
     expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
   });
+
+  test('Goal settings in the header opens the goal, and saving returns to Today (feature 004)', async ({ page }) => {
+    await mockApi(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Goal settings' }).click();
+    await page.getByLabel(/daily protein goal/i).fill('140');
+    await page.getByRole('button', { name: /save/i }).click();
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
+    await expect(page.getByRole('region', { name: /protein goal/i })).toContainText('0 / 140 g');
+  });
 });

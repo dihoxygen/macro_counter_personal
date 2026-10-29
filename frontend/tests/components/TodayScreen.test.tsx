@@ -126,3 +126,34 @@ describe('TodayScreen without an Add food screen', () => {
     expect(screen.queryByRole('heading', { name: /add food/i })).not.toBeInTheDocument();
   });
 });
+
+// Feature 004 User Story 5 (FR-012): compact header controls instead of a row of buttons.
+describe('TodayScreen header navigation', () => {
+  // A <header> inside a <section> has no banner role, so find it from the Today heading.
+  const header = () => screen.getByRole('heading', { level: 1, name: 'Today' }).closest('header')!;
+
+  it.each([
+    ['Previous days', 'history'],
+    ['Goal settings', 'goal'],
+    ['Account', 'account'],
+  ] as const)('the %s icon button opens the %s view', async (name, view) => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    await renderWithServices(<TodayScreen onNavigate={onNavigate} />);
+    const button = within(header()).getByRole('button', { name });
+
+    expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(button).toHaveTextContent(/^$/);
+    await user.click(button);
+    expect(onNavigate).toHaveBeenCalledWith(view);
+  });
+
+  it('leaves no navigation buttons below the entries', async () => {
+    await renderWithServices(<TodayScreen onNavigate={vi.fn()} />);
+    await screen.findByText(/nothing logged yet/i);
+    for (const name of ['Previous days', 'Account', 'Goal settings']) {
+      expect(screen.getAllByRole('button', { name })).toHaveLength(1);
+      expect(within(header()).getByRole('button', { name })).toBeInTheDocument();
+    }
+  });
+});
