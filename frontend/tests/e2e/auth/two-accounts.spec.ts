@@ -33,9 +33,10 @@ test('two people on one browser see only their own food, saved foods and goal', 
   await expect(page.getByText('Owner oats')).toHaveCount(0);
   await expect(page.getByText('Owner eggs')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /set a protein goal/i })).toBeVisible();
-  await page.getByRole('button', { name: /^recent$/i }).click();
+  // Feature 004: saved foods show as quick picks on Today. The second person has none, so neither the
+  // group nor any of the first person's foods appear.
+  await expect(page.getByRole('group', { name: 'Recent foods' })).toHaveCount(0);
   await expect(page.getByText(/owner/i)).toHaveCount(0);
-  await page.getByRole('button', { name: /back/i }).click();
   await logManually(page, 'Friend toast', 4);
   await signOut(page);
 
