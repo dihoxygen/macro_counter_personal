@@ -20,7 +20,12 @@ const testUser = {
   username: 'tester',
   role: 'user' as const,
 };
-const signedIn: SessionState = { state: 'signed_in', csrfToken: 'test-csrf', user: testUser };
+const signedIn: SessionState = {
+  state: 'signed_in',
+  csrfToken: 'test-csrf',
+  deviceRemembered: false,
+  user: testUser,
+};
 
 /** An in-memory device record (who is signed in on this browser). */
 export function fakeDevice(account?: ActiveAccount): DeviceRepository & { close: () => void } {
@@ -48,9 +53,11 @@ export function fakeAuth(overrides: Partial<AuthApi> = {}): AuthApi {
   return {
     getSession: vi.fn(async () => signedIn),
     signIn: vi.fn(async () => signedIn),
+    verifyMfa: vi.fn(async () => signedIn),
     setupPassword: vi.fn(async (): Promise<SessionState> => ({
       state: 'setup',
       csrfToken: 't',
+      deviceRemembered: false,
       setupStep: 'totp',
     })),
     setupTotpStart: vi.fn(async () => ({
@@ -60,6 +67,7 @@ export function fakeAuth(overrides: Partial<AuthApi> = {}): AuthApi {
     setupTotpConfirm: vi.fn(async (): Promise<SessionState> => ({
       state: 'setup',
       csrfToken: 't',
+      deviceRemembered: false,
       setupStep: 'notice',
     })),
     acknowledgeNotice: vi.fn(async () => signedIn),

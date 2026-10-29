@@ -1,5 +1,5 @@
 import type { SessionState } from '../api/auth';
-import { SignInScreen } from './SignInScreen';
+import { SignInFlow } from './SignInFlow';
 
 /**
  * Sign-in shown on top of the app when the session ends mid-use. The app underneath stays mounted, so
@@ -7,8 +7,10 @@ import { SignInScreen } from './SignInScreen';
  */
 export function SessionExpiredOverlay({
   onSession,
+  deviceRemembered = false,
 }: {
   onSession: (session: SessionState) => void;
+  deviceRemembered?: boolean;
 }) {
   return (
     <div className="overlay">
@@ -20,7 +22,7 @@ export function SessionExpiredOverlay({
       >
         <h2 id="session-expired-title">Sign in again</h2>
         <p className="muted">Your session ended. Your entries are safe on this device.</p>
-        <SignInScreen onSession={onSession} />
+        <SignInFlow onSession={onSession} deviceRemembered={deviceRemembered} />
       </div>
     </div>
   );

@@ -46,6 +46,7 @@ export function estimate(...items: Item[]) {
 export const signedInSession = {
   state: 'signed_in',
   csrfToken: 'test',
+  deviceRemembered: false,
   user: { id: '00000000-0000-4000-8000-000000000001', username: 'tester', role: 'user' },
 };
 
@@ -57,7 +58,11 @@ export async function mockApi(
   // Match on the path prefix: a glob like **/api/** would also catch Vite's /src/api/*.ts modules.
   await page.route(
     (url) => url.pathname.startsWith('/api/'),
-    (route) => route.fulfill({ status: 404, json: { title: 'not mocked', status: 404, code: 'invalid_request' } }),
+    (route) =>
+      route.fulfill({
+        status: 404,
+        json: { title: 'not mocked', status: 404, code: 'invalid_request' },
+      }),
   );
   await page.route(
     (url) => url.pathname === '/api/auth/session',
@@ -76,7 +81,11 @@ export function total(page: Page, label: string) {
 }
 
 /** Extracts the named file part from a multipart/form-data body. */
-export function multipartFile(body: Buffer, contentType: string, field: string): { type: string; bytes: Buffer } {
+export function multipartFile(
+  body: Buffer,
+  contentType: string,
+  field: string,
+): { type: string; bytes: Buffer } {
   const boundary = /boundary=(?:"([^"]+)"|([^;]+))/.exec(contentType);
   if (!boundary) throw new Error(`no boundary in ${contentType}`);
   const delimiter = Buffer.from(`--${boundary[1] ?? boundary[2]}`);
@@ -105,12 +114,19 @@ export function inspectJpeg(bytes: Buffer): { width: number; height: number; has
     if (bytes[offset] !== 0xff) throw new Error(`bad marker at ${offset}`);
     const marker = bytes[offset + 1]!;
     const length = bytes.readUInt16BE(offset + 2);
-    if (marker === 0xe1 && bytes.subarray(offset + 4, offset + 10).toString('latin1') === 'Exif\0\0') {
+    if (
+      marker === 0xe1 &&
+      bytes.subarray(offset + 4, offset + 10).toString('latin1') === 'Exif\0\0'
+    ) {
       hasExif = true;
     }
     // SOF0..SOF15 except DHT (C4), JPG (C8), DAC (CC)
     if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
-      return { height: bytes.readUInt16BE(offset + 5), width: bytes.readUInt16BE(offset + 7), hasExif };
+      return {
+        height: bytes.readUInt16BE(offset + 5),
+        width: bytes.readUInt16BE(offset + 7),
+        hasExif,
+      };
     }
     offset += 2 + length;
   }
@@ -141,7 +157,9 @@ export async function recordMediaStreams(page: Page) {
 /** Number of recorded camera/mic tracks that are still running. */
 export function liveTrackCount(page: Page): Promise<number> {
   return page.evaluate(
-    () => (window.__streams ?? []).flatMap((s) => s.getTracks()).filter((t) => t.readyState !== 'ended').length,
+    () =>
+      (window.__streams ?? []).flatMap((s) => s.getTracks()).filter((t) => t.readyState !== 'ended')
+        .length,
   );
 }
 

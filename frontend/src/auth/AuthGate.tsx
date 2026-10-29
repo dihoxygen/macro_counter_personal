@@ -10,13 +10,29 @@ import {
 import type { SessionState, SessionUser } from '../api/auth';
 import { authEvents } from '../api/http';
 import { ServicesProvider, useServices, type Services, type UserData } from '../app/services';
-import { initialAuthState, transition } from './authMachine';
+import { initialAuthState, transition, type AuthEvent, type AuthState } from './authMachine';
 import { CurrentUserContext } from './currentUser';
 import { SessionExpiredOverlay } from './SessionExpiredOverlay';
 import { SetupFlow } from './SetupFlow';
-import { SignInScreen } from './SignInScreen';
+import { SignInFlow } from './SignInFlow';
 
 export const OFFLINE_BANNER = 'Offline – sign in or reconnect to use AI lookup';
+
+/** The auth state plus whether this browser is remembered, from the latest session response (004 FR-003). */
+interface GateState {
+  auth: AuthState;
+  deviceRemembered: boolean;
+}
+
+function gateTransition(gate: GateState, event: AuthEvent): GateState {
+  const auth = transition(gate.auth, event);
+  const deviceRemembered =
+    event.type === 'session' ? event.session.deviceRemembered : gate.deviceRemembered;
+  // Unchanged: the same object, so repeated events cause no re-render (see authMachine).
+  return auth === gate.auth && deviceRemembered === gate.deviceRemembered
+    ? gate
+    : { auth, deviceRemembered };
+}
 
 /**
  * Nothing that talks to the server is reachable until the person is signed in (US1), and only the signed-in
@@ -25,7 +41,11 @@ export const OFFLINE_BANNER = 'Offline – sign in or reconnect to use AI lookup
 export function AuthGate({ children }: { children: ReactNode }) {
   const services = useServices();
   const { auth, reload, device } = services;
-  const [state, dispatch] = useReducer(transition, initialAuthState);
+  // Sign-out reloads the page, so deviceRemembered is always from a fresh session check.
+  const [{ auth: state, deviceRemembered }, dispatch] = useReducer(gateTransition, {
+    auth: initialAuthState,
+    deviceRemembered: false,
+  });
 
   const onSession = useCallback(
     (session: SessionState) => dispatch({ type: 'session', session }),
@@ -75,13 +95,23 @@ export function AuthGate({ children }: { children: ReactNode }) {
     case 'reload':
       return <p className="muted app">Loading…</p>;
     case 'signed_out':
+    case 'mfa':
       return (
         <main className="app">
           <section className="stack">
             <header className="screen-header">
               <h1>Macro Counter</h1>
             </header>
-            <SignInScreen onSession={onSession} notice={state.notice} />
+            {state.kind === 'mfa' ? (
+              <SignInFlow key="mfa" onSession={onSession} startAt="mfa" />
+            ) : (
+              <SignInFlow
+                key={state.notice ?? 'none'}
+                onSession={onSession}
+                notice={state.notice}
+                deviceRemembered={deviceRemembered}
+              />
+            )}
           </section>
         </main>
       );
@@ -95,7 +125,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
       return (
         <AccountData services={services} user={state.user} remember>
           {children}
-          {state.expired && <SessionExpiredOverlay onSession={onSession} />}
+          {state.expired && (
+            <SessionExpiredOverlay onSession={onSession} deviceRemembered={deviceRemembered} />
+          )}
         </AccountData>
       );
     case 'offline':

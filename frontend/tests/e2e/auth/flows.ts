@@ -3,15 +3,45 @@ import { totp } from './totp';
 
 export const PASSWORD = 'a long and private test passphrase';
 
-export async function signIn(page: Page, username: string, password: string, code?: string) {
+export const SIGN_IN_FAILED = 'Username or password is incorrect.';
+
+/**
+ * Signs in like a person (004 research R1): the password (or invite code) screen, then, if the password was
+ * accepted and a `code` is given, the authenticator screen. A refused password leaves the alert showing.
+ */
+export async function signIn(
+  page: Page,
+  username: string,
+  password: string,
+  code?: string,
+  options: { remember?: boolean } = {},
+) {
+  const passwordField = page.getByLabel('Password (or Invite Code)');
   await page.getByLabel('Username').fill(username);
-  await page.getByLabel('Password or temporary code').fill(password);
-  if (code) await page.getByLabel(/authenticator code/i).fill(code);
+  await passwordField.fill(password);
+  if (options.remember !== undefined)
+    await page.getByLabel('Remember User').setChecked(options.remember);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  if (!code) return;
+  const codeScreen = page.getByRole('heading', { name: 'Enter your authenticator code' });
+  // Either the code screen, or a refusal. A refusal clears the password, so a stale alert from an
+  // earlier attempt (shown while the password is still filled in) does not count.
+  await expect
+    .poll(
+      async () =>
+        (await codeScreen.isVisible()) ||
+        ((await page.getByRole('alert').first().isVisible()) &&
+          (await passwordField.count()) > 0 &&
+          (await passwordField.inputValue()) === ''),
+    )
+    .toBe(true);
+  if (!(await codeScreen.isVisible())) return;
+  await page.getByLabel('Authenticator code').fill(code);
+  await page.getByRole('button', { name: 'Verify' }).click();
 }
 
 /**
- * Signs in with a temporary code and completes first-time setup through the UI. Returns the setup key so
+ * Signs in with an invite code and completes first-time setup through the UI. Returns the setup key so
  * later sign-ins can compute codes. Ends on Today.
  */
 export async function completeSetup(

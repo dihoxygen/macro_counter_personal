@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { invite, uniqueUsername } from './db';
-import { completeSetup, nextCode, PASSWORD, signIn, signOut } from './flows';
+import { completeSetup, nextCode, PASSWORD, SIGN_IN_FAILED, signIn, signOut } from './flows';
 
 // ASVS 2.1.5 / 2.1.6 (checklists/asvs-l2.md G1): a signed-in person changes their own password with the
 // current password and an authenticator code; afterwards only the new password works.
@@ -28,9 +28,7 @@ test('change the password from the account screen, then sign in with the new one
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
 
   await signIn(page, username, PASSWORD, nextCode(setupKey, 2));
-  await expect(page.getByRole('alert')).toHaveText(
-    'Could not sign in. Check your details and try again.',
-  );
+  await expect(page.getByRole('alert')).toHaveText(SIGN_IN_FAILED);
   await signIn(page, username, NEW_PASSWORD, nextCode(setupKey, 2));
   await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
   await signOut(page);

@@ -15,8 +15,11 @@ export const SessionUserSchema = z.object({
 export type SessionUser = z.infer<typeof SessionUserSchema>;
 
 export const SessionStateSchema = z.object({
-  state: z.enum(['signed_out', 'setup', 'signed_in']),
+  /** mfa: the password was right and the authenticator code is asked for next (004 R1). */
+  state: z.enum(['signed_out', 'mfa', 'setup', 'signed_in']),
   csrfToken: z.string().min(1),
+  /** This browser is remembered for some account: the sign-in screen pre-ticks Remember User (004 FR-003). */
+  deviceRemembered: z.boolean(),
   setupStep: SetupStepSchema.optional(),
   user: SessionUserSchema.optional(),
 });
@@ -88,16 +91,23 @@ export function getSession(): Promise<SessionState> {
   return sessionRequest('/api/auth/session', { method: 'GET' });
 }
 
+/**
+ * The password step. `rememberDevice` is sent only when the person changed the Remember User box during this
+ * sign-in; undefined keeps the current state (004 FR-003, FR-016a).
+ */
 export async function signIn(
   username: string,
   password: string,
-  code: string | undefined,
+  rememberDevice: boolean | undefined,
 ): Promise<SessionState> {
-  const trimmed = code?.trim();
   const request = () =>
     sessionRequest(
       '/api/auth/sign-in',
-      json(trimmed ? { username, password, code: trimmed } : { username, password }),
+      json(
+        rememberDevice === undefined
+          ? { username, password }
+          : { username, password, rememberDevice },
+      ),
     );
   try {
     return await request();
@@ -108,6 +118,11 @@ export async function signIn(
     await getSession();
     return request();
   }
+}
+
+/** The authenticator step for a pending sign-in. */
+export function verifyMfa(code: string): Promise<SessionState> {
+  return sessionRequest('/api/auth/mfa', json({ code: code.trim() }));
 }
 
 export function setupPassword(newPassword: string): Promise<SessionState> {
@@ -153,6 +168,7 @@ export async function changePassword(
 export const authApi = {
   getSession,
   signIn,
+  verifyMfa,
   setupPassword,
   setupTotpStart,
   setupTotpConfirm,

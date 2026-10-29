@@ -357,6 +357,22 @@ button.entry {
   flex: 1;
 }
 
+/* Remember User (feature 004): the whole row is the touch target. */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  min-height: var(--touch);
+  cursor: pointer;
+}
+
+.checkbox-row input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
 .link-button {
   display: inline-flex;
   align-items: center;

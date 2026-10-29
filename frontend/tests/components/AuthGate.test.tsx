@@ -15,8 +15,14 @@ const alice = {
   role: 'user' as const,
 };
 const bob = { id: '6f1c2a4e-0000-4000-8000-000000000002', username: 'bob', role: 'user' as const };
-const signedIn = (user = alice): SessionState => ({ state: 'signed_in', csrfToken: 't', user });
-const signedOut: SessionState = { state: 'signed_out', csrfToken: 't' };
+const signedIn = (user = alice): SessionState => ({
+  state: 'signed_in',
+  csrfToken: 't',
+  deviceRemembered: false,
+  user,
+});
+const signedOut: SessionState = { state: 'signed_out', csrfToken: 't', deviceRemembered: false };
+const pending: SessionState = { state: 'mfa', csrfToken: 't', deviceRemembered: false };
 
 /** Stands in for the app: a half-typed draft that must survive the sign-in overlay. */
 function Draft() {
@@ -64,6 +70,7 @@ describe('AuthGate', () => {
       getSession: vi.fn(async (): Promise<SessionState> => ({
         state: 'setup',
         csrfToken: 't',
+        deviceRemembered: false,
         setupStep: 'password',
       })),
     });
@@ -82,7 +89,8 @@ describe('AuthGate', () => {
     const user = userEvent.setup();
     const auth = fakeAuth({
       getSession: vi.fn(async () => signedOut),
-      signIn: vi.fn(async () => signedIn()),
+      signIn: vi.fn(async () => pending),
+      verifyMfa: vi.fn(async () => signedIn()),
     });
     await renderWithServices(
       <AuthGate>
@@ -92,18 +100,118 @@ describe('AuthGate', () => {
     );
 
     await user.type(await screen.findByLabelText(/username/i), 'alice');
-    await user.type(screen.getByLabelText(/password or temporary code/i), 'my long passphrase');
-    await user.type(screen.getByLabelText(/authenticator code/i), '123456');
+    await user.type(screen.getByLabelText('Password (or Invite Code)'), 'my long passphrase');
     await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    await user.type(await screen.findByLabelText('Authenticator code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
 
     expect(await screen.findByLabelText('Draft')).toBeInTheDocument();
+  });
+
+  it('a pending sign-in at launch (page reloaded on the code screen) shows the authenticator screen', async () => {
+    const auth = fakeAuth({ getSession: vi.fn(async () => pending) });
+    await renderWithServices(
+      <AuthGate>
+        <Draft />
+      </AuthGate>,
+      { auth },
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Enter your authenticator code' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Draft')).toBeNull();
+  });
+
+  it('a wrong password stays on the sign-in screen; the code screen never appears', async () => {
+    const user = userEvent.setup();
+    const auth = fakeAuth({
+      getSession: vi.fn(async () => signedOut),
+      signIn: vi.fn(async () => {
+        throw new AuthError('sign_in_failed');
+      }),
+    });
+    await renderWithServices(
+      <AuthGate>
+        <Draft />
+      </AuthGate>,
+      { auth },
+    );
+
+    await user.type(await screen.findByLabelText(/username/i), 'alice');
+    await user.type(screen.getByLabelText('Password (or Invite Code)'), 'not the password');
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Username or password is incorrect.',
+    );
+    expect(screen.queryByLabelText('Authenticator code')).toBeNull();
+    expect(auth.verifyMfa).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [new AuthError('unauthenticated'), 'Your sign-in timed out. Enter your password again.'],
+    [
+      new AuthError('invalid_code', { attemptsLeft: 0 }),
+      'Too many incorrect codes. Enter your password again.',
+    ],
+  ])(
+    'when the pending sign-in ends, returns to the password screen and says why (%s)',
+    async (error, notice) => {
+      const user = userEvent.setup();
+      const auth = fakeAuth({
+        getSession: vi.fn(async () => signedOut),
+        signIn: vi.fn(async () => pending),
+        verifyMfa: vi.fn(async () => {
+          throw error;
+        }),
+      });
+      await renderWithServices(
+        <AuthGate>
+          <Draft />
+        </AuthGate>,
+        { auth },
+      );
+
+      await user.type(await screen.findByLabelText(/username/i), 'alice');
+      await user.type(screen.getByLabelText('Password (or Invite Code)'), 'my long passphrase');
+      await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+      await user.type(await screen.findByLabelText('Authenticator code'), '123456');
+      await user.click(screen.getByRole('button', { name: 'Verify' }));
+
+      expect(await screen.findByText(notice)).toBeInTheDocument();
+      expect(screen.getByLabelText('Password (or Invite Code)')).toBeInTheDocument();
+    },
+  );
+
+  it('"Use a different account" goes back to the password screen', async () => {
+    const user = userEvent.setup();
+    const auth = fakeAuth({
+      getSession: vi.fn(async () => signedOut),
+      signIn: vi.fn(async () => pending),
+    });
+    await renderWithServices(
+      <AuthGate>
+        <Draft />
+      </AuthGate>,
+      { auth },
+    );
+
+    await user.type(await screen.findByLabelText(/username/i), 'alice');
+    await user.type(screen.getByLabelText('Password (or Invite Code)'), 'my long passphrase');
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    await user.click(await screen.findByRole('button', { name: 'Use a different account' }));
+
+    expect(await screen.findByLabelText('Password (or Invite Code)')).toBeInTheDocument();
+    expect(auth.signOut).toHaveBeenCalled();
   });
 
   it('on session expiry shows sign-in over the app and keeps the draft', async () => {
     const user = userEvent.setup();
     const auth = fakeAuth({
       getSession: vi.fn(async () => signedIn()),
-      signIn: vi.fn(async () => signedIn()),
+      signIn: vi.fn(async () => pending),
+      verifyMfa: vi.fn(async () => signedIn()),
     });
     await renderWithServices(
       <AuthGate>
@@ -122,9 +230,10 @@ describe('AuthGate', () => {
     expect(screen.getByLabelText('Draft')).toHaveValue('2 eggs on toast');
 
     await user.type(screen.getByLabelText(/username/i), 'alice');
-    await user.type(screen.getByLabelText(/password or temporary code/i), 'my long passphrase');
-    await user.type(screen.getByLabelText(/authenticator code/i), '123456');
+    await user.type(screen.getByLabelText('Password (or Invite Code)'), 'my long passphrase');
     await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    await user.type(await screen.findByLabelText('Authenticator code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.getByLabelText('Draft')).toHaveValue('2 eggs on toast');
@@ -135,7 +244,8 @@ describe('AuthGate', () => {
     const reload = vi.fn();
     const auth = fakeAuth({
       getSession: vi.fn(async () => signedIn()),
-      signIn: vi.fn(async () => signedIn(bob)),
+      signIn: vi.fn(async () => pending),
+      verifyMfa: vi.fn(async () => signedIn(bob)),
     });
     await renderWithServices(
       <AuthGate>
@@ -149,9 +259,10 @@ describe('AuthGate', () => {
       authEvents.dispatchEvent(new Event('session-expired'));
     });
     await user.type(await screen.findByLabelText(/username/i), 'bob');
-    await user.type(screen.getByLabelText(/password or temporary code/i), 'my long passphrase');
-    await user.type(screen.getByLabelText(/authenticator code/i), '123456');
+    await user.type(screen.getByLabelText('Password (or Invite Code)'), 'my long passphrase');
     await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    await user.type(await screen.findByLabelText('Authenticator code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
 
     await waitFor(() => expect(reload).toHaveBeenCalled());
   });
@@ -225,7 +336,14 @@ describe('AuthGate', () => {
     }
 
     function userData(owner: string) {
-      return { entries: { owner }, savedFoods: {}, goals: {}, log: {}, devicePreferences: {}, close: vi.fn() } as never;
+      return {
+        entries: { owner },
+        savedFoods: {},
+        goals: {},
+        log: {},
+        devicePreferences: {},
+        close: vi.fn(),
+      } as never;
     }
 
     it('signed in: remembers the account, offers adoption, and opens that account’s data', async () => {

@@ -91,6 +91,9 @@ here (limits, lifetimes) are the defaults the implementation and tests use; all 
 
 ## R4. Sign-in flow shape and first-time setup (US1, FR-004, FR-006)
 
+> **Superseded by [004 research R1](../004-security-qol/research.md#r1-two-step-sign-in-replaces-the-single-request-fr-001--fr-010-supersedes-003-r4)
+> (two-step sign-in).** The setup steps below still apply.
+
 - **Decision**:
   - The sign-in form has **one request** with `username`, `password` and an optional `code`.
   - **Normal sign-in**: the password and the TOTP code are checked together. Any failure, or a

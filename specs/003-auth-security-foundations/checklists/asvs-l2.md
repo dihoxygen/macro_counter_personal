@@ -47,7 +47,7 @@ No other finding met the review's confidence bar.
 | 2.1.10 | No rotation or history rules | Met | None exist |
 | 2.1.11 | Paste and password managers allowed | Met | Plain inputs with `autoComplete="current-password"` / `"new-password"` (`frontend/src/auth/SignInScreen.tsx`, `SetupFlow.tsx`) |
 | 2.1.12 | Option to view the masked password | Met (fixed, G2) | Show/Hide on every password field (`PasswordInput` in `frontend/src/features/shared/FormBits.tsx`); `SignInScreen.test.tsx`, `SetupFlow.test.tsx` |
-| 2.2.1 | Anti-automation; ≤100 failures per hour per account | Met | Three layers (`Security/RateLimits.cs`, `Auth/SignInThrottle.cs`, lockout in `SignInService`): at most 10 failures per 15 minutes, so at most 40 an hour. `SignInLimitTests` |
+| 2.2.1 | Anti-automation; ≤100 failures per hour per account | Met (004: deviation risk-accepted) | Three layers (`Security/RateLimits.cs`, `Auth/SignInThrottle.cs`, lockout in `SignInService`): at most 10 failures per 15 minutes, so at most 40 an hour. Since 004, wrong passwords and wrong authenticator codes count toward the same limits, and a correct password alone resets nothing. `SignInLimitTests`, `MfaStepTests`. **Deviation:** the password step now reveals whether a password is correct; risk-accepted in the "Recorded ASVS deviations" table of [specs/004-security-qol/plan.md](../../004-security-qol/plan.md) |
 | 2.2.2 | Weak authenticators only as secondary | N/A | No SMS or email factor |
 | 2.2.3 | Secure notifications on auth changes | Risk-accepted | The app stores no contact details, so it can't notify ([G3](#g3-no-security-notifications-223-255-285)) |
 | 2.3.1 | Initial codes random, ≥6 chars, short expiry, not the long-term password | Met | `macro_admin.new_temporary_code` (100-bit random, 20 characters), 72-hour `setup_expires_at`, stored as SHA-256, single use; the person must choose a password (`SetupService`) |
@@ -96,7 +96,8 @@ No other finding met the review's confidence bar.
 | 3.4.1 | `Secure` | Met | `Auth/AuthServices.cs`; `AuthEndpointsTests.The_session_cookie_is_host_only_httponly_secure_and_strict` |
 | 3.4.2 | `HttpOnly` | Met | Same |
 | 3.4.3 | `SameSite` | Met | `Strict` |
-| 3.4.4 | `__Host-` prefix | Met | `__Host-mc_session`, `__Host-mc_af` |
+| 3.4.4 | `__Host-` prefix | Met | `__Host-mc_session`, `__Host-mc_af`, and since 004 `__Host-mc_device` |
+| 3.x (004) | Remembered-device token (Remember User) | Met | `__Host-mc_device`: HttpOnly, Secure, SameSite=Strict; a 256-bit random token wrapped by Data Protection, stored only as SHA-256; fixed 7-day expiry the app role cannot extend (no `update` grant); bound to one account and to its security stamp, so sign out everywhere, a password change, an owner reset, disable or revoke end it at once. It replaces only the authenticator code, never the password. `Auth/TrustedDeviceStore.cs`, `TrustedDeviceTests` |
 | 3.4.5 | Most precise path when sharing a domain | Met | `__Host-` means host-only with `Path=/`; the app has its own host |
 | 3.5.1 | Users can revoke OAuth tokens | N/A | No OAuth |
 | 3.5.2 | Session tokens, not static API keys | Met | Server-side sessions |

@@ -1,17 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { invite, uniqueUsername } from './db';
+import { PASSWORD, SIGN_IN_FAILED, signIn } from './flows';
 import { totp } from './totp';
 
-// US1 end to end against the real backend (quickstart V1, V2, V4.1). Each project invites its own user.
-
-const PASSWORD = 'a long and private test passphrase';
-
-async function signIn(page: Page, username: string, password: string, code?: string) {
-  await page.getByLabel('Username').fill(username);
-  await page.getByLabel('Password or temporary code').fill(password);
-  if (code) await page.getByLabel(/authenticator code/i).fill(code);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-}
+// US1 (003) and US2 (004) end to end against the real backend: invite code → set your password →
+// authenticator → notice → Today. Each project invites its own user.
 
 /** Every visible control is at least 44×44 CSS px (Principle IV). */
 async function expectTouchTargets(page: Page, view: string) {
@@ -26,7 +19,13 @@ async function expectTouchTargets(page: Page, view: string) {
   expect(small, `targets smaller than 44px on ${view}`).toEqual([]);
 }
 
-test('first sign-in: temporary code → password → authenticator → notice → Today; then a normal sign-in', async ({
+async function setPassword(page: Page, password: string, confirm = password) {
+  await page.getByLabel('New password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm new password').fill(confirm);
+  await page.getByRole('button', { name: 'Set password' }).click();
+}
+
+test('first sign-in: invite code → password → authenticator → notice → Today; then a normal sign-in', async ({
   page,
 }, testInfo) => {
   const username = uniqueUsername(testInfo.project.name.replace('auth-', ''));
@@ -34,29 +33,36 @@ test('first sign-in: temporary code → password → authenticator → notice �
 
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
-  await expect(page.getByText(/sign\s*up|register|create account|request/i)).toHaveCount(0);
+  await expect(page.getByLabel('Password (or Invite Code)')).toBeVisible();
+  await expect(page.getByLabel(/authenticator code/i)).toHaveCount(0);
+  await expect(
+    page.getByText(/sign\s*up|register|create account|request|temporary code/i),
+  ).toHaveCount(0);
   await expectTouchTargets(page, 'sign-in');
 
-  // Temporary code in the password field, code field left blank.
+  // The invite code goes in the password field; no authenticator screen comes first.
   const started = Date.now();
   await signIn(page, username, code);
 
-  // Step 1: a breached password is refused, then a strong one is accepted.
-  await expect(page.getByRole('heading', { name: 'Choose a password' })).toBeVisible();
+  // Step 1: mismatched entries are caught, a breached password is refused, then a strong one is accepted.
+  await expect(page.getByRole('heading', { name: 'Set your password' })).toBeVisible();
   await expectTouchTargets(page, 'setup: password');
-  await page.getByLabel('New password', { exact: true }).fill('password1234');
-  await page.getByLabel('Confirm new password').fill('password1234');
-  await page.getByRole('button', { name: 'Set password' }).click();
+  await setPassword(page, PASSWORD, `${PASSWORD} typo`);
+  await expect(page.getByRole('alert')).toHaveText('The passwords do not match.');
+  await setPassword(page, 'password1234');
   await expect(page.getByRole('alert')).toContainText('appeared in a data breach');
-  await page.getByLabel('New password', { exact: true }).fill(PASSWORD);
-  await page.getByLabel('Confirm new password').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Set password' }).click();
+  await setPassword(page, PASSWORD);
 
   // Step 2: read the setup key like a person would and enter the current code.
   await expect(page.getByRole('heading', { name: 'Add an authenticator' })).toBeVisible();
   await expect(page.getByRole('img', { name: /qr code/i })).toBeVisible();
   const setupKey = (await page.locator('.setup-key').textContent())!;
   await expectTouchTargets(page, 'setup: authenticator');
+  // Back during setup never reaches a signed-in screen.
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toHaveCount(0);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Add an authenticator' })).toBeVisible();
   await page.getByLabel(/6-digit code/i).fill(totp(setupKey));
   await page.getByRole('button', { name: 'Confirm' }).click();
 
@@ -64,7 +70,7 @@ test('first sign-in: temporary code → password → authenticator → notice �
   await expect(page.getByRole('heading', { name: 'What is sent to Claude' })).toBeVisible();
   await page.getByRole('button', { name: 'I understand' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
-  // SC-001: first-time setup in under 30 s of app time (the test types instantly).
+  // SC-003: first sign-in well within 3 minutes of app time (the test types instantly).
   expect(Date.now() - started).toBeLessThan(30_000);
 
   // Sign out; Back must not show the app again (US1.3).
@@ -74,33 +80,53 @@ test('first sign-in: temporary code → password → authenticator → notice �
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toHaveCount(0);
 
-  // The temporary code was single-use.
+  // The invite code was single-use.
   await page.goto('/');
   await signIn(page, username, code);
-  await expect(page.getByRole('alert')).toHaveText(
-    'Could not sign in. Check your details and try again.',
-  );
+  await expect(page.getByRole('alert')).toHaveText(SIGN_IN_FAILED);
 
-  // A normal sign-in with password + the next code (the current one was just used).
+  // A normal sign-in: password, then the next code (the current one was just used).
   const signInStarted = Date.now();
   await signIn(page, username, PASSWORD, totp(setupKey, new Date(Date.now() + 30_000)));
   await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
   expect(Date.now() - signInStarted).toBeLessThan(20_000);
 });
 
-test('every kind of wrong sign-in gets the same message', async ({ page }, testInfo) => {
+test('a setup left before the authenticator resumes at authenticator setup, with no code screen', async ({
+  page,
+}, testInfo) => {
+  const username = uniqueUsername(`${testInfo.project.name.replace('auth-', '')}r`);
+  const code = invite(username);
+  await page.goto('/');
+  await signIn(page, username, code);
+  await setPassword(page, PASSWORD);
+  await expect(page.getByRole('heading', { name: 'Add an authenticator' })).toBeVisible();
+
+  // Closed here. Next time, the chosen password goes straight back to authenticator setup.
+  await page.context().clearCookies();
+  await page.goto('/');
+  await signIn(page, username, PASSWORD);
+
+  await expect(page.getByRole('heading', { name: 'Add an authenticator' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Enter your authenticator code' })).toHaveCount(0);
+});
+
+test('every kind of wrong sign-in gets the same message, before any code is asked for', async ({
+  page,
+}, testInfo) => {
   const username = uniqueUsername(`${testInfo.project.name.replace('auth-', '')}w`);
   invite(username);
   await page.goto('/');
 
-  for (const [user, password, code] of [
-    [username, 'not the temporary code', undefined],
-    ['nobody-here', 'anything at all', '123456'],
-    [username, 'still wrong', '000000'],
+  for (const [user, password] of [
+    [username, 'not the invite code'],
+    ['nobody-here', 'anything at all'],
+    [username, 'still wrong'],
   ] as const) {
-    await signIn(page, user, password, code);
-    await expect(page.getByRole('alert')).toHaveText(
-      'Could not sign in. Check your details and try again.',
+    await signIn(page, user, password);
+    await expect(page.getByRole('alert')).toHaveText(SIGN_IN_FAILED);
+    await expect(page.getByRole('heading', { name: 'Enter your authenticator code' })).toHaveCount(
+      0,
     );
   }
 });

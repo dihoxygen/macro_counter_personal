@@ -44,7 +44,7 @@ function PasswordStep({ onSession }: { onSession: (session: SessionState) => voi
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (password !== confirm) {
-      setError("The passwords don't match.");
+      setError('The passwords do not match.');
       return;
     }
     setBusy(true);
@@ -66,7 +66,7 @@ function PasswordStep({ onSession }: { onSession: (session: SessionState) => voi
 
   return (
     <form className="stack auth-form" onSubmit={submit} noValidate>
-      <h2>Choose a password</h2>
+      <h2>Set your password</h2>
       <p className="muted">
         At least 12 characters. A few unrelated words make a strong, memorable password.
       </p>

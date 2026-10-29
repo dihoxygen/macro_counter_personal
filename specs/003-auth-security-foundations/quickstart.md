@@ -51,11 +51,16 @@ and compute codes with a small `node:crypto` helper.
 
 Run these against the local app. Expected results are in **bold**.
 
+> **Feature 004 changed sign-in to two screens** (password first, then the authenticator code) and
+> renamed the temporary code to the **invite code**. The steps below are updated for that; the full
+> 004 scenarios, including Remember User, are in
+> [specs/004-security-qol/quickstart.md](../004-security-qol/quickstart.md).
+
 ### V1. First-time setup (US1.5, US2.3, SC-001, SC-002)
 1. Open the app signed out. **The sign-in screen has no sign-up, register or "request invite"
    option.**
-2. Enter your username and the temporary code, and leave the code field empty. **You get "Choose
-   a password".**
+2. Enter your username and the invite code in "Password (or Invite Code)". **You get "Set your
+   password", with no authenticator screen first.**
 3. Try `password1234`. **It is rejected as a known breached password.** Try a password that
    contains your username. **It is rejected.**
 4. Set a strong password. **A QR code, the setup key and an "open in authenticator" link
@@ -63,13 +68,16 @@ Run these against the local app. Expected results are in **bold**.
    the right code.
 5. **The "What is sent to Claude" notice appears.** Acknowledge it. **You land on Today**, and all
    of this takes under 30 seconds after the code is scanned.
-6. Sign out, then sign in with the temporary code again. **You get the generic "Could not sign
-   in"** (the code was single-use).
+6. Sign out, then sign in with the invite code again. **You get the generic "Username or password
+   is incorrect."** (the code was single-use).
 
 ### V2. Normal sign-in and generic failures (US1.1, US1.2, FR-006)
-1. Sign in with username, password and code. **You reach Today in under 20 seconds.**
-2. Try each of these: a wrong password, an unknown username, a wrong code, and no code. **Every
-   case shows the same message**, and the response time is about the same.
+1. Sign in with username and password, then the code on the next screen. **You reach Today in
+   under 20 seconds.**
+2. Try a wrong password and an unknown username. **Both show the same message on the sign-in
+   screen**, in about the same time, and no code is asked for. A wrong code on the code screen
+   says "That code is incorrect." (004 research R1 accepts that the first step reveals a correct
+   password).
 3. Enter ` YOU ` (spaces and capitals) with the right credentials. **You are signed in.**
 
 ### V3. Brute force (US5.1, SC-006)

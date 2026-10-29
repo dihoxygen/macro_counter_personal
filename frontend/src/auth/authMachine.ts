@@ -2,9 +2,14 @@ import type { SessionState, SessionUser, SetupStep } from '../api/auth';
 
 // Pure sign-in state for the app shell (data-model.md: client session state). Kept in memory only.
 
+/** Why the sign-in screen is shown, if it needs saying. */
+export type SignInNotice = 'expired' | 'unavailable' | 'mfa_expired' | 'mfa_attempts';
+
 export type AuthState =
   | { kind: 'loading' }
-  | { kind: 'signed_out'; notice?: 'expired' | 'unavailable' }
+  | { kind: 'signed_out'; notice?: SignInNotice }
+  /** A pending sign-in found at launch: the password was right, the authenticator code is next (004 R1). */
+  | { kind: 'mfa' }
   | { kind: 'setup'; step: SetupStep }
   /** expired: the server no longer accepts the session; the app stays mounted under a sign-in overlay. */
   | { kind: 'signed_in'; user: SessionUser; expired: boolean }
@@ -16,6 +21,8 @@ export type AuthState =
 export type AuthEvent =
   | { type: 'session'; session: SessionState }
   | { type: 'session-expired' }
+  /** The 5th wrong code ended the pending sign-in: back to the password, with its own notice. */
+  | { type: 'mfa-attempts-exceeded' }
   /** The session could not be checked. account: who was last signed in on this device, if anyone. */
   | { type: 'unavailable'; account?: SessionUser };
 
@@ -32,7 +39,10 @@ export function transition(state: AuthState, event: AuthEvent): AuthState {
       if (state.kind === 'signed_in') return state.expired ? state : { ...state, expired: true };
       if (state.kind === 'offline') return { kind: 'signed_in', user: state.user, expired: true };
       if (state.kind === 'setup') return { kind: 'signed_out', notice: 'expired' };
+      if (state.kind === 'mfa') return { kind: 'signed_out', notice: 'mfa_expired' };
       return state;
+    case 'mfa-attempts-exceeded':
+      return state.kind === 'mfa' ? { kind: 'signed_out', notice: 'mfa_attempts' } : state;
     case 'unavailable':
       if (state.kind !== 'loading') return state;
       return event.account
@@ -49,6 +59,12 @@ function fromSession(state: AuthState, session: SessionState): AuthState {
   if (session.state === 'signed_in' && session.user) {
     if (signedIn && signedIn.user.id !== session.user.id) return { kind: 'reload' };
     return { kind: 'signed_in', user: session.user, expired: false };
+  }
+  if (session.state === 'mfa') {
+    // Over someone's data, a pending sign-in is handled by the expired overlay's own steps; nothing is replaced
+    // until a sign-in completes.
+    if (signedIn) return { kind: 'signed_in', user: signedIn.user, expired: true };
+    return { kind: 'mfa' };
   }
   if (session.state === 'setup') {
     // A different setup cannot take over an app that still shows someone's data.

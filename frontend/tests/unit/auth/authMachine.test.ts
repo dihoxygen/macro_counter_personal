@@ -12,14 +12,17 @@ const bob = { id: '6f1c2a4e-0000-4000-8000-000000000002', username: 'bob', role:
 const signedIn = (user: SessionUser = alice): SessionState => ({
   state: 'signed_in',
   csrfToken: 't',
+  deviceRemembered: false,
   user,
 });
 const setup = (step: 'password' | 'totp' | 'notice'): SessionState => ({
   state: 'setup',
   csrfToken: 't',
+  deviceRemembered: false,
   setupStep: step,
 });
-const signedOut: SessionState = { state: 'signed_out', csrfToken: 't' };
+const signedOut: SessionState = { state: 'signed_out', csrfToken: 't', deviceRemembered: false };
+const pending: SessionState = { state: 'mfa', csrfToken: 't', deviceRemembered: false };
 
 describe('authMachine', () => {
   it('starts loading', () => {
@@ -46,7 +49,7 @@ describe('authMachine', () => {
       expect(
         transition(initialAuthState, {
           type: 'session',
-          session: { state: 'setup', csrfToken: 't' },
+          session: { state: 'setup', csrfToken: 't', deviceRemembered: false },
         }),
       ).toEqual({
         kind: 'setup',
@@ -106,6 +109,63 @@ describe('authMachine', () => {
       state = transition(state, { type: 'session', session: signedIn() });
       expect(state).toEqual({ kind: 'signed_in', user: alice, expired: false });
     });
+  });
+
+  describe('pending sign-in (004: the authenticator code on its own screen)', () => {
+    it('mfa from signed out → the authenticator screen', () => {
+      expect(transition({ kind: 'signed_out' }, { type: 'session', session: pending })).toEqual({
+        kind: 'mfa',
+      });
+    });
+
+    it('the right code → signed in', () => {
+      expect(transition({ kind: 'mfa' }, { type: 'session', session: signedIn() })).toEqual({
+        kind: 'signed_in',
+        user: alice,
+        expired: false,
+      });
+    });
+
+    it('the right code with only the notice left → setup at the notice', () => {
+      expect(transition({ kind: 'mfa' }, { type: 'session', session: setup('notice') })).toEqual({
+        kind: 'setup',
+        step: 'notice',
+      });
+    });
+
+    it('an expired pending sign-in → signed out with the timeout notice', () => {
+      expect(transition({ kind: 'mfa' }, { type: 'session-expired' })).toEqual({
+        kind: 'signed_out',
+        notice: 'mfa_expired',
+      });
+    });
+
+    it('too many wrong codes → signed out with its own notice', () => {
+      expect(transition({ kind: 'mfa' }, { type: 'mfa-attempts-exceeded' })).toEqual({
+        kind: 'signed_out',
+        notice: 'mfa_attempts',
+      });
+    });
+
+    it('mfa-attempts-exceeded outside the authenticator screen changes nothing', () => {
+      const state: AuthState = { kind: 'signed_in', user: alice, expired: false };
+      expect(transition(state, { type: 'mfa-attempts-exceeded' })).toBe(state);
+    });
+
+    it.each<AuthState>([
+      { kind: 'signed_in', user: alice, expired: false },
+      { kind: 'offline', user: alice },
+    ])(
+      'a pending sign-in reported over the app (back/forward cache) → expired overlay (%o)',
+      (state) => {
+        // The overlay runs its own password and code steps; nobody's data is replaced until a sign-in completes.
+        expect(transition(state, { type: 'session', session: pending })).toEqual({
+          kind: 'signed_in',
+          user: alice,
+          expired: true,
+        });
+      },
+    );
   });
 
   describe('session-expired events', () => {
