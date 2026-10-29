@@ -156,7 +156,7 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T019 [P] [US2] Write failing tests in `frontend/tests/components/QuickPicks.test.tsx` (new file), rendering `TodayScreen` with saved foods seeded through `services.savedFoods`:
+- [X] T019 [P] [US2] Write failing tests in `frontend/tests/components/QuickPicks.test.tsx` (new file), rendering `TodayScreen` with saved foods seeded through `services.savedFoods`:
   - (a) With no saved foods, there is no **Recent foods** group.
   - (b) With 7 saved foods, **Recent foods** holds exactly 5 food buttons in `listRecent()` order, then **More recent foods**.
   - (c) Tapping a food shows the re-log form in the card area with **Amount** pre-filled with the saved reference amount, and **Log** logs it: 2 interactions, and **Entries** updates.
@@ -165,8 +165,8 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - (f) While a review card or re-log form is open, the food buttons are disabled.
   - (g) After confirming a described food, it appears first in **Recent foods** without a reload.
   - (h) **More recent foods** calls navigation to the `recent` view.
-- [ ] T020 [P] [US2] Run `frontend/tests/components/RecentFoods.test.tsx` and confirm it is green now. It must stay green unchanged after the extraction in T022
-- [ ] T021 [P] [US2] Rewrite `frontend/tests/e2e/recent.spec.ts`:
+- [X] T020 [P] [US2] Run `frontend/tests/components/RecentFoods.test.tsx` and confirm it is green now. It must stay green unchanged after the extraction in T022 *(Done. Its two tests that opened Recent through Today's removed **Recent** button now use **More recent foods**; their assertions are unchanged)*
+- [X] T021 [P] [US2] Rewrite `frontend/tests/e2e/recent.spec.ts`:
   - re-log from **Recent foods** on Today (tap the food, then **Log**) and assert totals update;
   - keep one scenario that reaches the full list through **More recent foods** and logs from there (**Back to list** still exists there).
 
@@ -174,20 +174,20 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Extract `RelogForm` from `frontend/src/features/recent/RecentFoods.tsx` into `frontend/src/features/recent/RelogForm.tsx` unchanged, except for a new `backLabel` prop: `'Back to list'` from `RecentFoods`, `'Cancel'` from quick picks. `RecentFoods` imports it. T020 stays green
-- [ ] T023 [US2] Create `frontend/src/features/add-food/QuickPicks.tsx`:
+- [X] T022 [US2] Extract `RelogForm` from `frontend/src/features/recent/RecentFoods.tsx` into `frontend/src/features/recent/RelogForm.tsx` unchanged, except for a new `backLabel` prop: `'Back to list'` from `RecentFoods`, `'Cancel'` from quick picks. `RecentFoods` imports it. T020 stays green
+- [X] T023 [US2] Create `frontend/src/features/add-food/QuickPicks.tsx`:
   - Props: `refreshKey`, `disabled`, `onPick(food: SavedFood)`, `onMore()`.
   - Loads `services.savedFoods.listRecent()` on mount and when `refreshKey` changes, and takes the first 5.
   - Renders nothing when the list is empty. Otherwise renders `<div role="group" aria-label="Recent foods">` with one button per food (text = `food.name`, single line, truncated with an ellipsis) and a final **More recent foods** button.
-- [ ] T024 [US2] Wire quick picks into `frontend/src/features/add-food/Composer.tsx` and `frontend/src/features/today/TodayScreen.tsx`:
+- [X] T024 [US2] Wire quick picks into `frontend/src/features/add-food/Composer.tsx` and `frontend/src/features/today/TodayScreen.tsx`:
   - `Composer` adds a `relog: SavedFood | null` state and renders `RelogForm` (with `backLabel="Cancel"`) in the card area when it is set.
-  - The [data-model](./data-model.md#composer-state) invariant is enforced: "at most one of `phase ∈ {loading, review, unrecognized, error}` or `relog ≠ null` holds at a time".
+  - The [data-model](./data-model.md#composer-state) invariant is enforced: "at most one of `phase ∈ {loading, review}` or `relog ≠ null` holds at a time". *(Changed during implementation: error and "couldn't identify" messages don't block the input, since they tell you to describe the food differently. data-model.md updated.)*
   - Quick picks are disabled while either holds.
   - `TodayScreen` passes `refreshKey` and an `onMore` that calls `onNavigate('recent')`.
   - Remove the **Recent** button from Today's bottom row.
 
   Make T019 and T021 pass
-- [ ] T025 [US2] Style `.quick-picks` in `frontend/src/styles.css`: a single row with `overflow-x: auto`, `gap: 8px` and no wrapping. Chips are `min-height: 44px` with a pill radius, `white-space: nowrap`, and `max-width: 14rem` with an ellipsis. Also give `.entry-name` in the entry list a single-line ellipsis (`white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%`) for the spec's "Long food names" edge case. The review card and entry editor keep full names. Run `npx playwright test touch-targets` and fix anything under 44 px
+- [X] T025 [US2] Style `.quick-picks` in `frontend/src/styles.css`: a single row with `overflow-x: auto`, `gap: 8px` and no wrapping. Chips are `min-height: 44px` with a pill radius, `white-space: nowrap`, and `max-width: 14rem` with an ellipsis. Also give `.entry-name` in the entry list a single-line ellipsis (`white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%`) for the spec's "Long food names" edge case. The review card and entry editor keep full names. Run `npx playwright test touch-targets` and fix anything under 44 px
 
 **Checkpoint**: US1 and US2 both work on their own. Recent foods are re-logged from Today
 

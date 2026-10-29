@@ -74,17 +74,22 @@ test.describe('Touch targets', () => {
 
     // Today with an entry, and the entry editor.
     await expectTouchTargets(page, 'Today (with entries)');
-    await page.getByRole('button', { name: /banana/i }).click();
+    await page.getByRole('list', { name: /entries/i }).getByRole('button', { name: /banana/i }).click();
     await expectTouchTargets(page, 'Entry editor');
     await page.getByRole('button', { name: /^delete$/i }).click();
     await expectTouchTargets(page, 'Entry editor / delete');
     await page.getByRole('button', { name: /keep/i }).click();
     await page.getByRole('button', { name: /^cancel$/i }).click();
 
+    // Quick-pick re-log on Today (feature 004).
+    await page.getByRole('group', { name: 'Recent foods' }).getByRole('button', { name: 'Banana' }).click();
+    await expectTouchTargets(page, 'Today / quick-pick re-log');
+    await page.getByRole('region', { name: 'Log food' }).getByRole('button', { name: 'Cancel' }).click();
+
     // Recent, history, goal.
-    await page.getByRole('button', { name: /^recent$/i }).click();
+    await page.getByRole('button', { name: 'More recent foods' }).click();
     await expectTouchTargets(page, 'Recent');
-    await page.getByRole('button', { name: /banana/i }).click();
+    await page.getByRole('list', { name: /recent foods/i }).getByRole('button', { name: /banana/i }).click();
     await expectTouchTargets(page, 'Recent / re-log');
     await page.getByRole('button', { name: /back to list/i }).click();
     await page.getByRole('button', { name: /← back/i }).click();

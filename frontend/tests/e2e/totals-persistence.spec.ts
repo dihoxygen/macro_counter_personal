@@ -26,13 +26,13 @@ test.describe('Running totals (User Story 2)', () => {
     await logManually(page, yogurt);
     await logManually(page, chicken);
 
-    await page.getByRole('button', { name: /greek yogurt/i }).click();
+    await page.getByRole('list', { name: /entries/i }).getByRole('button', { name: /greek yogurt/i }).click();
     await page.getByLabel(/amount/i).fill('85');
     await page.getByRole('button', { name: /^save$/i }).click();
     await expect(total(page, 'Protein')).toContainText('55 g');
     await expect(total(page, 'Calories')).toContainText('298 kcal');
 
-    await page.getByRole('button', { name: /chicken breast/i }).click();
+    await page.getByRole('list', { name: /entries/i }).getByRole('button', { name: /chicken breast/i }).click();
     await page.getByRole('button', { name: /^delete$/i }).click();
     await page.getByRole('button', { name: /yes, delete/i }).click();
     await expect(total(page, 'Protein')).toContainText('8.5 g');

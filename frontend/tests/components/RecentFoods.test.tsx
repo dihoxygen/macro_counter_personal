@@ -32,7 +32,8 @@ describe('RecentFoods', () => {
     const user = userEvent.setup();
     await renderWithServices(<App />, await seeded());
 
-    await user.click(await screen.findByRole('button', { name: /^recent$/i }));
+    // Feature 004: Today's quick picks end with More recent foods, which opens this list.
+    await user.click(await screen.findByRole('button', { name: 'More recent foods' }));
 
     const list = await screen.findByRole('list', { name: /recent foods/i });
     expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
@@ -46,7 +47,7 @@ describe('RecentFoods', () => {
     const services = await seeded();
     await renderWithServices(<App />, services);
 
-    await user.click(await screen.findByRole('button', { name: /^recent$/i })); // 1
+    await user.click(await screen.findByRole('button', { name: 'More recent foods' })); // 1
     await user.click(await screen.findByRole('button', { name: /greek yogurt/i })); // 2
     expect(screen.getByLabelText(/amount/i)).toHaveValue(170);
     await user.click(screen.getByRole('button', { name: /^log$/i })); // 3

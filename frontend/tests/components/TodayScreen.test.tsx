@@ -71,7 +71,7 @@ describe('TodayScreen', () => {
 
     const totals = await screen.findByRole('region', { name: /totals/i });
     expect(await within(totals).findByText('105 kcal')).toBeInTheDocument();
-    expect(screen.getByText('Banana')).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: /entries/i })).getByText('Banana')).toBeInTheDocument();
   });
 });
 

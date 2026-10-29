@@ -19,9 +19,10 @@ Owned by `Composer` (one per Today screen; Today stays mounted, see [research R1
 | `photoDraft` | existing `usePhotoSelection` state + `note: string` | Same lifetime as `describeDraft` |
 | `manualDraft` | existing `ManualEntryForm` state | Kept because the form stays mounted while hidden; cleared on save |
 
-**Invariant (FR-005)**: at most one of `phase ∈ {loading, review, unrecognized, error}` or
-`relog ≠ null` holds at a time. While either holds, the method switch, quick picks and send controls
-are disabled.
+**Invariant (FR-005)**: at most one of `phase ∈ {loading, review}` or `relog ≠ null` holds at a time. While
+either holds, the method switch, quick picks and send controls are disabled. An `unrecognized` or `error`
+message is not a pending estimate: it does not block the input, because its advice is to describe the food
+differently. Sending again, or picking a quick pick, replaces it.
 
 ## Card area transitions
 

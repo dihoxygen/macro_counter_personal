@@ -452,3 +452,29 @@ button.entry {
   color: var(--accent);
   font-weight: 600;
 }
+
+.quick-picks {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 2px;
+}
+
+.quick-picks button {
+  flex: none;
+  min-height: 44px;
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Long food names stay on one line in the entry list; the editor and review card show them in full. */
+.entry-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}

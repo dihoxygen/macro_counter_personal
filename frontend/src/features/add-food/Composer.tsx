@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useServices } from '../../app/services';
+import type { SavedFood } from '../../data/records';
 import { reviewTotal, type ReviewState } from '../../domain/review';
 import { DescribeInput } from './DescribeInput';
+import { RelogForm } from '../recent/RelogForm';
 import { ManualEntryForm } from './ManualEntryForm';
+import { QuickPicks } from './QuickPicks';
 import { ReviewEstimate } from './ReviewEstimate';
 import { useEstimateFlow } from './useEstimateFlow';
 
@@ -14,8 +17,12 @@ const methods: { method: Method; label: string }[] = [
 ];
 
 interface Props {
+  /** Changes whenever Today reloads (after logging, or on coming back to Today). */
+  refreshKey: number;
   /** Called after something was logged, so Today reloads its entries and totals. */
   onLogged: () => void;
+  /** Opens the full Recent foods screen (FR-008). */
+  onMoreRecent: () => void;
   /** The protein of the card under review, or 0 when none is open (FR-004). */
   onPendingChange: (proteinG: number) => void;
 }
@@ -24,18 +31,20 @@ interface Props {
  * Logging on Today (feature 004): one input for every method, and one estimate flow, so at most one estimate
  * is pending (FR-005). Its review card appears here, above the input, instead of on a separate screen.
  */
-export function Composer({ onLogged, onPendingChange }: Props) {
+export function Composer({ refreshKey, onLogged, onMoreRecent, onPendingChange }: Props) {
   const services = useServices();
   const [method, setMethod] = useState<Method>('describe');
   const [describeDraft, setDescribeDraft] = useState('');
   const [manualKey, setManualKey] = useState(0);
+  const [relog, setRelog] = useState<SavedFood | null>(null);
   const lastText = useRef('');
   const focusInputNext = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const cardAreaRef = useRef<HTMLDivElement>(null);
   const flow = useEstimateFlow(() => undefined);
   const { phase } = flow;
-  const busy = phase.kind === 'loading' || phase.kind === 'review';
+  // One thing in the card area at a time: an estimate loading or under review, or a re-log (FR-005).
+  const busy = phase.kind === 'loading' || phase.kind === 'review' || relog !== null;
 
   useEffect(() => {
     onPendingChange(phase.kind === 'review' ? reviewTotal(phase.state).proteinG : 0);
@@ -61,6 +70,16 @@ export function Composer({ onLogged, onPendingChange }: Props) {
     setDescribeDraft('');
     focusInputNext.current = true;
     flow.reset();
+    onLogged();
+  };
+
+  const pick = (food: SavedFood) => {
+    flow.reset(); // a quick pick replaces an error or "couldn't identify" message
+    setRelog(food);
+  };
+
+  const relogged = () => {
+    setRelog(null);
     onLogged();
   };
 
@@ -111,6 +130,9 @@ export function Composer({ onLogged, onPendingChange }: Props) {
             {recovery}
           </div>
         )}
+        {relog && (
+          <RelogForm key={relog.id} food={relog} onLogged={relogged} onBack={() => setRelog(null)} backLabel="Cancel" />
+        )}
         {phase.kind === 'error' && (
           <div className="stack">
             <p role="alert" className="error">
@@ -120,6 +142,8 @@ export function Composer({ onLogged, onPendingChange }: Props) {
           </div>
         )}
       </div>
+
+      <QuickPicks refreshKey={refreshKey} disabled={busy} onPick={pick} onMore={onMoreRecent} />
 
       <div className="row" role="group" aria-label="Entry method">
         {methods.map(({ method: m, label }) => (

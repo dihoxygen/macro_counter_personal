@@ -33,13 +33,15 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
         pendingG={pendingProteinG}
         onSetGoal={() => onNavigate('goal')}
       />
-      <Composer onLogged={() => setRefreshKey((k) => k + 1)} onPendingChange={setPendingProteinG} />
+      <Composer
+        refreshKey={refreshKey}
+        onLogged={() => setRefreshKey((k) => k + 1)}
+        onMoreRecent={() => onNavigate('recent')}
+        onPendingChange={setPendingProteinG}
+      />
       <div className="row">
         <button type="button" className="primary" onClick={() => onNavigate('add')}>
           Add food
-        </button>
-        <button type="button" onClick={() => onNavigate('recent')}>
-          Recent
         </button>
         <button type="button" onClick={() => onNavigate('history')}>
           Previous days
