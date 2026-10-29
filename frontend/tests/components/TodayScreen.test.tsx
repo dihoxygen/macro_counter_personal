@@ -63,14 +63,15 @@ describe('TodayScreen', () => {
     const user = userEvent.setup();
     await renderWithServices(<App />, { estimateFromText: vi.fn(async () => estimateOf(bananaItem)) });
 
-    await user.click(await screen.findByRole('button', { name: /add food/i }));
-    await user.type(await screen.findByLabelText(/what did you eat/i), '1 medium banana');
-    await user.click(screen.getByRole('button', { name: /estimate/i }));
+    // Feature 004: described and confirmed on Today, in the composer.
+    const composer = await screen.findByRole('region', { name: 'Log food' });
+    await user.type(within(composer).getByLabelText(/what did you eat/i), '1 medium banana');
+    await user.click(within(composer).getByRole('button', { name: /estimate/i }));
     await user.click(await screen.findByRole('button', { name: /confirm/i }));
 
     const totals = await screen.findByRole('region', { name: /totals/i });
     expect(await within(totals).findByText('105 kcal')).toBeInTheDocument();
-    expect(screen.getByText('Banana')).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: /entries/i })).getByText('Banana')).toBeInTheDocument();
   });
 });
 
@@ -113,5 +114,46 @@ describe('TodayScreen protein prominence and day rollover (US2)', () => {
     await renderWithServices(<TodayScreen onNavigate={onNavigate} />);
     await user.click(await screen.findByRole('button', { name: /previous days/i }));
     expect(onNavigate).toHaveBeenCalledWith('history');
+  });
+});
+
+// Feature 004 User Story 3: there is no separate Add food screen any more (FR-012).
+describe('TodayScreen without an Add food screen', () => {
+  it('offers no Add food button or heading on Today', async () => {
+    await renderWithServices(<App />);
+    await screen.findByRole('region', { name: 'Log food' });
+    expect(screen.queryByRole('button', { name: /add food/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /add food/i })).not.toBeInTheDocument();
+  });
+});
+
+// Feature 004 User Story 5 (FR-012): compact header controls instead of a row of buttons.
+describe('TodayScreen header navigation', () => {
+  // A <header> inside a <section> has no banner role, so find it from the Today heading.
+  const header = () => screen.getByRole('heading', { level: 1, name: 'Today' }).closest('header')!;
+
+  it.each([
+    ['Previous days', 'history'],
+    ['Goal settings', 'goal'],
+    ['Account', 'account'],
+  ] as const)('the %s icon button opens the %s view', async (name, view) => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    await renderWithServices(<TodayScreen onNavigate={onNavigate} />);
+    const button = within(header()).getByRole('button', { name });
+
+    expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(button).toHaveTextContent(/^$/);
+    await user.click(button);
+    expect(onNavigate).toHaveBeenCalledWith(view);
+  });
+
+  it('leaves no navigation buttons below the entries', async () => {
+    await renderWithServices(<TodayScreen onNavigate={vi.fn()} />);
+    await screen.findByText(/nothing logged yet/i);
+    for (const name of ['Previous days', 'Account', 'Goal settings']) {
+      expect(screen.getAllByRole('button', { name })).toHaveLength(1);
+      expect(within(header()).getByRole('button', { name })).toBeInTheDocument();
+    }
   });
 });

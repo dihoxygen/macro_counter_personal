@@ -20,6 +20,25 @@ const protein = (dayKey: string, proteinG: number): NewEntry => ({
 });
 
 describe('ProteinProgress', () => {
+  // Feature 004: the protein an open estimate card would add (FR-004).
+  it('shows pending protein without counting it as logged', async () => {
+    await renderWithServices(<ProteinProgress loggedG={96} goalG={150} pendingG={54} />);
+    const region = screen.getByRole('region', { name: /protein goal/i });
+    expect(within(region).getByText('+54 g pending')).toBeInTheDocument();
+    expect(within(region).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '96');
+  });
+
+  it.each([0, undefined])('shows no pending text when pending is %s', async (pendingG) => {
+    await renderWithServices(<ProteinProgress loggedG={96} goalG={150} pendingG={pendingG} />);
+    expect(screen.queryByText(/pending/)).not.toBeInTheDocument();
+  });
+
+  it('with no goal, shows the pending protein next to the Set a protein goal prompt', async () => {
+    await renderWithServices(<ProteinProgress loggedG={96} goalG={null} pendingG={54} onSetGoal={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /set a protein goal/i })).toBeInTheDocument();
+    expect(screen.getByText('+54 g pending')).toBeInTheDocument();
+  });
+
   it('with no goal, shows a Set a protein goal prompt', async () => {
     const user = userEvent.setup();
     const onSetGoal = vi.fn();

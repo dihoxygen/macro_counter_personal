@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { banana, estimate, liveTrackCount, mockApi, recordMediaStreams } from './helpers';
+import { banana, describeFood, estimate, liveTrackCount, mockApi, recordMediaStreams } from './helpers';
 
 const photo = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'meal-with-gps.jpg');
 
@@ -44,11 +44,8 @@ test.describe('Touch targets', () => {
     await page.goto('/');
     await expectTouchTargets(page, 'Today (empty)');
 
-    // Add food: describe, review (with a warning and the editor open), photo, manual.
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await expectTouchTargets(page, 'Add food / describe');
-    await page.getByLabel(/what did you eat/i).fill('banana');
-    await page.getByRole('button', { name: 'Estimate' }).click();
+    // Describe and review on Today (feature 004), with a warning and the editor open.
+    await describeFood(page, 'banana');
     await page.getByRole('group', { name: 'Banana' }).waitFor();
     await expectTouchTargets(page, 'Review');
     await page.getByRole('button', { name: /edit/i }).click();
@@ -60,9 +57,8 @@ test.describe('Touch targets', () => {
     await page.getByRole('button', { name: /yes, these values are right/i }).click();
     await page.getByRole('button', { name: 'Confirm' }).click();
 
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByRole('button', { name: 'Photo' }).click();
-    await expectTouchTargets(page, 'Add food / photo');
+    await page.getByRole('region', { name: 'Log food' }).getByRole('button', { name: 'Photo' }).click();
+    await expectTouchTargets(page, 'Composer / photo');
     await page.getByLabel('Existing photo file').setInputFiles(photo);
     await page.getByRole('img', { name: 'Selected photo' }).waitFor();
     await expectTouchTargets(page, 'Photo step (selected)');
@@ -72,22 +68,27 @@ test.describe('Touch targets', () => {
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect.poll(() => liveTrackCount(page)).toBe(0);
     await page.getByRole('button', { name: 'Manual' }).click();
-    await expectTouchTargets(page, 'Add food / manual');
-    await page.getByRole('button', { name: /back/i }).click();
+    await expectTouchTargets(page, 'Composer / manual');
+    await page.getByRole('button', { name: 'Describe' }).click();
 
     // Today with an entry, and the entry editor.
     await expectTouchTargets(page, 'Today (with entries)');
-    await page.getByRole('button', { name: /banana/i }).click();
+    await page.getByRole('list', { name: /entries/i }).getByRole('button', { name: /banana/i }).click();
     await expectTouchTargets(page, 'Entry editor');
     await page.getByRole('button', { name: /^delete$/i }).click();
     await expectTouchTargets(page, 'Entry editor / delete');
     await page.getByRole('button', { name: /keep/i }).click();
     await page.getByRole('button', { name: /^cancel$/i }).click();
 
+    // Quick-pick re-log on Today (feature 004).
+    await page.getByRole('group', { name: 'Recent foods' }).getByRole('button', { name: 'Banana' }).click();
+    await expectTouchTargets(page, 'Today / quick-pick re-log');
+    await page.getByRole('region', { name: 'Log food' }).getByRole('button', { name: 'Cancel' }).click();
+
     // Recent, history, goal.
-    await page.getByRole('button', { name: /^recent$/i }).click();
+    await page.getByRole('button', { name: 'More recent foods' }).click();
     await expectTouchTargets(page, 'Recent');
-    await page.getByRole('button', { name: /banana/i }).click();
+    await page.getByRole('list', { name: /recent foods/i }).getByRole('button', { name: /banana/i }).click();
     await expectTouchTargets(page, 'Recent / re-log');
     await page.getByRole('button', { name: /back to list/i }).click();
     await page.getByRole('button', { name: /← back/i }).click();

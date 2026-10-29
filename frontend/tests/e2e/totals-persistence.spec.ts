@@ -1,21 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { mockApi, total } from './helpers';
-
-async function logManually(
-  page: Page,
-  food: { name: string; amount: string; kcal: string; protein: string; carbs: string; fat: string },
-) {
-  await page.getByRole('button', { name: 'Add food' }).click();
-  await page.getByRole('button', { name: 'Manual' }).click();
-  await page.getByLabel(/food name/i).fill(food.name);
-  await page.getByLabel(/amount/i).fill(food.amount);
-  await page.getByLabel(/calories/i).fill(food.kcal);
-  await page.getByLabel(/protein/i).fill(food.protein);
-  await page.getByLabel(/carbs/i).fill(food.carbs);
-  await page.getByLabel(/fat/i).fill(food.fat);
-  await page.getByRole('button', { name: /^save$/i }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
-}
+import { expect, test } from '@playwright/test';
+import { logManually, mockApi, total } from './helpers';
 
 const yogurt = { name: 'Greek yogurt', amount: '170', kcal: '100', protein: '17', carbs: '6', fat: '0.7' };
 const chicken = { name: 'Chicken breast', amount: '150', kcal: '248', protein: '46.5', carbs: '0', fat: '5.4' };
@@ -42,13 +26,15 @@ test.describe('Running totals (User Story 2)', () => {
     await logManually(page, yogurt);
     await logManually(page, chicken);
 
-    await page.getByRole('button', { name: /greek yogurt/i }).click();
-    await page.getByLabel(/amount/i).fill('85');
-    await page.getByRole('button', { name: /^save$/i }).click();
+    await page.getByRole('list', { name: /entries/i }).getByRole('button', { name: /greek yogurt/i }).click();
+    // Within the editor: the composer's hidden Manual form also has an Amount field (feature 004).
+    const editor = page.getByRole('form', { name: 'Edit Greek yogurt' });
+    await editor.getByLabel(/amount/i).fill('85');
+    await editor.getByRole('button', { name: /^save$/i }).click();
     await expect(total(page, 'Protein')).toContainText('55 g');
     await expect(total(page, 'Calories')).toContainText('298 kcal');
 
-    await page.getByRole('button', { name: /chicken breast/i }).click();
+    await page.getByRole('list', { name: /entries/i }).getByRole('button', { name: /chicken breast/i }).click();
     await page.getByRole('button', { name: /^delete$/i }).click();
     await page.getByRole('button', { name: /yes, delete/i }).click();
     await expect(total(page, 'Protein')).toContainText('8.5 g');

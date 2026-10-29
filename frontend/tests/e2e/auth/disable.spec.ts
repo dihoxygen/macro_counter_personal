@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { composer, describeFood, reviewCard } from '../helpers';
 import { adminSql, invite, uniqueUsername } from './db';
 import { completeSetup, nextCode, PASSWORD, signIn } from './flows';
 
@@ -19,12 +20,12 @@ test('a disabled person is sent to sign-in on their next server request, without
 
   adminSql(`select macro_admin.disable_user('${username}');`);
 
-  // The next server call fails: opening Add food (it checks AI status) brings up sign-in over the app.
+  // The next server call fails: describing a food (feature 004: on Today) brings up sign-in over the app.
   // Manual entry stays available underneath (FR-022).
-  await page.getByRole('button', { name: 'Add food' }).click();
+  await describeFood(page, '1 medium banana');
   const dialog = page.getByRole('dialog', { name: 'Sign in again' });
   await expect(dialog).toBeVisible();
-  await expect(page.getByLabel('Food name')).toBeAttached();
+  await expect(composer(page).getByLabel('Food name')).toBeAttached();
 
   // Signing in is refused while disabled, with the same generic message.
   await signIn(page, username, PASSWORD, nextCode(setupKey));
@@ -37,11 +38,8 @@ test('a disabled person is sent to sign-in on their next server request, without
   // The refused attempt never consumed its code (disabled accounts fail before the code is checked).
   await signIn(page, username, PASSWORD, nextCode(setupKey));
   await expect(dialog).toHaveCount(0);
-  await page.getByRole('button', { name: /back/i }).click();
-  await page.getByRole('button', { name: 'Add food' }).click();
-  await page.getByLabel(/what did you eat/i).fill('1 medium banana');
-  await page.getByRole('button', { name: 'Estimate' }).click();
-  await expect(page.getByRole('group', { name: 'Banana' })).toBeVisible();
+  await describeFood(page, '1 medium banana');
+  await expect(reviewCard(page).getByRole('group', { name: 'Banana' })).toBeVisible();
 
   expect(pageErrors).toEqual([]);
 });

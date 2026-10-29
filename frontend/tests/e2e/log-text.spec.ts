@@ -1,5 +1,8 @@
-import { expect, test } from '@playwright/test';
-import { banana, egg, estimate, mockApi, toast, total } from './helpers';
+import { expect, test, type Page } from '@playwright/test';
+import { banana, composer, describeFood, egg, estimate, mockApi, reviewCard, toast, total } from './helpers';
+
+// Feature 004: describing, reviewing and confirming all happen on Today, in the composer.
+const today = (page: Page) => page.getByRole('heading', { level: 1, name: 'Today' });
 
 test.describe('Log a food by text (User Story 1)', () => {
   test('V1–V2: estimate a banana, review it, confirm, and see totals rise exactly', async ({ page }) => {
@@ -13,20 +16,21 @@ test.describe('Log a food by text (User Story 1)', () => {
     await page.goto('/');
     await expect(total(page, 'Calories')).toContainText('0 kcal');
 
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByLabel(/what did you eat/i).fill('1 medium banana');
-    await page.getByRole('button', { name: 'Estimate' }).click();
+    await describeFood(page, '1 medium banana');
 
     // V1: estimate shown with units and an AI label before anything is saved.
-    const item = page.getByRole('group', { name: 'Banana' });
+    const item = reviewCard(page).getByRole('group', { name: 'Banana' });
+    await expect(today(page)).toBeVisible();
     await expect(item).toContainText('1 medium banana (~118 g)');
     await expect(item).toContainText('105 kcal');
     await expect(item).toContainText('1.3 g');
-    await expect(page.getByText(/ai estimate/i)).toBeVisible();
+    await expect(reviewCard(page).getByText(/ai estimate/i)).toBeVisible();
     expect(body).toEqual({ description: '1 medium banana' }); // FR-015: only the description
 
     // V2: confirm → entry appears; totals equal the confirmed values.
     await page.getByRole('button', { name: 'Confirm' }).click();
+    await expect(reviewCard(page)).toHaveCount(0);
+    await expect(today(page)).toBeVisible();
     await expect(page.getByRole('list', { name: /entries/i })).toContainText('Banana');
     await expect(total(page, 'Calories')).toContainText('105 kcal');
     await expect(total(page, 'Protein')).toContainText('1.3 g');
@@ -37,26 +41,24 @@ test.describe('Log a food by text (User Story 1)', () => {
   test('V3: an edited protein value is what gets saved', async ({ page }) => {
     await mockApi(page, { text: (route) => route.fulfill({ json: estimate(banana) }) });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByLabel(/what did you eat/i).fill('1 medium banana');
-    await page.getByRole('button', { name: 'Estimate' }).click();
+    await describeFood(page, '1 medium banana');
 
-    const item = page.getByRole('group', { name: 'Banana' });
+    const item = reviewCard(page).getByRole('group', { name: 'Banana' });
     await item.getByRole('button', { name: /edit/i }).click();
     await item.getByLabel(/protein/i).fill('2');
     await item.getByRole('button', { name: /done/i }).click();
     await page.getByRole('button', { name: 'Confirm' }).click();
 
     await expect(total(page, 'Protein')).toContainText('2 g');
+    await expect(today(page)).toBeVisible();
   });
 
   test('V4: several foods show a per-item breakdown and a combined total', async ({ page }) => {
     await mockApi(page, { text: (route) => route.fulfill({ json: estimate(egg, toast) }) });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByLabel(/what did you eat/i).fill('2 scrambled eggs and toast with butter');
-    await page.getByRole('button', { name: 'Estimate' }).click();
+    await describeFood(page, '2 scrambled eggs and toast with butter');
 
+    await expect(today(page)).toBeVisible();
     await expect(page.getByRole('group', { name: 'Scrambled eggs' })).toBeVisible();
     await expect(page.getByRole('group', { name: 'Whole wheat toast with butter' })).toBeVisible();
     await expect(page.getByRole('group', { name: /total/i })).toContainText('253 kcal');
@@ -65,11 +67,10 @@ test.describe('Log a food by text (User Story 1)', () => {
   test("V5: unrecognizable input shows Couldn't identify food, not an estimate", async ({ page }) => {
     await mockApi(page, { text: (route) => route.fulfill({ json: estimate() }) });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByLabel(/what did you eat/i).fill('asdf');
-    await page.getByRole('button', { name: 'Estimate' }).click();
+    await describeFood(page, 'asdf');
 
-    await expect(page.getByText(/couldn.t identify food/i)).toBeVisible();
+    await expect(composer(page).getByText(/couldn.t identify food/i)).toBeVisible();
+    await expect(today(page)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm' })).toHaveCount(0);
   });
 
@@ -88,15 +89,14 @@ test.describe('Log a food by text (User Story 1)', () => {
       if (request.url().includes('/api/estimates/text')) aborted = true;
     });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByLabel(/what did you eat/i).fill('1 medium banana');
-    await page.getByRole('button', { name: 'Estimate' }).click();
+    await describeFood(page, '1 medium banana');
 
-    await expect(page.getByRole('status')).toContainText(/estimating/i);
-    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(composer(page).getByRole('status')).toContainText(/estimating/i);
+    await composer(page).getByRole('button', { name: 'Cancel' }).click();
     await expect.poll(() => aborted).toBe(true);
 
-    await page.getByRole('button', { name: /back/i }).click();
+    await expect(today(page)).toBeVisible();
+    await expect(composer(page).getByLabel('What did you eat?')).toHaveValue('1 medium banana');
     await expect(total(page, 'Calories')).toContainText('0 kcal');
     await expect(page.getByText(/nothing logged yet/i)).toBeVisible();
   });
@@ -104,17 +104,18 @@ test.describe('Log a food by text (User Story 1)', () => {
   test('V11: with AI unavailable, manual entry still logs and totals update', async ({ page }) => {
     await mockApi(page, { aiAvailable: false });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Add food' }).click();
 
-    await expect(page.getByText(/ai lookup is unavailable/i)).toBeVisible();
-    await page.getByLabel(/food name/i).fill('Greek yogurt');
-    await page.getByLabel(/amount/i).fill('170');
-    await page.getByLabel(/unit/i).selectOption('g');
-    await page.getByLabel(/calories/i).fill('100');
-    await page.getByLabel(/protein/i).fill('17');
-    await page.getByLabel(/carbs/i).fill('6');
-    await page.getByLabel(/fat/i).fill('0.7');
-    await page.getByRole('button', { name: /^save$/i }).click();
+    // Feature 004: the composer opens on Manual and says why.
+    const box = composer(page);
+    await expect(box.getByText(/ai lookup is unavailable/i)).toBeVisible();
+    await box.getByLabel('Food name').fill('Greek yogurt');
+    await box.getByLabel('Amount').fill('170');
+    await box.getByLabel('Unit').selectOption('g');
+    await box.getByLabel('Calories (kcal)').fill('100');
+    await box.getByLabel('Protein (g)').fill('17');
+    await box.getByLabel('Carbs (g)').fill('6');
+    await box.getByLabel('Fat (g)').fill('0.7');
+    await box.getByRole('button', { name: /^save$/i }).click();
 
     await expect(page.getByRole('list', { name: /entries/i })).toContainText('Greek yogurt');
     await expect(total(page, 'Protein')).toContainText('17 g');

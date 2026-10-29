@@ -1,4 +1,4 @@
-import type { Page, Route } from '@playwright/test';
+import { expect, type Page, type Route } from '@playwright/test';
 
 export const banana = {
   name: 'Banana',
@@ -68,6 +68,39 @@ export async function mockApi(
     (route) => route.fulfill({ json: { aiAvailable: options.aiAvailable ?? true } }),
   );
   if (options.text) await page.route((url) => url.pathname === '/api/estimates/text', options.text);
+}
+
+/** The composer on Today, where food is described, photographed or entered (feature 004). */
+export function composer(page: Page) {
+  return page.getByRole('region', { name: 'Log food' });
+}
+
+/** Describes a food in the composer and sends it with Enter. */
+export async function describeFood(page: Page, text: string) {
+  await composer(page).getByLabel('What did you eat?').fill(text);
+  await composer(page).getByLabel('What did you eat?').press('Enter');
+}
+
+/** Logs a food by hand from the composer's Manual method and waits for it in the entry list. */
+export async function logManually(
+  page: Page,
+  food: { name: string; amount: string; kcal: string; protein: string; carbs: string; fat: string },
+) {
+  const box = composer(page);
+  await box.getByRole('button', { name: 'Manual' }).click();
+  await box.getByLabel('Food name').fill(food.name);
+  await box.getByLabel('Amount').fill(food.amount);
+  await box.getByLabel('Calories (kcal)').fill(food.kcal);
+  await box.getByLabel('Protein (g)').fill(food.protein);
+  await box.getByLabel('Carbs (g)').fill(food.carbs);
+  await box.getByLabel('Fat (g)').fill(food.fat);
+  await box.getByRole('button', { name: /^save$/i }).click();
+  await expect(page.getByRole('list', { name: /entries/i })).toContainText(food.name);
+}
+
+/** The inline review card for an AI estimate. */
+export function reviewCard(page: Page) {
+  return page.getByRole('region', { name: 'Review estimate' });
 }
 
 /** Reads a labelled total (e.g. "Protein") from the totals panel. */

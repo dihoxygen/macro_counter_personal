@@ -1,13 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useEffect } from 'react';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuthError, type SessionState } from '../../src/api/auth';
 import { authEvents } from '../../src/api/http';
+import App from '../../src/App';
 import { AuthGate } from '../../src/auth/AuthGate';
 import { useServices } from '../../src/app/services';
 import { fakeDevice } from './testServices';
 import { fakeAuth, renderWithServices } from './testServices';
+import { bananaItem, estimateOf } from './fixtures';
 
 const alice = {
   id: '6f1c2a4e-0000-4000-8000-000000000001',
@@ -128,6 +130,42 @@ describe('AuthGate', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.getByLabelText('Draft')).toHaveValue('2 eggs on toast');
+  });
+
+  // Feature 004 (spec edge case): an estimate card open on Today survives the sign-in overlay.
+  it('on session expiry keeps an open review card on Today, which can then be confirmed', async () => {
+    const user = userEvent.setup();
+    const auth = fakeAuth({
+      getSession: vi.fn(async () => signedIn()),
+      signIn: vi.fn(async () => signedIn()),
+    });
+    const { services } = await renderWithServices(
+      <AuthGate>
+        <App />
+      </AuthGate>,
+      { auth, estimateFromText: vi.fn(async () => estimateOf(bananaItem)) as never },
+    );
+    const composer = await screen.findByRole('region', { name: 'Log food' });
+    await user.type(within(composer).getByLabelText('What did you eat?'), 'banana{Enter}');
+    expect(await screen.findByRole('region', { name: 'Review estimate' })).toBeInTheDocument();
+
+    act(() => {
+      authEvents.dispatchEvent(new Event('session-expired'));
+    });
+    expect(await screen.findByRole('dialog', { name: /sign in again/i })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/username/i), 'alice');
+    await user.type(screen.getByLabelText(/password or temporary code/i), 'my long passphrase');
+    await user.type(screen.getByLabelText(/authenticator code/i), '123456');
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    const card = screen.getByRole('region', { name: 'Review estimate' });
+    expect(within(card).getByRole('group', { name: 'Banana' })).toBeInTheDocument();
+    await user.click(within(card).getByRole('button', { name: 'Confirm' }));
+    const list = await screen.findByRole('list', { name: /entries/i });
+    expect(await within(list).findByText('Banana')).toBeInTheDocument();
+    expect(services.openUserData).toHaveBeenCalled();
   });
 
   it('reloads when a different person signs in over an expired session', async () => {
