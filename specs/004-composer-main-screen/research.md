@@ -15,7 +15,8 @@ because the components stay mounted.
 **Rationale**: State already lives in `useEstimateFlow`, `usePhotoSelection`, `ManualEntryForm` and
 `ReviewEstimate` (its edited `ReviewState`). Keeping them mounted preserves all of it with a few lines in
 `App`. `hidden` removes Today from layout, the accessibility tree and tab order, so a hidden screen can't
-be reached by mistake.
+be reached by mistake. The app's `.stack` and `.row` classes set `display`, which overrides the browser's
+built-in `hidden` style, so `styles.css` needs a global `[hidden] { display: none !important; }` rule.
 
 **Alternatives considered**:
 - *Lift the flow, drafts and review state into `App` or a context*: this touches every input component

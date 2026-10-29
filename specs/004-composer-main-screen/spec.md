@@ -233,6 +233,9 @@ No new stored data. The feature reuses existing entities:
 - **Typed corrections are out of scope.** Sending a follow-up like "half the guac" to revise an open
   estimate needs a new kind of AI request. The mockup's correction input is not part of this feature, and
   the input is blocked while a card is open (FR-005).
+- **Enter sends on every device.** Food descriptions don't need line breaks, so on touch keyboards
+  Enter sends the description and there is no way to type a newline. Shift+Enter adds a newline on
+  physical keyboards (FR-015).
 - The system font stack is used instead of DM Sans, which keeps the app offline-capable and the content
   security policy unchanged. Self-hosting a font can come later.
 - "Most recently used" saved foods follow the existing recent foods order, and up to 5 are shown.

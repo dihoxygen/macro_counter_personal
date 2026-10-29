@@ -48,8 +48,9 @@ on confirm, on becoming visible, and on day rollover (already handled by `useCur
 existing CSP (`font-src 'self'`) ([R5](./research.md#r5-typeface-fr-018)). Touch targets ≥ 44 px and
 full keyboard operation (FR-015). The rule that nothing is logged without Confirm is unchanged (FR-003)
 
-**Scale/Scope**: About 5 changed and 3 new frontend modules, about 10 e2e specs updated, and 1 Add food
-view removed
+**Scale/Scope**: About 7 changed, 6 new (`Composer`, `DescribeInput`, `PhotoInput`, `QuickPicks`,
+`RelogForm`, `useDayLog`) and 3 removed frontend modules, about 10 e2e specs updated, and 1 Add food view
+removed
 
 No NEEDS CLARIFICATION remain. The spec's scope decisions (no typed corrections, system font, 5 quick
 picks) are carried into research as decisions.
@@ -107,7 +108,8 @@ frontend/
 │   ├── features/
 │   │   ├── today/
 │   │   │   ├── TodayScreen.tsx             # header icon nav, grid layout, owns refresh and visibility
-│   │   │   ├── DayLog.tsx                  # + refreshKey and pending props
+│   │   │   ├── useDayLog.ts                # NEW: entries/goals loading and editor state, shared by DayLog and Today
+│   │   │   ├── DayLog.tsx                  # + refreshKey and pending props; delegates to useDayLog (DayView unchanged)
 │   │   │   ├── TotalsPanel.tsx             # passes pending protein through
 │   │   │   └── ProteinProgress.tsx         # pending segment and "+N g pending"
 │   │   ├── add-food/
