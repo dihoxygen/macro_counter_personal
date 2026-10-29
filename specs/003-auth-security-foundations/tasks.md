@@ -697,13 +697,12 @@ The built app runs under the CSP with zero violations. Quickstart V12 passes on 
   - a database outage now returns `503 service_unavailable` instead of a generic 500 (V9.2);
   - a lockout is now audited with the account when it starts (V13).)
   Run `scripts/check.ps1` until everything passes, with no skipped tests, and then run every manual scenario V1–V13 in quickstart.md locally. **Ask the user** to do the steps that need a phone authenticator app, and record the results in `specs/003-auth-security-foundations/checklists/validation.md`.
-- [ ] T126 (In progress. Review and checklist done 2026-10-21, see `checklists/asvs-l2.md`:
+- [X] T126 (Done 2026-10-29. Review and checklist done 2026-10-21, see `checklists/asvs-l2.md`:
   - `/security-review` found one MFA bypass at the notice step, fixed in `22cf4eb`.
   - The ASVS pass found 14 gaps: G1, G2 (show-password), G8, G12 and G13 were fixed with tests; the rest are accepted in plan.md § Accepted risks.
   - Deployed 2026-10-28 to `macro-counter-ai` (Azure App Service, Linux B1); owner signed in.
   - V12 passed on the live host 2026-10-29: 301 to HTTPS; every header in http-hardening.md, no `Server`; foreign origin 403 `csrf_failed`; unknown host refused (Azure's front end answers 404 before the app, so `AllowedHosts` is a second layer); `macro_app` insert into `macro.users` denied.
-  - "Deploy" rows 2.10.3, 14.1.4 and 14.4.5 confirmed live.
-  - Remaining: row 4.3.1, MFA on the owner's Supabase account.)
+  - All four "Deploy" rows confirmed live: 2.10.3, 14.1.4, 14.4.5, and 4.3.1 (MFA on the owner's Supabase account).)
   Before anyone other than the owner is invited (Constitution Governance), run `/security-review` on the branch and an ASVS L2 checklist pass, saved as `specs/003-auth-security-foundations/checklists/asvs-l2.md`, covering V2 Authentication, V3 Session, V4 Access Control, V5 Validation, V7 Errors and Logging, V8 Data Protection, V13 API and V14 Configuration. Resolve each finding or risk-accept it in writing in plan.md. Then deploy (`docs/deploy.md`) and run quickstart V12 against the live host.
 
 ---

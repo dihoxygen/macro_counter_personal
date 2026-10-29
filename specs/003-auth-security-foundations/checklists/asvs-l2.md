@@ -113,7 +113,7 @@ No other finding met the review's confidence bar.
 | 4.1.5 | Fail securely, including on exceptions | Met | Fallback policy denies; exceptions become generic 500 or 503 with no session issued (`Data/DatabaseUnavailableHandler.cs`) |
 | 4.2.1 | IDOR protection | Met | No endpoint takes a user or record ID; everything is keyed by the session's user (threat T6) |
 | 4.2.2 | Strong anti-CSRF | Met | `Security/CsrfEndpointFilter.cs` on every unsafe `/api` request including sign-in; `Security/OriginCheckMiddleware.cs`; `SameSite=Strict` |
-| 4.3.1 | Admin interfaces use MFA | Deploy | Administration is the Supabase dashboard and SQL editor. MFA on the owner's Supabase account (deploy.md step 1.1) |
+| 4.3.1 | Admin interfaces use MFA | Met (live) | Administration is the Supabase dashboard and SQL editor. MFA (authenticator app) on the owner's Supabase account (deploy.md step 1.1), confirmed by the owner 2026-10-29 |
 | 4.3.2 | No directory browsing or metadata files | Met | Static files only from `wwwroot` (Vite build output), no directory browser |
 | 4.3.3 | Step-up auth or segregation for high value | N/A | Low-value personal app with one administrator |
 
