@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import {
+  composer,
   egg,
   estimate,
   hidePage,
@@ -36,10 +37,10 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
+/** Feature 004: the photo step is the composer's Photo method, on Today. */
 async function openPhotoStep(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add food' }).click();
-  await page.getByRole('button', { name: 'Photo' }).click();
+  await composer(page).getByRole('button', { name: 'Photo' }).click();
 }
 
 async function startCamera(page: Page) {
@@ -97,8 +98,7 @@ test.describe('Live camera (feature 002 US2)', () => {
     await expect(page.getByRole('img', { name: 'Selected photo' })).toBeVisible();
 
     await page.reload();
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByRole('button', { name: 'Photo' }).click();
+    await composer(page).getByRole('button', { name: 'Photo' }).click();
     await page.getByRole('button', { name: 'Take photo' }).click();
     await expect(page.getByLabel('Camera preview')).toBeVisible({ timeout: 3_000 });
     await expect.poll(() => liveTrackCount(page)).toBeGreaterThan(0);
@@ -112,13 +112,13 @@ test.describe('Live camera (feature 002 US2)', () => {
 
   test('switching to Describe turns the camera off', async ({ page }) => {
     await startCamera(page);
-    await page.getByRole('button', { name: 'Describe' }).click();
+    await composer(page).getByRole('button', { name: 'Describe' }).click();
     await expectCameraOff(page);
   });
 
-  test('going back to Today turns the camera off', async ({ page }) => {
+  test('leaving Today turns the camera off (feature 004)', async ({ page }) => {
     await startCamera(page);
-    await page.getByRole('button', { name: /back/i }).click();
+    await page.getByRole('button', { name: 'Previous days' }).click();
     await expectCameraOff(page);
   });
 

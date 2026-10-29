@@ -201,7 +201,7 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T026 [P] [US3] Add failing tests to `frontend/tests/components/Composer.test.tsx`:
+- [X] T026 [P] [US3] Add failing tests to `frontend/tests/components/Composer.test.tsx`:
   - (a) An **Entry method** group with **Describe**, **Photo** and **Manual** and correct `aria-pressed`.
   - (b) Photo: choosing a file through **Choose existing photo** and pressing **Estimate** shows **Review estimate** on Today. The `estimateFromPhoto` fake receives the re-encoded blob and the trimmed note.
   - (c) Type "banana", switch to **Manual**, then back to **Describe**, and "banana" is still there. The same holds for a typed manual name and for a selected photo (FR-011). With each method selected, the other two methods' fields are `not.toBeVisible()`, which guards the `[hidden]` rule from T005.
@@ -211,20 +211,20 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - (g) A photo error shows **Retry**, **Describe in text** and **Enter manually**.
   - (h) Render `App`, open the live camera in Photo (fake camera with `detectSupport` → `'live'`), then navigate to Previous days: the fake camera's stream is stopped.
 
-  Port every remaining assertion from `frontend/tests/components/AddFood.test.tsx` and `frontend/tests/components/AddFoodPhoto.test.tsx` into this file
-- [ ] T027 [P] [US3] Rewrite `frontend/tests/e2e/log-photo.spec.ts` and `frontend/tests/e2e/camera.spec.ts` to select **Photo** in `composer(page)` instead of **Add food** → **Photo**. Keep every assertion about re-encoding, EXIF stripping, camera permission and the camera stopping. Add one: after going to **Previous days** with the live camera open, `liveTrackCount(page)` is 0. Run them and confirm they fail
-- [ ] T028 [P] [US3] Rewrite `frontend/tests/e2e/offline.spec.ts` so offline logging uses the composer's **Manual** form, and add a quick-pick re-log while offline (Q11). For SC-006 and FR-018, record every request with `page.on('request')` from the first `page.goto`. Assert each request URL's origin equals the app's origin (`new URL(page.url()).origin`), with no Google Fonts or other third-party host. Run it and confirm it fails
-- [ ] T029 [P] [US3] Add failing assertions to `frontend/tests/components/TodayScreen.test.tsx` and `frontend/tests/components/App.test.tsx`: no button or heading named **Add food** is reachable from Today or from any of its header buttons. Removing `'add'` from the `View` type is checked by `npm run typecheck` in T032
+  Port every remaining assertion from `frontend/tests/components/AddFood.test.tsx` and `frontend/tests/components/AddFoodPhoto.test.tsx` into this file *(Done: the 32 AddFoodPhoto tests were ported to `frontend/tests/components/ComposerPhoto.test.tsx` instead, to keep `Composer.test.tsx` readable; (b) and (g) are covered there)*
+- [X] T027 [P] [US3] Rewrite `frontend/tests/e2e/log-photo.spec.ts` and `frontend/tests/e2e/camera.spec.ts` to select **Photo** in `composer(page)` instead of **Add food** → **Photo**. Keep every assertion about re-encoding, EXIF stripping, camera permission and the camera stopping. Add one: after going to **Previous days** with the live camera open, `liveTrackCount(page)` is 0. Run them and confirm they fail
+- [X] T028 [P] [US3] Rewrite `frontend/tests/e2e/offline.spec.ts` so offline logging uses the composer's **Manual** form, and add a quick-pick re-log while offline (Q11). For SC-006 and FR-018, record every request with `page.on('request')` from the first `page.goto`. Assert each request URL's origin equals the app's origin (`new URL(page.url()).origin`), with no Google Fonts or other third-party host. Run it and confirm it fails
+- [X] T029 [P] [US3] Add failing assertions to `frontend/tests/components/TodayScreen.test.tsx` and `frontend/tests/components/App.test.tsx`: no button or heading named **Add food** is reachable from Today or from any of its header buttons. Removing `'add'` from the `View` type is checked by `npm run typecheck` in T032
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Create `frontend/src/features/add-food/PhotoInput.tsx` from the input half of `AddFoodPhoto.tsx`: the file inputs, `PhotoSourcePicker`, `CameraCapture`, preview, **Remove photo** and the **Note (optional)** textarea (`maxLength={300}`). Props:
+- [X] T030 [US3] Create `frontend/src/features/add-food/PhotoInput.tsx` from the input half of `AddFoodPhoto.tsx`: the file inputs, `PhotoSourcePicker`, `CameraCapture`, preview, **Remove photo** and the **Note (optional)** textarea (`maxLength={300}`). Props:
   - `selection` (from a `usePhotoSelection` owned by `Composer`, so it survives method switches);
   - `note` and `onNoteChange`;
   - `onSend(jpeg, note)`, `disabled`, and `active: boolean`.
 
   When `active` becomes false, `cameraOpen` is set to false so `CameraCapture` unmounts and stops its tracks
-- [ ] T031 [US3] Extend `frontend/src/features/add-food/Composer.tsx`:
+- [X] T031 [US3] Extend `frontend/src/features/add-food/Composer.tsx`:
   - add `'photo'` to `method` and render the **Entry method** group with `aria-pressed` buttons;
   - keep all three inputs mounted and hide the unselected ones with `hidden` (FR-011);
   - move the AI-availability logic from `AddFood.tsx` (`getStatus`, `aiBlockedReason`, messages kept verbatim);
@@ -232,13 +232,13 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
   - take an `active` prop from `TodayScreen` and pass it to `PhotoInput`, which closes the camera when inactive.
 
   Make T026–T028 pass
-- [ ] T032 [US3] Remove the separate Add food screen:
+- [X] T032 [US3] Remove the separate Add food screen:
   - delete `frontend/src/features/add-food/AddFood.tsx`, `AddFoodText.tsx` and `AddFoodPhoto.tsx`, after moving `SubmitOrProgress` (if still used) into `Composer.tsx`;
   - delete `frontend/tests/components/AddFood.test.tsx`, `AddFoodText.test.tsx` and `AddFoodPhoto.test.tsx`, whose assertions were ported in T009 and T026;
   - remove `'add'` from `View` and `titles` in `frontend/src/App.tsx`;
   - remove the **Add food** button from `frontend/src/features/today/TodayScreen.tsx`.
 
-  Make T029 pass and run the full component suite
+  Make T029 pass and run the full component suite *(Done. Also updated `EntryEditor.test.tsx`, `RecentFoods.test.tsx`, `totals-persistence.spec.ts` and `touch-targets.spec.ts`, whose label lookups became ambiguous now that the Manual form stays mounted while hidden. `auth/disable.spec.ts` now triggers its server call by describing a food, because AI status is checked when Today loads, not when a screen opens; not run here)*
 
 **Checkpoint**: All three methods work from Today. There is no Add food screen
 

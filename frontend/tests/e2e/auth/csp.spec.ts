@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { describeFood, reviewCard } from '../helpers';
+import { composer, describeFood, reviewCard } from '../helpers';
 import { invite, uniqueUsername } from './db';
 import { completeSetup } from './flows';
 
@@ -45,8 +45,7 @@ test('sign-in, setup with the QR code, an estimate, a photo preview and the serv
   await reviewCard(page).getByRole('button', { name: 'Discard' }).click();
 
   // A photo preview shown from a blob: URL.
-  await page.getByRole('button', { name: 'Add food' }).click();
-  await page.getByRole('button', { name: 'Photo' }).click();
+  await composer(page).getByRole('button', { name: 'Photo' }).click();
   await page.getByLabel('Existing photo file').setInputFiles(photo);
   await expect(page.getByRole('img', { name: 'Selected photo' })).toBeVisible();
 

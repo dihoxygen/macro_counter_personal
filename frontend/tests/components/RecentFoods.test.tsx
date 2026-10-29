@@ -49,7 +49,7 @@ describe('RecentFoods', () => {
 
     await user.click(await screen.findByRole('button', { name: 'More recent foods' })); // 1
     await user.click(await screen.findByRole('button', { name: /greek yogurt/i })); // 2
-    expect(screen.getByLabelText(/amount/i)).toHaveValue(170);
+    expect(screen.getByRole('spinbutton', { name: 'Amount' })).toHaveValue(170);
     await user.click(screen.getByRole('button', { name: /^log$/i })); // 3
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Today' })).toBeInTheDocument();

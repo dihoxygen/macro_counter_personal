@@ -116,3 +116,13 @@ describe('TodayScreen protein prominence and day rollover (US2)', () => {
     expect(onNavigate).toHaveBeenCalledWith('history');
   });
 });
+
+// Feature 004 User Story 3: there is no separate Add food screen any more (FR-012).
+describe('TodayScreen without an Add food screen', () => {
+  it('offers no Add food button or heading on Today', async () => {
+    await renderWithServices(<App />);
+    await screen.findByRole('region', { name: 'Log food' });
+    expect(screen.queryByRole('button', { name: /add food/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /add food/i })).not.toBeInTheDocument();
+  });
+});

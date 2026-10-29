@@ -1,22 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useServices } from '../../app/services';
 import type { SavedFood } from '../../data/records';
 import { reviewTotal, type ReviewState } from '../../domain/review';
-import { DescribeInput } from './DescribeInput';
+import type { Estimate } from '../../api/estimates';
 import { RelogForm } from '../recent/RelogForm';
+import { DescribeInput } from './DescribeInput';
 import { ManualEntryForm } from './ManualEntryForm';
+import { PhotoInput } from './PhotoInput';
 import { QuickPicks } from './QuickPicks';
 import { ReviewEstimate } from './ReviewEstimate';
 import { useEstimateFlow } from './useEstimateFlow';
+import { usePhotoSelection } from './usePhotoSelection';
 
-type Method = 'describe' | 'manual';
+type Method = 'describe' | 'photo' | 'manual';
 
 const methods: { method: Method; label: string }[] = [
   { method: 'describe', label: 'Describe' },
+  { method: 'photo', label: 'Photo' },
   { method: 'manual', label: 'Manual' },
 ];
 
 interface Props {
+  /** False while Today is hidden behind another view: the live camera is then turned off. */
+  active: boolean;
   /** Changes whenever Today reloads (after logging, or on coming back to Today). */
   refreshKey: number;
   /** Called after something was logged, so Today reloads its entries and totals. */
@@ -31,13 +37,18 @@ interface Props {
  * Logging on Today (feature 004): one input for every method, and one estimate flow, so at most one estimate
  * is pending (FR-005). Its review card appears here, above the input, instead of on a separate screen.
  */
-export function Composer({ refreshKey, onLogged, onMoreRecent, onPendingChange }: Props) {
+export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPendingChange }: Props) {
   const services = useServices();
-  const [method, setMethod] = useState<Method>('describe');
+  const offline = services.aiBlockedReason === 'offline';
+  const [aiAvailable, setAiAvailable] = useState(!offline);
+  const [method, setMethod] = useState<Method>(offline ? 'manual' : 'describe');
+  const selection = usePhotoSelection();
+  const [note, setNote] = useState('');
   const [describeDraft, setDescribeDraft] = useState('');
   const [manualKey, setManualKey] = useState(0);
   const [relog, setRelog] = useState<SavedFood | null>(null);
-  const lastText = useRef('');
+  // Repeats the last lookup for Retry: the same text, or the same (already re-encoded) photo and note.
+  const lastRequest = useRef<(signal: AbortSignal) => Promise<Estimate>>(null);
   const focusInputNext = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const cardAreaRef = useRef<HTMLDivElement>(null);
@@ -46,12 +57,27 @@ export function Composer({ refreshKey, onLogged, onMoreRecent, onPendingChange }
   // One thing in the card area at a time: an estimate loading or under review, or a re-log (FR-005).
   const busy = phase.kind === 'loading' || phase.kind === 'review' || relog !== null;
 
+  // AI lookup can be unavailable (not configured) or blocked (offline); manual entry always works (FR-010).
+  useEffect(() => {
+    if (offline) return;
+    let isMounted = true;
+    void services.getStatus().then((status) => {
+      if (!isMounted) return;
+      setAiAvailable(status.aiAvailable);
+      if (!status.aiAvailable) setMethod('manual');
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [services, offline]);
+
   useEffect(() => {
     onPendingChange(phase.kind === 'review' ? reviewTotal(phase.state).proteinG : 0);
   }, [phase, onPendingChange]);
 
-  // Move focus to a card when it opens, and back to the field once it is confirmed (research R7).
-  useEffect(() => {
+  // Move focus to a card when it opens, and back to the field once it is confirmed (research R7). A layout
+  // effect, so focus has moved by the time the change is painted.
+  useLayoutEffect(() => {
     if (phase.kind === 'review') {
       cardAreaRef.current?.querySelector<HTMLElement>('[aria-label="Review estimate"]')?.focus();
     } else if (phase.kind === 'input' && focusInputNext.current) {
@@ -60,15 +86,28 @@ export function Composer({ refreshKey, onLogged, onMoreRecent, onPendingChange }
     }
   }, [phase.kind]);
 
-  const estimate = (text: string) => {
-    lastText.current = text;
-    void flow.run((signal) => services.estimateFromText(text, signal));
+  const lookUp = (request: (signal: AbortSignal) => Promise<Estimate>) => {
+    lastRequest.current = request;
+    void flow.run(request);
+  };
+
+  const estimateText = (text: string) => lookUp((signal) => services.estimateFromText(text, signal));
+  const estimatePhoto = (jpeg: Blob, photoNote: string | undefined) =>
+    lookUp((signal) => services.estimateFromPhoto(jpeg, photoNote, signal));
+
+  const retry = () => {
+    if (lastRequest.current) lookUp(lastRequest.current);
   };
 
   const confirm = async (state: ReviewState) => {
     await flow.confirm(state);
-    setDescribeDraft('');
-    focusInputNext.current = true;
+    if (method === 'photo') {
+      selection.remove();
+      setNote('');
+    } else {
+      setDescribeDraft('');
+      focusInputNext.current = true;
+    }
     flow.reset();
     onLogged();
   };
@@ -83,23 +122,27 @@ export function Composer({ refreshKey, onLogged, onMoreRecent, onPendingChange }
     onLogged();
   };
 
-  const enterManually = () => {
+  const switchTo = (next: Method) => {
     flow.reset();
-    setMethod('manual');
+    setMethod(next);
   };
 
   const manualSaved = () => {
     setManualKey((k) => k + 1); // a fresh, empty form
-    setMethod('describe');
     onLogged();
   };
 
   const recovery = (
     <div className="row">
-      <button type="button" onClick={() => estimate(lastText.current)}>
+      <button type="button" onClick={retry}>
         Retry
       </button>
-      <button type="button" onClick={enterManually}>
+      {method === 'photo' && (
+        <button type="button" onClick={() => switchTo('describe')}>
+          Describe in text
+        </button>
+      )}
+      <button type="button" onClick={() => switchTo('manual')}>
         Enter manually
       </button>
     </div>
@@ -126,7 +169,11 @@ export function Composer({ refreshKey, onLogged, onMoreRecent, onPendingChange }
         )}
         {phase.kind === 'unrecognized' && (
           <div className="warning stack">
-            <span>Couldn’t identify food. Try describing it differently, or enter it manually.</span>
+            <span>
+              {method === 'photo'
+                ? 'Couldn’t identify food in this photo.'
+                : 'Couldn’t identify food. Try describing it differently, or enter it manually.'}
+            </span>
             {recovery}
           </div>
         )}
@@ -145,9 +192,23 @@ export function Composer({ refreshKey, onLogged, onMoreRecent, onPendingChange }
 
       <QuickPicks refreshKey={refreshKey} disabled={busy} onPick={pick} onMore={onMoreRecent} />
 
+      {!aiAvailable && (
+        <p className="warning">
+          {offline
+            ? 'Sign in or reconnect to use AI lookup. You can still enter the food manually.'
+            : 'AI lookup is unavailable right now. You can still enter the food manually.'}
+        </p>
+      )}
+
       <div className="row" role="group" aria-label="Entry method">
         {methods.map(({ method: m, label }) => (
-          <button key={m} type="button" aria-pressed={method === m} disabled={busy} onClick={() => setMethod(m)}>
+          <button
+            key={m}
+            type="button"
+            aria-pressed={method === m}
+            disabled={busy || (!aiAvailable && m !== 'manual')}
+            onClick={() => switchTo(m)}
+          >
             {label}
           </button>
         ))}
@@ -157,12 +218,25 @@ export function Composer({ refreshKey, onLogged, onMoreRecent, onPendingChange }
         <DescribeInput
           value={describeDraft}
           onChange={setDescribeDraft}
-          onSend={estimate}
+          onSend={estimateText}
           disabled={busy}
           inputRef={inputRef}
         />
       </div>
-      {method === 'manual' && <ManualEntryForm key={manualKey} onSaved={manualSaved} />}
+      <div hidden={method !== 'photo'}>
+        <PhotoInput
+          selection={selection}
+          note={note}
+          onNoteChange={setNote}
+          onSend={estimatePhoto}
+          disabled={busy}
+          active={active && method === 'photo'}
+        />
+      </div>
+      {/* Kept mounted while hidden, so a half-typed entry survives switching method (FR-011). */}
+      <div hidden={method !== 'manual'}>
+        <ManualEntryForm key={manualKey} onSaved={manualSaved} />
+      </div>
     </section>
   );
 }

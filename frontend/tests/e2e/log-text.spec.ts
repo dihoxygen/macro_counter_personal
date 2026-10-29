@@ -104,18 +104,18 @@ test.describe('Log a food by text (User Story 1)', () => {
   test('V11: with AI unavailable, manual entry still logs and totals update', async ({ page }) => {
     await mockApi(page, { aiAvailable: false });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Add food' }).click();
 
-    await expect(page.getByText(/ai lookup is unavailable/i)).toBeVisible();
-    // Role locators skip the hidden Today, whose totals carry the same labels (until US3 moves this into the composer).
-    await page.getByRole('textbox', { name: 'Food name' }).fill('Greek yogurt');
-    await page.getByRole('spinbutton', { name: 'Amount' }).fill('170');
-    await page.getByRole('combobox', { name: 'Unit' }).selectOption('g');
-    await page.getByRole('spinbutton', { name: 'Calories (kcal)' }).fill('100');
-    await page.getByRole('spinbutton', { name: 'Protein (g)' }).fill('17');
-    await page.getByRole('spinbutton', { name: 'Carbs (g)' }).fill('6');
-    await page.getByRole('spinbutton', { name: 'Fat (g)' }).fill('0.7');
-    await page.getByRole('button', { name: /^save$/i }).click();
+    // Feature 004: the composer opens on Manual and says why.
+    const box = composer(page);
+    await expect(box.getByText(/ai lookup is unavailable/i)).toBeVisible();
+    await box.getByLabel('Food name').fill('Greek yogurt');
+    await box.getByLabel('Amount').fill('170');
+    await box.getByLabel('Unit').selectOption('g');
+    await box.getByLabel('Calories (kcal)').fill('100');
+    await box.getByLabel('Protein (g)').fill('17');
+    await box.getByLabel('Carbs (g)').fill('6');
+    await box.getByLabel('Fat (g)').fill('0.7');
+    await box.getByRole('button', { name: /^save$/i }).click();
 
     await expect(page.getByRole('list', { name: /entries/i })).toContainText('Greek yogurt');
     await expect(total(page, 'Protein')).toContainText('17 g');

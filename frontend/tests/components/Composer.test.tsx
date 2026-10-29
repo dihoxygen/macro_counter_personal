@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EstimateError, type Estimate, type EstimateErrorCode } from '../../src/api/estimates';
+import App from '../../src/App';
 import { TodayScreen } from '../../src/features/today/TodayScreen';
 import { toDayKey } from '../../src/domain/days';
 import type { Services } from '../../src/app/services';
+import { FakeCameraService } from './fakeCamera';
 import { createTestServices, renderWithServices } from './testServices';
 import { bananaItem, eggItem, estimateOf, pendingUntilAborted, toastItem } from './fixtures';
 
@@ -327,5 +329,120 @@ describe('Composer: review behaviour (ported)', () => {
     await user.click(within(composer).getByRole('button', { name: 'Estimate' }));
     await user.type(field(composer), '   {Enter}');
     expect(services.estimateFromText).not.toHaveBeenCalled();
+  });
+});
+
+// Feature 004 User Story 3: every method in the composer (FR-009 to FR-011).
+describe('Composer: entry methods', () => {
+  const methods = (composer: HTMLElement) => within(composer).getByRole('group', { name: 'Entry method' });
+
+  it('(a) offers Describe, Photo and Manual with aria-pressed', async () => {
+    const { user, composer } = await setup(async () => estimateOf(bananaItem));
+    const group = methods(composer);
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Describe', 'Photo', 'Manual']);
+    expect(within(group).getByRole('button', { name: 'Describe' })).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(within(group).getByRole('button', { name: 'Photo' }));
+    expect(within(group).getByRole('button', { name: 'Photo' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(group).getByRole('button', { name: 'Describe' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('(c) keeps each method’s draft across switches, and only the selected one is visible', async () => {
+    const { user, composer } = await setup(async () => estimateOf(bananaItem));
+    const group = methods(composer);
+    await user.type(field(composer), 'banana');
+
+    await user.click(within(group).getByRole('button', { name: 'Manual' }));
+    expect(field(composer)).not.toBeVisible();
+    expect(within(composer).getByLabelText('Note (optional)')).not.toBeVisible();
+    await user.type(within(composer).getByLabelText('Food name'), 'Boiled egg');
+
+    await user.click(within(group).getByRole('button', { name: 'Photo' }));
+    expect(within(composer).getByLabelText('Food name')).not.toBeVisible();
+    expect(field(composer)).not.toBeVisible();
+    await user.upload(within(composer).getByLabelText('Existing photo file'), new File(['x'], 'meal.jpg', { type: 'image/jpeg' }));
+    expect(await within(composer).findByRole('img', { name: 'Selected photo' })).toBeVisible();
+
+    await user.click(within(group).getByRole('button', { name: 'Describe' }));
+    expect(field(composer)).toBeVisible();
+    expect(field(composer)).toHaveValue('banana');
+    expect(within(composer).getByLabelText('Food name')).not.toBeVisible();
+
+    await user.click(within(group).getByRole('button', { name: 'Manual' }));
+    expect(within(composer).getByLabelText('Food name')).toHaveValue('Boiled egg');
+    await user.click(within(group).getByRole('button', { name: 'Photo' }));
+    expect(within(composer).getByRole('img', { name: 'Selected photo' })).toBeVisible();
+  });
+
+  it('(d) when AI lookup is unavailable, opens on Manual with Describe and Photo disabled', async () => {
+    const { composer } = await setup(async () => estimateOf(bananaItem), {
+      getStatus: vi.fn(async () => ({ aiAvailable: false })),
+    });
+    expect(
+      await within(composer).findByText('AI lookup is unavailable right now. You can still enter the food manually.'),
+    ).toBeInTheDocument();
+    const group = methods(composer);
+    expect(within(group).getByRole('button', { name: 'Manual' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(group).getByRole('button', { name: 'Describe' })).toBeDisabled();
+    expect(within(group).getByRole('button', { name: 'Photo' })).toBeDisabled();
+    expect(within(composer).getByLabelText('Food name')).toBeVisible();
+  });
+
+  it('(e) offline, opens on Manual, says why, and does not ask the server', async () => {
+    const getStatus = vi.fn(async () => ({ aiAvailable: true }));
+    const { user, composer, services } = await setup(async () => estimateOf(bananaItem), {
+      aiBlockedReason: 'offline',
+      getStatus,
+    });
+    expect(
+      within(composer).getByText('Sign in or reconnect to use AI lookup. You can still enter the food manually.'),
+    ).toBeInTheDocument();
+    const group = methods(composer);
+    expect(within(group).getByRole('button', { name: 'Describe' })).toBeDisabled();
+    expect(within(group).getByRole('button', { name: 'Photo' })).toBeDisabled();
+    expect(getStatus).not.toHaveBeenCalled();
+
+    // Ported from AddFood.test.tsx: manual entry still logs.
+    await user.type(within(composer).getByLabelText('Food name'), 'Boiled egg');
+    await user.type(within(composer).getByLabelText('Amount'), '50');
+    await user.type(within(composer).getByLabelText('Calories (kcal)'), '78');
+    await user.type(within(composer).getByLabelText('Protein (g)'), '6.3');
+    await user.type(within(composer).getByLabelText('Carbs (g)'), '0.6');
+    await user.type(within(composer).getByLabelText('Fat (g)'), '5.3');
+    await user.click(within(composer).getByRole('button', { name: /^save$/i }));
+    await vi.waitFor(async () =>
+      expect((await services.entries.listByDay(today())).map((e) => e.name)).toEqual(['Boiled egg']),
+    );
+  });
+
+  it('online: checks AI status once (ported from AddFood.test.tsx)', async () => {
+    const getStatus = vi.fn(async () => ({ aiAvailable: true }));
+    await setup(async () => estimateOf(bananaItem), { getStatus });
+    expect(getStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('(f) the method switch is disabled while a card is open', async () => {
+    const { user, composer } = await setup(async () => estimateOf(bananaItem));
+    await describeFood(user, composer);
+    await screen.findByRole('region', { name: 'Review estimate' });
+    for (const name of ['Describe', 'Photo', 'Manual']) {
+      expect(within(methods(composer)).getByRole('button', { name })).toBeDisabled();
+    }
+  });
+
+  it('(h) leaving Today turns the live camera off', async () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const camera = new FakeCameraService({ support: 'live' });
+    const user = userEvent.setup();
+    await renderWithServices(<App />, { camera });
+    const composer = await screen.findByRole('region', { name: 'Log food' });
+    await user.click(within(methods(composer)).getByRole('button', { name: 'Photo' }));
+    await user.click(within(composer).getByRole('button', { name: 'Take photo' }));
+    await screen.findByLabelText('Camera preview');
+    expect(camera.liveSessions()).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'Previous days' }));
+    expect(camera.liveSessions()).toEqual([]);
+    vi.restoreAllMocks();
   });
 });

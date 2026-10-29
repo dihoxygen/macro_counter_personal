@@ -57,9 +57,8 @@ test.describe('Touch targets', () => {
     await page.getByRole('button', { name: /yes, these values are right/i }).click();
     await page.getByRole('button', { name: 'Confirm' }).click();
 
-    await page.getByRole('button', { name: 'Add food' }).click();
-    await page.getByRole('button', { name: 'Photo' }).click();
-    await expectTouchTargets(page, 'Add food / photo');
+    await page.getByRole('region', { name: 'Log food' }).getByRole('button', { name: 'Photo' }).click();
+    await expectTouchTargets(page, 'Composer / photo');
     await page.getByLabel('Existing photo file').setInputFiles(photo);
     await page.getByRole('img', { name: 'Selected photo' }).waitFor();
     await expectTouchTargets(page, 'Photo step (selected)');
@@ -69,8 +68,8 @@ test.describe('Touch targets', () => {
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect.poll(() => liveTrackCount(page)).toBe(0);
     await page.getByRole('button', { name: 'Manual' }).click();
-    await expectTouchTargets(page, 'Add food / manual');
-    await page.getByRole('button', { name: /back/i }).click();
+    await expectTouchTargets(page, 'Composer / manual');
+    await page.getByRole('button', { name: 'Describe' }).click();
 
     // Today with an entry, and the entry editor.
     await expectTouchTargets(page, 'Today (with entries)');

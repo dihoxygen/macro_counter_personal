@@ -27,8 +27,10 @@ test.describe('Running totals (User Story 2)', () => {
     await logManually(page, chicken);
 
     await page.getByRole('list', { name: /entries/i }).getByRole('button', { name: /greek yogurt/i }).click();
-    await page.getByLabel(/amount/i).fill('85');
-    await page.getByRole('button', { name: /^save$/i }).click();
+    // Within the editor: the composer's hidden Manual form also has an Amount field (feature 004).
+    const editor = page.getByRole('form', { name: 'Edit Greek yogurt' });
+    await editor.getByLabel(/amount/i).fill('85');
+    await editor.getByRole('button', { name: /^save$/i }).click();
     await expect(total(page, 'Protein')).toContainText('55 g');
     await expect(total(page, 'Calories')).toContainText('298 kcal');
 

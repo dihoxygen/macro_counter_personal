@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { egg, estimate, inspectJpeg, mockApi, multipartFile, toast, total, withOrientation } from './helpers';
+import { composer, egg, estimate, inspectJpeg, mockApi, multipartFile, toast, total, withOrientation } from './helpers';
 
 const fixture = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'meal-with-gps.jpg');
 
@@ -25,10 +25,10 @@ async function capturePhotoUploads(page: Page) {
   return uploads;
 }
 
+/** Feature 004: the photo step is the composer's Photo method, on Today. */
 async function openPhotoStep(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Add food' }).click();
-  await page.getByRole('button', { name: 'Photo' }).click();
+  await composer(page).getByRole('button', { name: 'Photo' }).click();
 }
 
 test.describe('Log a food from a photo (feature 001 US3, feature 002 US1)', () => {

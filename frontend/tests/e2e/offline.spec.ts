@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { composer } from './helpers';
 
 // Runs against the production build (`vite preview`), where the service worker is active.
 // No /api mocks here: offline, every /api call genuinely fails (Principle III).
@@ -40,6 +41,10 @@ test('the app works offline: Today, history and manual entry; AI shows as unavai
   page,
   context,
 }) => {
+  const requested: string[] = [];
+  page.on('request', (request) => {
+    if (!request.url().startsWith('data:') && !request.url().startsWith('blob:')) requested.push(request.url());
+  });
   await page.goto('/');
   await rememberSignedInAccount(page);
   // The server cannot be reached (whatever happens to be listening locally): every /api call fails.
@@ -66,20 +71,29 @@ test('the app works offline: Today, history and manual entry; AI shows as unavai
   // Today loads from the cache.
   await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible();
 
-  // Manual entry still works; AI entry is reported as unavailable.
-  await page.getByRole('button', { name: 'Add food' }).click();
+  // Manual entry still works in the composer; AI entry is reported as unavailable (feature 004, FR-010).
+  const box = composer(page);
   await expect(
-    page.getByText('Sign in or reconnect to use AI lookup. You can still enter the food manually.'),
+    box.getByText('Sign in or reconnect to use AI lookup. You can still enter the food manually.'),
   ).toBeVisible();
-  // Role locators skip the hidden Today, whose totals carry the same labels (until US3 moves this into the composer).
-  await page.getByRole('textbox', { name: 'Food name' }).fill('Boiled egg');
-  await page.getByRole('spinbutton', { name: 'Amount' }).fill('50');
-  await page.getByRole('spinbutton', { name: 'Calories (kcal)' }).fill('78');
-  await page.getByRole('spinbutton', { name: 'Protein (g)' }).fill('6.3');
-  await page.getByRole('spinbutton', { name: 'Carbs (g)' }).fill('0.6');
-  await page.getByRole('spinbutton', { name: 'Fat (g)' }).fill('5.3');
-  await page.getByRole('button', { name: /^save$/i }).click();
+  await expect(box.getByRole('button', { name: 'Describe' })).toBeDisabled();
+  await box.getByLabel('Food name').fill('Boiled egg');
+  await box.getByLabel('Amount').fill('50');
+  await box.getByLabel('Calories (kcal)').fill('78');
+  await box.getByLabel('Protein (g)').fill('6.3');
+  await box.getByLabel('Carbs (g)').fill('0.6');
+  await box.getByLabel('Fat (g)').fill('5.3');
+  await box.getByRole('button', { name: /^save$/i }).click();
   await expect(page.getByRole('list', { name: /entries/i })).toContainText('Boiled egg');
+
+  // A quick-pick re-log works offline too (quickstart Q11).
+  await box.getByRole('group', { name: 'Recent foods' }).getByRole('button', { name: 'Boiled egg' }).click();
+  await box.getByRole('button', { name: /^log$/i }).click();
+  await expect(page.getByRole('list', { name: /entries/i }).getByRole('listitem')).toHaveCount(2);
+
+  // SC-006 / FR-018: nothing was requested from a third-party server, fonts included.
+  const origin = new URL(page.url()).origin;
+  expect(requested.filter((url) => new URL(url).origin !== origin)).toEqual([]);
 
   // History works offline.
   await page.getByRole('button', { name: /previous days/i }).click();

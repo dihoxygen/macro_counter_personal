@@ -3,8 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EstimateError, type Estimate } from '../../src/api/estimates';
 import type { Services } from '../../src/app/services';
-import { AddFood } from '../../src/features/add-food/AddFood';
-import { AddFoodPhoto } from '../../src/features/add-food/AddFoodPhoto';
+import { TodayScreen } from '../../src/features/today/TodayScreen';
 import { describeCameraError } from '../../src/media/camera';
 import { PhotoDecodeError } from '../../src/media/reencodePhoto';
 import { toDayKey } from '../../src/domain/days';
@@ -22,25 +21,25 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// Feature 004: ported from AddFoodPhoto.test.tsx. The photo step now lives in the composer on Today.
 async function setup(
   estimateFromPhoto: (photo: Blob, note: string | undefined, signal: AbortSignal) => Promise<Estimate>,
   reencodePhoto: (file: Blob) => Promise<Blob> = async () => reencoded,
   overrides: Partial<Services> = {},
 ) {
   const user = userEvent.setup();
-  const onConfirmed = vi.fn();
-  const onText = vi.fn();
-  const onManual = vi.fn();
-  const rendered = await renderWithServices(
-    <AddFoodPhoto onConfirmed={onConfirmed} onText={onText} onManual={onManual} />,
-    {
-      estimateFromPhoto: vi.fn(estimateFromPhoto),
-      reencodePhoto: vi.fn(reencodePhoto),
-      ...overrides,
-    },
-  );
-  return { user, onConfirmed, onText, onManual, ...rendered };
+  const rendered = await renderWithServices(<TodayScreen onNavigate={vi.fn()} />, {
+    estimateFromPhoto: vi.fn(estimateFromPhoto),
+    reencodePhoto: vi.fn(reencodePhoto),
+    ...overrides,
+  });
+  const composer = await screen.findByRole('region', { name: 'Log food' });
+  await user.click(within(composer).getByRole('button', { name: 'Photo' }));
+  return { user, composer, ...rendered };
 }
+
+const pressed = (composer: HTMLElement, name: string) =>
+  within(within(composer).getByRole('group', { name: 'Entry method' })).getByRole('button', { name });
 
 const libraryInput = () => screen.getByLabelText('Existing photo file');
 const cameraAppInput = () => screen.getByLabelText('Camera app photo file');
@@ -61,7 +60,7 @@ function spyOnInputClicks() {
   return vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
 }
 
-describe('AddFoodPhoto: photo sources (feature 002)', () => {
+describe('Composer photo: sources (feature 002)', () => {
   it('offers Take photo and Choose existing photo without touching the camera (FR-001, FR-008)', async () => {
     const { services } = await setup(async () => estimateOf(eggItem));
     expect(screen.getByRole('button', { name: 'Take photo' })).toBeVisible();
@@ -215,7 +214,7 @@ describe('AddFoodPhoto: photo sources (feature 002)', () => {
   });
 });
 
-describe('AddFoodPhoto: estimate flow (unchanged from feature 001, FR-016)', () => {
+describe('Composer photo: estimate flow (unchanged from feature 001, FR-016)', () => {
   it('keeps the note field at up to 300 characters', async () => {
     await setup(async () => estimateOf(eggItem));
     expect(screen.getByLabelText(/note/i)).toHaveAttribute('maxLength', '300');
@@ -246,7 +245,7 @@ describe('AddFoodPhoto: estimate flow (unchanged from feature 001, FR-016)', () 
   });
 
   it('lets the user edit, remove and add items before confirming', async () => {
-    const { user, services, onConfirmed } = await setup(async () => estimateOf(eggItem, toastItem));
+    const { user, services } = await setup(async () => estimateOf(eggItem, toastItem));
     await choosePhoto(user);
 
     // Remove the toast.
@@ -274,7 +273,7 @@ describe('AddFoodPhoto: estimate flow (unchanged from feature 001, FR-016)', () 
     await user.click(within(egg).getByRole('button', { name: /done/i }));
 
     await user.click(screen.getByRole('button', { name: /confirm/i }));
-    await vi.waitFor(() => expect(onConfirmed).toHaveBeenCalled());
+    await vi.waitFor(() => expect(screen.queryByRole('region', { name: 'Review estimate' })).not.toBeInTheDocument());
     const entries = await services.entries.listByDay(today());
     expect(entries.map((e) => [e.name, e.source, e.macros.proteinG])).toEqual([
       ['Egg', 'ai-edited', 7],
@@ -291,18 +290,21 @@ describe('AddFoodPhoto: estimate flow (unchanged from feature 001, FR-016)', () 
   });
 
   it('an unrecognized photo offers Retry (same photo, no re-encode), Describe in text and Enter manually', async () => {
-    const { user, services, onText, onManual } = await setup(async () => estimateOf());
+    const { user, services, composer } = await setup(async () => estimateOf());
     await choosePhoto(user);
 
     expect(await screen.findByText(/couldn.t identify food/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /retry/i }));
-    expect(services.estimateFromPhoto).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(services.estimateFromPhoto).toHaveBeenCalledTimes(2));
     expect(vi.mocked(services.estimateFromPhoto).mock.calls[1]![0]).toBe(reencoded);
     expect(services.reencodePhoto).toHaveBeenCalledTimes(1);
     await user.click(await screen.findByRole('button', { name: /describe in text/i }));
-    expect(onText).toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: /enter manually/i }));
-    expect(onManual).toHaveBeenCalled();
+    expect(pressed(composer, 'Describe')).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(pressed(composer, 'Photo'));
+    await user.click(screen.getByRole('button', { name: /estimate/i }));
+    await user.click(await screen.findByRole('button', { name: /enter manually/i }));
+    expect(pressed(composer, 'Manual')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it.each(['image_too_large', 'unsupported_media_type'] as const)(
@@ -325,7 +327,7 @@ describe('AddFoodPhoto: estimate flow (unchanged from feature 001, FR-016)', () 
   });
 });
 
-describe('AddFoodPhoto: live camera (feature 002 US2)', () => {
+describe('Composer photo: live camera (feature 002 US2)', () => {
   const live = () => ({ camera: new FakeCameraService({ support: 'live' }) });
 
   beforeEach(() => {
@@ -414,14 +416,12 @@ describe('AddFoodPhoto: live camera (feature 002 US2)', () => {
 
   it('switching to another entry mode turns the camera off (FR-007)', async () => {
     const camera = new FakeCameraService({ support: 'live' });
-    const user = userEvent.setup();
-    await renderWithServices(<AddFood onDone={vi.fn()} />, { camera });
-    await user.click(await screen.findByRole('button', { name: 'Photo' }));
+    const { user, composer } = await setup(async () => estimateOf(eggItem), undefined, { camera });
     await user.click(screen.getByRole('button', { name: 'Take photo' }));
     await screen.findByLabelText('Camera preview');
     expect(camera.liveSessions()).toHaveLength(1);
 
-    await user.click(screen.getByRole('button', { name: 'Describe' }));
+    await user.click(pressed(composer, 'Describe'));
     expect(camera.liveSessions()).toEqual([]);
   });
 

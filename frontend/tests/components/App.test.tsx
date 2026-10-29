@@ -26,11 +26,23 @@ describe('App shell', () => {
     const user = userEvent.setup();
     await renderWithServices(<App />);
 
-    await user.click(await screen.findByRole('button', { name: /add food/i }));
-    expect(await screen.findByRole('heading', { level: 1, name: /add food/i })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Previous days' }));
+    expect(await screen.findByRole('heading', { level: 1, name: /previous days/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /back/i }));
     expect(await screen.findByRole('heading', { level: 1, name: /today/i })).toBeInTheDocument();
+  });
+
+  it('no view is reachable as an Add food screen (feature 004)', async () => {
+    const user = userEvent.setup();
+    await renderWithServices(<App />);
+    await screen.findByRole('region', { name: 'Log food' });
+    expect(screen.queryByRole('button', { name: /add food/i })).not.toBeInTheDocument();
+    for (const name of ['Previous days', 'Account']) {
+      await user.click(screen.getByRole('button', { name }));
+      expect(screen.queryByRole('heading', { name: /add food/i })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /back/i }));
+    }
   });
 
   it('opens the Account view with sign-out options', async () => {
