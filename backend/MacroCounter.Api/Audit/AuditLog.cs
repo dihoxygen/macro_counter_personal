@@ -27,6 +27,11 @@ public enum AuditEvent
     AccountUnlocked,
     QuotaExceeded,
     CeilingHit,
+
+    /// <summary>The password was right; the authenticator code is still needed (004 FR-021).</summary>
+    PasswordAccepted,
+    DeviceRemembered,
+    DeviceForgotten,
 }
 
 public enum AuditOutcome
@@ -50,6 +55,12 @@ public enum AuditReason
     QuotaGlobalDaily,
     QuotaGlobalMonthly,
     InvalidCode,
+
+    /// <summary>A sign-in that skipped the authenticator step on a remembered device.</summary>
+    RememberedDevice,
+
+    /// <summary>Setup started from the owner's invite code (rather than a password chosen earlier).</summary>
+    InviteCode,
 }
 
 public interface IAuditLog

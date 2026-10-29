@@ -115,19 +115,51 @@ public class PostgresTicketStoreTests(PostgresFixture db) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_changed_security_stamp_ends_the_session()
+    public async Task A_pending_sign_in_expires_after_5_minutes()
     {
-        var key = await _store.StoreAsync(Ticket(SessionRecord.FullKind));
-        await Sql.Execute(db.AdminConnectionString, "update macro.users set security_stamp = 'rotated'");
+        var key = await _store.StoreAsync(Ticket(SessionRecord.MfaKind));
+        Assert.Equal(_clock.GetUtcNow().AddMinutes(5).UtcDateTime,
+            await Sql.Scalar<DateTime>(db.AdminConnectionString, "select absolute_expires_at from macro.sessions"));
+        _clock.Advance(TimeSpan.FromMinutes(4));
+        Assert.NotNull(await _store.RetrieveAsync(key));
+        _clock.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(1));
 
         Assert.Null(await _store.RetrieveAsync(key));
         Assert.Equal(0L, await Rows());
     }
 
     [Fact]
-    public async Task A_disabled_user_loses_the_session()
+    public async Task A_pending_sign_in_cannot_be_kept_alive_past_5_minutes()
     {
-        var key = await _store.StoreAsync(Ticket(SessionRecord.FullKind));
+        var key = await _store.StoreAsync(Ticket(SessionRecord.MfaKind));
+        for (var i = 0; i < 5; i++)
+        {
+            _clock.Advance(TimeSpan.FromSeconds(59));
+            Assert.NotNull(await _store.RetrieveAsync(key));
+        }
+        _clock.Advance(TimeSpan.FromSeconds(6));
+
+        Assert.Null(await _store.RetrieveAsync(key));
+    }
+
+    [Theory]
+    [InlineData(SessionRecord.FullKind)]
+    [InlineData(SessionRecord.MfaKind)]
+    public async Task A_changed_security_stamp_ends_the_session(string kind)
+    {
+        var key = await _store.StoreAsync(Ticket(kind));
+        await Sql.Execute(db.AdminConnectionString, "update macro.users set security_stamp = 'rotated'");
+
+        Assert.Null(await _store.RetrieveAsync(key));
+        Assert.Equal(0L, await Rows());
+    }
+
+    [Theory]
+    [InlineData(SessionRecord.FullKind)]
+    [InlineData(SessionRecord.MfaKind)]
+    public async Task A_disabled_user_loses_the_session(string kind)
+    {
+        var key = await _store.StoreAsync(Ticket(kind));
         await Sql.Execute(db.AdminConnectionString, "update macro.users set disabled_at = now()");
 
         Assert.Null(await _store.RetrieveAsync(key));

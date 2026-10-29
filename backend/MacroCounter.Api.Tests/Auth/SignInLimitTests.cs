@@ -21,12 +21,13 @@ public class SignInLimitTests(PostgresFixture db) : IAsyncLifetime
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
 
-    private static async Task<HttpResponseMessage> Attempt(AuthClient client, string username, string password, string? code = null,
+    /// <summary>The password step (004 R1); the limits apply before any authenticator code is asked for.</summary>
+    private static async Task<HttpResponseMessage> Attempt(AuthClient client, string username, string password,
         string? forwardedFor = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/sign-in")
         {
-            Content = System.Net.Http.Json.JsonContent.Create(code is null ? new { username, password } : (object)new { username, password, code }),
+            Content = System.Net.Http.Json.JsonContent.Create(new { username, password }),
         };
         request.Headers.Add("X-CSRF-Token", client.Csrf);
         if (forwardedFor is not null) request.Headers.Add("X-Forwarded-For", forwardedFor);
@@ -53,8 +54,8 @@ public class SignInLimitTests(PostgresFixture db) : IAsyncLifetime
             Assert.Equal(HttpStatusCode.Unauthorized, (await Attempt(client, "nobody", "wrong password entirely")).StatusCode);
         }
 
-        var real = await Attempt(client, "alice", alice.Password, alice.Code());
-        var unknown = await Attempt(client, "nobody", alice.Password, alice.Code());
+        var real = await Attempt(client, "alice", alice.Password);
+        var unknown = await Attempt(client, "nobody", alice.Password);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, real.StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, unknown.StatusCode);
@@ -72,12 +73,12 @@ public class SignInLimitTests(PostgresFixture db) : IAsyncLifetime
         var client = new AuthClient(_factory);
         await client.SessionAsync();
         for (var i = 0; i < 10; i++) await Attempt(client, "alice", "wrong password entirely");
-        Assert.Equal(HttpStatusCode.TooManyRequests, (await Attempt(client, "alice", alice.Password, alice.Code())).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await Attempt(client, "alice", alice.Password)).StatusCode);
 
         _factory.Clock.Advance(TimeSpan.FromMinutes(15) + TimeSpan.FromSeconds(1));
         await Sql.Execute(db.AdminConnectionString, "select macro_admin.unlock_user('alice')");
 
-        Assert.Equal(HttpStatusCode.OK, (await Attempt(client, "alice", alice.Password, alice.Code())).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Attempt(client, "alice", alice.Password)).StatusCode);
     }
 
     [Fact]
@@ -93,7 +94,7 @@ public class SignInLimitTests(PostgresFixture db) : IAsyncLifetime
         await using var restarted = new ApiFactory(db, apiKey: null);
         var after = new AuthClient(restarted);
         await after.SessionAsync();
-        var response = await Attempt(after, "alice", alice.Password, alice.Code());
+        var response = await Attempt(after, "alice", alice.Password);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
         // One when the lockout started, one for the refused attempt after the restart.
@@ -111,7 +112,7 @@ public class SignInLimitTests(PostgresFixture db) : IAsyncLifetime
         await client.SessionAsync();
         for (var i = 0; i < 10; i++) await Attempt(client, "alice", "wrong password entirely");
 
-        Assert.Equal(HttpStatusCode.TooManyRequests, (await Attempt(client, "alice", alice.Password, alice.Code())).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await Attempt(client, "alice", alice.Password)).StatusCode);
         Assert.Equal(1L, await Sql.Scalar<long>(db.AdminConnectionString,
             """
             select count(*) from macro.audit_events a join macro.users u on u.id = a.user_id

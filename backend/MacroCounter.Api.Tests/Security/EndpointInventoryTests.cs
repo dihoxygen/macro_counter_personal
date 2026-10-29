@@ -9,8 +9,8 @@ using Microsoft.Extensions.Options;
 namespace MacroCounter.Api.Tests.Security;
 
 /// <summary>
-/// SC-003 / FR-013: every /api endpoint is declared in contracts/auth-api.yaml with its access level, and the
-/// running app enforces exactly that. A new endpoint that is not in the contract fails this test.
+/// SC-003 / FR-013: every /api endpoint is declared in the live contract (specs/004-security-qol/contracts/auth-api.yaml)
+/// with its access level, and the running app enforces exactly that. A new endpoint that is not in the contract fails this test.
 /// </summary>
 [Collection("Postgres")]
 public class EndpointInventoryTests(PostgresFixture db)
@@ -20,7 +20,7 @@ public class EndpointInventoryTests(PostgresFixture db)
     /// <summary>Line-based reader for the contract's paths, methods and x-access (no YAML package, Principle V).</summary>
     public static IReadOnlyList<ContractEndpoint> ReadContract()
     {
-        var file = Path.Combine(RepoRoot(), "specs", "003-auth-security-foundations", "contracts", "auth-api.yaml");
+        var file = Path.Combine(RepoRoot(), "specs", "004-security-qol", "contracts", "auth-api.yaml");
         var endpoints = new List<ContractEndpoint>();
         string? path = null;
         string? method = null;
@@ -107,6 +107,7 @@ public class EndpointInventoryTests(PostgresFixture db)
             var policies = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(a => a.Policy ?? AccessPolicies.FullSession).ToList();
             var actual = anonymous ? "public"
                 : policies.Contains(AccessPolicies.SetupSession) ? "setup"
+                : policies.Contains(AccessPolicies.MfaSession) ? "mfa"
                 : policies.Contains(AccessPolicies.AnySession) ? "any-session"
                 : "full"; // RequireAuthorization() (default policy) or no metadata (fallback policy): both FullSession
             Assert.True(declared[key] == actual, $"{key}: contract says {declared[key]}, app enforces {actual}");

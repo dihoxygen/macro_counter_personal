@@ -15,7 +15,8 @@ namespace MacroCounter.Api.Auth;
 
 // Request and response shapes from contracts/auth-api.yaml.
 
-public sealed record SignInRequest(string? Username, string? Password, string? Code);
+/// <summary>RememberDevice is sent only when the person changed the box: null keeps the current state (004 FR-003).</summary>
+public sealed record SignInRequest(string? Username, string? Password, bool? RememberDevice);
 
 public sealed record NewPasswordRequest(string? NewPassword);
 
@@ -30,6 +31,7 @@ public sealed record SessionUser(Guid Id, string Username, string Role);
 public sealed record SessionState(
     string State,
     string CsrfToken,
+    bool DeviceRemembered,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SetupStep = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SessionUser? User = null);
 
@@ -46,6 +48,7 @@ public static partial class AuthEndpoints
         var auth = api.MapGroup("/auth");
         auth.MapGet("/session", GetSession).AllowAnonymous();
         auth.MapPost("/sign-in", SignIn).AllowAnonymous().RequireRateLimiting(RateLimits.SignIn);
+        auth.MapPost("/mfa", VerifyMfa).RequireAuthorization(AccessPolicies.MfaSession).RequireRateLimiting(RateLimits.SignIn);
         var setup = auth.MapGroup("/setup").RequireAuthorization(AccessPolicies.SetupSession).RequireRateLimiting(RateLimits.SignIn);
         setup.MapPost("/password", SetPassword);
         setup.MapPost("/totp", StartTotp);
@@ -56,46 +59,101 @@ public static partial class AuthEndpoints
         auth.MapPost("/password", ChangePassword).RequireAuthorization(AccessPolicies.FullSession).RequireRateLimiting(RateLimits.SignIn);
     }
 
-    private static async Task<IResult> GetSession(HttpContext context, UserManager<AppUser> users, IAntiforgery antiforgery)
+    private static async Task<IResult> GetSession(HttpContext context, UserManager<AppUser> users, TrustedDeviceStore devices,
+        IAntiforgery antiforgery)
     {
         var kind = context.User.FindFirstValue(AuthClaims.SessionKind);
         var user = kind is null ? null : await CurrentUser(context, users);
+        // Pre-ticks Remember User (004 FR-003). A cookie that does not unprotect costs no database query.
+        var remembered = devices.ReadToken(context) is { } token && await devices.FindValidAsync(token, context.RequestAborted) is not null;
         if (user is not null && kind == SessionRecord.FullKind)
         {
-            return Results.Ok(State(context, antiforgery, "signed_in", user: user));
+            return Results.Ok(State(context, antiforgery, "signed_in", user: user, deviceRemembered: remembered));
         }
         if (user is not null && kind == SessionRecord.SetupKind && SetupSteps.Next(user) is { } step)
         {
-            return Results.Ok(State(context, antiforgery, "setup", step));
+            return Results.Ok(State(context, antiforgery, "setup", step, deviceRemembered: remembered));
         }
-        return Results.Ok(State(context, antiforgery, "signed_out"));
+        if (user is not null && kind == SessionRecord.MfaKind)
+        {
+            return Results.Ok(State(context, antiforgery, "mfa", deviceRemembered: remembered));
+        }
+        return Results.Ok(State(context, antiforgery, "signed_out", deviceRemembered: remembered));
     }
 
-    private static async Task<IResult> SignIn(HttpContext context, SignInService signIn, IAntiforgery antiforgery,
-        IOptions<SecurityOptions> options, TimeProvider clock)
+    private static async Task<IResult> SignIn(HttpContext context, SignInService signIn, TrustedDeviceStore devices,
+        IAntiforgery antiforgery, IOptions<SecurityOptions> options, TimeProvider clock)
     {
         var (request, problem) = await StrictJson.ReadAsync<SignInRequest>(context, MaxBodyBytes);
         if (problem is not null) return problem;
 
         var username = request!.Username?.Trim() ?? "";
         if (username.Length is 0 or > MaxUsernameLength
-            || request.Password is not { Length: > 0 and <= MaxPasswordLength } password
-            || (request.Code is not null && !SixDigits().IsMatch(request.Code)))
+            || request.Password is not { Length: > 0 and <= MaxPasswordLength } password)
         {
-            return Problems.InvalidRequest("Enter a username, a password and, after setup, a 6-digit code.");
+            return Problems.InvalidRequest("Enter a username and a password.");
         }
 
-        var outcome = await signIn.SignInAsync(username, password, request.Code, context.Connection.RemoteIpAddress,
-            context.RequestAborted);
-        return outcome switch
+        // Only an explicit tick is carried to the step that completes sign-in (004 FR-003, FR-015).
+        var remember = request.RememberDevice == true;
+        var deviceToken = devices.ReadToken(context);
+        var outcome = await signIn.VerifyPasswordAsync(username, password, request.RememberDevice, deviceToken,
+            context.Connection.RemoteIpAddress, context.RequestAborted);
+        switch (outcome)
         {
-            SignInOutcome.SignedIn signedIn =>
-                await IssueSession(context, signedIn.User, SessionRecord.FullKind, antiforgery, options, clock),
-            SignInOutcome.SetupRequired setup =>
-                await IssueSession(context, setup.User, SessionRecord.SetupKind, antiforgery, options, clock, setup.Step),
-            SignInOutcome.Locked locked => Problems.RateLimited(locked.RetryAfter),
-            _ => Problems.SignInFailed(),
-        };
+            case SignInOutcome.SignedIn signedIn:
+                return await IssueSession(context, signedIn.User, SessionRecord.FullKind, antiforgery, options, clock,
+                    deviceRemembered: signedIn.ViaRememberedDevice);
+            case SignInOutcome.PasswordAccepted accepted:
+                if (accepted.ForgetDevice) await devices.ForgetAsync(context, deviceToken!, accepted.User.Id, context.RequestAborted);
+                return await IssueSession(context, accepted.User, SessionRecord.MfaKind, antiforgery, options, clock,
+                    remember: remember);
+            case SignInOutcome.SetupRequired setup:
+                return await IssueSession(context, setup.User, SessionRecord.SetupKind, antiforgery, options, clock, setup.Step,
+                    remember);
+            case SignInOutcome.Locked locked:
+                return Problems.RateLimited(locked.RetryAfter);
+            default:
+                return Problems.SignInFailed();
+        }
+    }
+
+    private static async Task<IResult> VerifyMfa(HttpContext context, UserManager<AppUser> users, SignInService signIn,
+        TrustedDeviceStore devices, IAntiforgery antiforgery, IOptions<SecurityOptions> options, TimeProvider clock)
+    {
+        var (request, problem) = await StrictJson.ReadAsync<CodeRequest>(context, MaxBodyBytes);
+        if (problem is not null) return problem;
+        if (request!.Code is not { } code || !SixDigits().IsMatch(code))
+        {
+            return Problems.InvalidRequest("Enter the 6-digit code from your authenticator app.");
+        }
+
+        var user = await CurrentUser(context, users);
+        if (user is null) return Problems.Unauthenticated();
+        var remember = context.User.FindFirstValue(AuthClaims.Remember) == "true";
+        var outcome = await signIn.VerifyMfaAsync(user, code, SessionKey(context), context.Connection.RemoteIpAddress,
+            context.RequestAborted);
+        switch (outcome)
+        {
+            case SignInOutcome.SignedIn signedIn:
+                if (remember) await devices.RememberAsync(context, signedIn.User, context.RequestAborted);
+                return await IssueSession(context, signedIn.User, SessionRecord.FullKind, antiforgery, options, clock,
+                    deviceRemembered: remember);
+            case SignInOutcome.SetupRequired setup:
+                // Only the notice is left: the device is remembered when setup completes (AcknowledgeNotice).
+                return await IssueSession(context, setup.User, SessionRecord.SetupKind, antiforgery, options, clock, setup.Step,
+                    remember);
+            case SignInOutcome.InvalidCode invalid:
+                return Problems.InvalidCode(invalid.AttemptsLeft);
+            case SignInOutcome.PendingRevoked:
+                // Still a 400 with no attempts left, so the screen can say "too many codes" rather than "timed out".
+                await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return Problems.InvalidCode(0);
+            case SignInOutcome.Locked locked:
+                return Problems.RateLimited(locked.RetryAfter);
+            default:
+                throw new InvalidOperationException($"Unexpected sign-in outcome {outcome.GetType().Name}.");
+        }
     }
 
     private static async Task<IResult> SetPassword(HttpContext context, UserManager<AppUser> users, SetupService setup,
@@ -144,7 +202,7 @@ public static partial class AuthEndpoints
     }
 
     private static async Task<IResult> AcknowledgeNotice(HttpContext context, UserManager<AppUser> users, SetupService setup,
-        IAntiforgery antiforgery, IOptions<SecurityOptions> options, TimeProvider clock)
+        TrustedDeviceStore devices, IAntiforgery antiforgery, IOptions<SecurityOptions> options, TimeProvider clock)
     {
         var (request, problem) = await StrictJson.ReadAsync<NoticeRequest>(context, MaxBodyBytes);
         if (problem is not null) return problem;
@@ -152,11 +210,18 @@ public static partial class AuthEndpoints
 
         var user = await CurrentUser(context, users);
         if (user is null) return Problems.Unauthenticated();
+        var remember = context.User.FindFirstValue(AuthClaims.Remember) == "true";
         var result = await setup.AcknowledgeNoticeAsync(user, context.Connection.RemoteIpAddress, context.RequestAborted);
-        return await Respond(context, user, result, antiforgery, options, clock);
+        // Setup is complete: if Remember User was ticked when it started, remember this browser now (004 FR-015).
+        if (remember && result is SetupResult.Advanced { NextStep: null })
+        {
+            await devices.RememberAsync(context, user, context.RequestAborted);
+        }
+        return await Respond(context, user, result, antiforgery, options, clock, deviceRemembered: remember);
     }
 
-    private static async Task<IResult> ChangePassword(HttpContext context, UserManager<AppUser> users, SetupService setup)
+    private static async Task<IResult> ChangePassword(HttpContext context, UserManager<AppUser> users, SetupService setup,
+        TrustedDeviceStore devices)
     {
         var (request, problem) = await StrictJson.ReadAsync<ChangePasswordRequest>(context, MaxBodyBytes);
         if (problem is not null) return problem;
@@ -171,6 +236,8 @@ public static partial class AuthEndpoints
         if (user is null) return Problems.Unauthenticated();
         var result = await setup.ChangePasswordAsync(user, currentPassword, code, newPassword, SessionKey(context),
             context.Connection.RemoteIpAddress, context.RequestAborted);
+        // The stamp rotation already makes every remembered device stale; delete them now too (004 FR-018).
+        if (result is SetupResult.PasswordChanged) await devices.ForgetAllForUserAsync(context, user.Id, context.RequestAborted);
         return result switch
         {
             SetupResult.PasswordChanged => Results.NoContent(),
@@ -192,11 +259,12 @@ public static partial class AuthEndpoints
     }
 
     private static async Task<IResult> SignOutEverywhere(HttpContext context, UserManager<AppUser> users,
-        PostgresTicketStore sessions, IAuditLog audit)
+        PostgresTicketStore sessions, TrustedDeviceStore devices, IAuditLog audit)
     {
         var user = await CurrentUser(context, users);
         if (user is null) return Problems.Unauthenticated();
         await sessions.RemoveAllForUserAsync(user.Id, context.RequestAborted);
+        await devices.ForgetAllForUserAsync(context, user.Id, context.RequestAborted);
         await users.UpdateSecurityStampAsync(user);
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         await audit.WriteAsync(AuditEvent.SignOutEverywhere, AuditOutcome.Success, user.Id, null,
@@ -205,13 +273,14 @@ public static partial class AuthEndpoints
     }
 
     private static async Task<IResult> Respond(HttpContext context, AppUser user, SetupResult result, IAntiforgery antiforgery,
-        IOptions<SecurityOptions> options, TimeProvider clock)
+        IOptions<SecurityOptions> options, TimeProvider clock, bool deviceRemembered = false)
     {
         switch (result)
         {
             case SetupResult.Advanced { NextStep: null }:
                 // Setup complete: swap the setup session for a brand-new full session (no fixation).
-                return await IssueSession(context, user, SessionRecord.FullKind, antiforgery, options, clock);
+                return await IssueSession(context, user, SessionRecord.FullKind, antiforgery, options, clock,
+                    deviceRemembered: deviceRemembered);
             case SetupResult.Advanced advanced:
                 return Results.Ok(State(context, antiforgery, "setup", advanced.NextStep));
             case SetupResult.WrongStep wrong:
@@ -231,17 +300,21 @@ public static partial class AuthEndpoints
     }
 
     private static async Task<IResult> IssueSession(HttpContext context, AppUser user, string kind, IAntiforgery antiforgery,
-        IOptions<SecurityOptions> options, TimeProvider clock, string? setupStep = null)
+        IOptions<SecurityOptions> options, TimeProvider clock, string? setupStep = null, bool remember = false,
+        bool deviceRemembered = false)
     {
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [
-                new Claim(AuthClaims.Subject, user.Id.ToString()),
-                new Claim(AuthClaims.Username, user.UserName!),
-                new Claim(AuthClaims.Role, user.Role),
-                new Claim(AuthClaims.SessionKind, kind),
-            ],
+        List<Claim> claims =
+        [
+            new(AuthClaims.Subject, user.Id.ToString()),
+            new(AuthClaims.Username, user.UserName!),
+            new(AuthClaims.Role, user.Role),
+            new(AuthClaims.SessionKind, kind),
+        ];
+        // Only a pending or setup session carries the Remember User choice to the step that completes sign-in.
+        if (remember && kind != SessionRecord.FullKind) claims.Add(new(AuthClaims.Remember, "true"));
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims,
             CookieAuthenticationDefaults.AuthenticationScheme, AuthClaims.Username, AuthClaims.Role));
-        var lifetime = kind == SessionRecord.FullKind ? options.Value.Session.AbsoluteLifetime : options.Value.Session.SetupLifetime;
+        var (lifetime, _) = PostgresTicketStore.Limits(options.Value.Session, kind);
         await SessionRotation.SignInWithNewKeyAsync(context, new AuthenticationTicket(principal, new AuthenticationProperties
         {
             IsPersistent = true,
@@ -251,14 +324,21 @@ public static partial class AuthEndpoints
 
         // The CSRF token must be bound to the new identity, not the anonymous caller.
         context.User = principal;
-        return kind == SessionRecord.FullKind
-            ? Results.Ok(State(context, antiforgery, "signed_in", user: user))
-            : Results.Ok(State(context, antiforgery, "setup", setupStep ?? SetupSteps.Next(user)));
+        return kind switch
+        {
+            SessionRecord.FullKind => Results.Ok(State(context, antiforgery, "signed_in", user: user, deviceRemembered: deviceRemembered)),
+            SessionRecord.MfaKind => Results.Ok(State(context, antiforgery, "mfa")),
+            _ => Results.Ok(State(context, antiforgery, "setup", setupStep ?? SetupSteps.Next(user))),
+        };
     }
 
+    /// <param name="deviceRemembered">
+    /// Whether this browser is remembered: checked on GET /auth/session, and known after a sign-in step that used or
+    /// set the device cookie; false otherwise.
+    /// </param>
     private static SessionState State(HttpContext context, IAntiforgery antiforgery, string state, string? setupStep = null,
-        AppUser? user = null) =>
-        new(state, antiforgery.GetAndStoreTokens(context).RequestToken!, setupStep,
+        AppUser? user = null, bool deviceRemembered = false) =>
+        new(state, antiforgery.GetAndStoreTokens(context).RequestToken!, deviceRemembered, setupStep,
             user is null ? null : new SessionUser(user.Id, user.UserName!, user.Role));
 
     private static Guid? UserId(HttpContext context) =>

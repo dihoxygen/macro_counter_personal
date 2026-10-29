@@ -26,6 +26,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         options.UseNpgsql(dataSource, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", Schema));
 
     public DbSet<SessionRecord> Sessions => Set<SessionRecord>();
+    public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
     public DbSet<AiUsageDaily> AiUsageDaily => Set<AiUsageDaily>();
     public DbSet<AiUsageGlobalDaily> AiUsageGlobalDaily => Set<AiUsageGlobalDaily>();
     public DbSet<AuditEventRecord> AuditEvents => Set<AuditEventRecord>();
@@ -106,7 +107,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         builder.Entity<SessionRecord>(session =>
         {
             session.ToTable("sessions", t => t.HasCheckConstraint("ck_sessions_kind",
-                $"kind in ('{SessionRecord.SetupKind}', '{SessionRecord.FullKind}')"));
+                $"kind in ('{SessionRecord.SetupKind}', '{SessionRecord.FullKind}', '{SessionRecord.MfaKind}')"));
             session.HasKey(s => s.KeyHash);
             session.Property(s => s.KeyHash).HasColumnName("key_hash");
             session.Property(s => s.UserId).HasColumnName("user_id");
@@ -119,6 +120,19 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             session.Property(s => s.SetupFailedCodes).HasColumnName("setup_failed_codes").HasDefaultValue((short)0);
             session.HasIndex(s => s.UserId).HasDatabaseName("ix_sessions_user_id");
             session.HasOne<AppUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<TrustedDevice>(device =>
+        {
+            device.ToTable("trusted_devices");
+            device.HasKey(d => d.TokenHash);
+            device.Property(d => d.TokenHash).HasColumnName("token_hash");
+            device.Property(d => d.UserId).HasColumnName("user_id");
+            device.Property(d => d.SecurityStamp).HasColumnName("security_stamp");
+            device.Property(d => d.CreatedAt).HasColumnName("created_at");
+            device.Property(d => d.ExpiresAt).HasColumnName("expires_at");
+            device.HasIndex(d => d.UserId).HasDatabaseName("ix_trusted_devices_user_id");
+            device.HasOne<AppUser>().WithMany().HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<AiUsageDaily>(usage =>

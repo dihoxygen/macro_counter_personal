@@ -85,8 +85,12 @@ public sealed class AuditScenario(PostgresFixture db, ApiFactory factory)
         await dave.SessionAsync();
         var daveCode = daveUser.Code();
         Secrets.Add(daveCode);
-        await dave.SignInAsync("dave", daveUser.Password, daveCode);
+        // With Remember User ticked (004 US3): the device token is a secret too.
+        await dave.SignInAsync("dave", daveUser.Password, daveCode, rememberDevice: true);
         Remember(dave);
+        var deviceToken = dave.Cookies.GetCookies(dave.Address)["__Host-mc_device"]!.Value;
+        Secrets.AddRange([deviceToken, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(deviceToken)))]);
         await Expect(dave.PostAsync("/api/estimates/text", new { description = FoodDescription }), HttpStatusCode.OK);
         await Expect(dave.PostAsync("/api/estimates/text", new { description = FoodDescription }), HttpStatusCode.TooManyRequests);
 
@@ -100,7 +104,7 @@ public sealed class AuditScenario(PostgresFixture db, ApiFactory factory)
             await Expect(eve.PostAsync("/api/auth/sign-in", new { username = "eve", password = $"eve-wrong-{i}" }), HttpStatusCode.Unauthorized);
             Secrets.Add($"eve-wrong-{i}");
         }
-        await Expect(eve.PostAsync("/api/auth/sign-in", new { username = "eve", password = eveUser.Password, code = eveUser.Code() }),
+        await Expect(eve.PostAsync("/api/auth/sign-in", new { username = "eve", password = eveUser.Password }),
             HttpStatusCode.TooManyRequests);
 
         // The per-IP limit, from an address of its own.
@@ -117,6 +121,13 @@ public sealed class AuditScenario(PostgresFixture db, ApiFactory factory)
 
         // Signing out, everywhere, and every owner procedure.
         await Expect(carol.PostAsync("/api/auth/sign-out"), HttpStatusCode.NoContent);
+        // Unticking the box on the remembered browser forgets it; then a full sign-in again.
+        await Expect(dave.PostAsync("/api/auth/sign-out"), HttpStatusCode.NoContent);
+        await dave.SessionAsync();
+        var daveNextCode = daveUser.Code(1);
+        Secrets.Add(daveNextCode);
+        await dave.SignInAsync("dave", daveUser.Password, daveNextCode, rememberDevice: false);
+        Remember(dave);
         await Expect(dave.PostAsync("/api/auth/sign-out-everywhere"), HttpStatusCode.NoContent);
         await Sql.Execute(db.AdminConnectionString, "select macro_admin.revoke_sessions('eve')");
         await Sql.Execute(db.AdminConnectionString, "select macro_admin.disable_user('carol')");

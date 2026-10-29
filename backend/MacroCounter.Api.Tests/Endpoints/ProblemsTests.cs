@@ -47,7 +47,7 @@ public class ProblemsTests
     public async Task Sign_in_failure_has_the_exact_generic_message()
     {
         var (_, _, body) = await Run(Problems.SignInFailed());
-        Assert.Equal("Could not sign in. Check your details and try again.", body.GetProperty("detail").GetString());
+        Assert.Equal("Username or password is incorrect.", body.GetProperty("detail").GetString());
     }
 
     [Fact]

@@ -7,6 +7,12 @@ public static class AuthClaims
     public const string Username = "username";
     public const string Role = "role";
 
-    /// <summary>"setup" or "full" (see <see cref="Data.SessionRecord"/>).</summary>
+    /// <summary>"setup", "mfa" or "full" (see <see cref="Data.SessionRecord"/>).</summary>
     public const string SessionKind = "session_kind";
+
+    /// <summary>
+    /// "true" on a pending or setup session when the person explicitly ticked Remember User at sign-in; the device
+    /// is remembered only once the authenticator step completes (004 FR-015).
+    /// </summary>
+    public const string Remember = "remember";
 }

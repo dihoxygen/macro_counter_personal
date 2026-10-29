@@ -26,6 +26,7 @@ public class AccessMatrixTests(PostgresFixture db) : IAsyncLifetime
     public static TheoryData<string> Credentials => new()
     {
         "none", "expired", "idle", "signed-out", "revoked", "disabled", "setup-on-full", "full-on-setup",
+        "mfa-pending", "full-on-mfa",
     };
 
     /// <summary>A client carrying the given kind of credential (and a CSRF token, so only access is tested).</summary>
@@ -46,7 +47,16 @@ public class AccessMatrixTests(PostgresFixture db) : IAsyncLifetime
             return setup;
         }
 
-        var (client, _) = await TestUsers.ActivateAsync(db, _factory, "carol");
+        var (client, carol) = await TestUsers.ActivateAsync(db, _factory, "carol");
+        if (credential == "mfa-pending")
+        {
+            // A correct password, but no authenticator code yet (004 FR-006).
+            var pending = new AuthClient(_factory);
+            await pending.SessionAsync();
+            var state = await pending.PostForStateAsync("/api/auth/sign-in", new { username = "carol", password = carol.Password });
+            Assert.Equal("mfa", state.GetProperty("state").GetString());
+            return pending;
+        }
         switch (credential)
         {
             case "expired":
@@ -79,8 +89,10 @@ public class AccessMatrixTests(PostgresFixture db) : IAsyncLifetime
 
     private static bool Applies(string credential, string access) => credential switch
     {
-        "setup-on-full" => access == "full",
-        "full-on-setup" => access == "setup",
+        "setup-on-full" => access is "full" or "mfa",
+        "full-on-setup" => access is "setup" or "mfa",
+        "mfa-pending" => access is "full" or "setup",
+        "full-on-mfa" => access == "mfa",
         _ => true,
     };
 
@@ -90,6 +102,7 @@ public class AccessMatrixTests(PostgresFixture db) : IAsyncLifetime
         "/api/estimates/photo" => new MultipartFormDataContent { { new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0]), "photo", "m.jpg" } },
         "/api/auth/setup/password" => JsonContent.Create(new { newPassword = "a long and unbreached test passphrase" }),
         "/api/auth/setup/totp/confirm" => JsonContent.Create(new { code = "123456" }),
+        "/api/auth/mfa" => JsonContent.Create(new { code = "123456" }),
         "/api/auth/setup/notice" => JsonContent.Create(new { acknowledged = true }),
         "/api/auth/password" => JsonContent.Create(new
         {
@@ -123,5 +136,16 @@ public class AccessMatrixTests(PostgresFixture db) : IAsyncLifetime
         Assert.True(checkedAny);
         Assert.Equal(0, _estimator.Calls);
         Assert.Equal(0L, await Sql.Scalar<long>(db.AdminConnectionString, "select count(*) from macro.ai_usage_daily"));
+    }
+
+    [Fact]
+    public async Task A_pending_sign_in_can_sign_out_and_is_then_gone()
+    {
+        var pending = await ClientWith("mfa-pending");
+
+        Assert.Equal(HttpStatusCode.NoContent, (await pending.PostAsync("/api/auth/sign-out")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await pending.PostAsync("/api/auth/mfa", new { code = "123456" })).StatusCode);
+        Assert.Equal(0L, await Sql.Scalar<long>(db.AdminConnectionString, "select count(*) from macro.sessions where kind = 'mfa'"));
     }
 }

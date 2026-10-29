@@ -37,16 +37,17 @@ public sealed class PostgresTicketStore(
     public async Task<string> StoreAsync(AuthenticationTicket ticket, CancellationToken cancellationToken)
     {
         var kind = ticket.Principal.FindFirstValue(AuthClaims.SessionKind);
-        if (kind is not (SessionRecord.FullKind or SessionRecord.SetupKind))
+        if (kind is not (SessionRecord.FullKind or SessionRecord.SetupKind or SessionRecord.MfaKind))
         {
-            throw new InvalidOperationException($"A session ticket needs a {AuthClaims.SessionKind} claim of 'full' or 'setup'.");
+            throw new InvalidOperationException(
+                $"A session ticket needs a {AuthClaims.SessionKind} claim of 'full', 'setup' or 'mfa'.");
         }
         var userId = Guid.Parse(ticket.Principal.FindFirstValue(AuthClaims.Subject)
             ?? throw new InvalidOperationException("A session ticket needs a sub claim."));
 
         var key = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
         var now = clock.GetUtcNow();
-        var lifetime = kind == SessionRecord.FullKind ? options.Value.Session.AbsoluteLifetime : options.Value.Session.SetupLifetime;
+        var (lifetime, _) = Limits(options.Value.Session, kind);
 
         await using var command = dataSource.CreateCommand("""
             insert into macro.sessions (key_hash, user_id, kind, security_stamp, ticket, created_at, last_seen_at, absolute_expires_at)
@@ -88,7 +89,6 @@ public sealed class PostgresTicketStore(
     {
         var keyHash = HashKey(key);
         var now = clock.GetUtcNow();
-        var session = options.Value.Session;
 
         byte[] ticket;
         string kind;
@@ -108,7 +108,7 @@ public sealed class PostgresTicketStore(
             kind = reader.GetString(1);
             lastSeen = reader.GetFieldValue<DateTimeOffset>(2);
             var absoluteExpiry = reader.GetFieldValue<DateTimeOffset>(3);
-            var idleLimit = kind == SessionRecord.FullKind ? session.IdleTimeout : session.SetupLifetime;
+            var (_, idleLimit) = Limits(options.Value.Session, kind);
             valid = reader.GetBoolean(4) && now < absoluteExpiry && now - lastSeen < idleLimit;
         }
 
@@ -159,7 +159,7 @@ public sealed class PostgresTicketStore(
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    /// <summary>Counts a wrong authenticator code during setup; returns the new total.</summary>
+    /// <summary>Counts a wrong authenticator code during setup or a pending sign-in; returns the new total.</summary>
     public async Task<int> IncrementSetupFailuresAsync(string key, CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand("""
@@ -170,6 +170,14 @@ public sealed class PostgresTicketStore(
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return result is short count ? count : int.MaxValue;
     }
+
+    /// <summary>Absolute lifetime and idle limit per kind: setup and pending sessions are short and cannot be kept alive.</summary>
+    public static (TimeSpan Absolute, TimeSpan Idle) Limits(SecurityOptions.SessionSettings session, string kind) => kind switch
+    {
+        SessionRecord.FullKind => (session.AbsoluteLifetime, session.IdleTimeout),
+        SessionRecord.MfaKind => (session.MfaLifetime, session.MfaLifetime),
+        _ => (session.SetupLifetime, session.SetupLifetime),
+    };
 
     private async Task DeleteAsync(byte[] keyHash, CancellationToken cancellationToken)
     {

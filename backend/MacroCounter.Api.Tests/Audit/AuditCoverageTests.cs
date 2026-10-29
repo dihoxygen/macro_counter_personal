@@ -13,6 +13,7 @@ public class AuditCoverageTests(PostgresFixture db) : IAsyncLifetime
         "account_invited", "account_reset", "account_disabled", "account_enabled", "account_unlocked",
         "setup_started", "password_set", "password_rejected", "totp_enrolled", "totp_failed", "ai_notice_acknowledged",
         "sign_out", "sign_out_everywhere", "session_revoked", "sign_in_locked", "quota_exceeded",
+        "password_accepted", "device_remembered", "device_forgotten",
     ];
 
     public Task InitializeAsync() => db.ResetAsync();

@@ -77,8 +77,25 @@ public sealed class AuthClient
         return await Remember(response);
     }
 
-    public Task<JsonElement> SignInAsync(string username, string password, string? code = null) =>
-        PostForStateAsync("/api/auth/sign-in", code is null ? new { username, password } : new { username, password, code });
+    /// <summary>
+    /// Signs in like the app: the password step, then (when it asks for one and <paramref name="code"/> is given) the
+    /// authenticator step. <paramref name="rememberDevice"/> is sent only when set, as the app sends it only when the
+    /// person changed the box: an explicit false forgets a remembered device (004 FR-016a).
+    /// </summary>
+    public async Task<JsonElement> SignInAsync(string username, string password, string? code = null, bool? rememberDevice = null)
+    {
+        var state = await PasswordStepAsync(username, password, rememberDevice);
+        return code is not null && state.GetProperty("state").GetString() == "mfa" ? await MfaAsync(code) : state;
+    }
+
+    /// <summary>POST /api/auth/sign-in only (004 step 1).</summary>
+    public Task<JsonElement> PasswordStepAsync(string username, string password, bool? rememberDevice = null) =>
+        PostForStateAsync("/api/auth/sign-in", rememberDevice is { } remember
+            ? new { username, password, rememberDevice = remember }
+            : (object)new { username, password });
+
+    /// <summary>POST /api/auth/mfa only (004 step 2).</summary>
+    public Task<JsonElement> MfaAsync(string code) => PostForStateAsync("/api/auth/mfa", new { code });
 
     public static async Task<JsonElement> Json(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();

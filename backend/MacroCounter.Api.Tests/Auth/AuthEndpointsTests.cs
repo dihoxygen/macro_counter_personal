@@ -42,6 +42,7 @@ public class AuthEndpointsTests(PostgresFixture db) : IAsyncLifetime
         Assert.Equal("signed_out", json.GetProperty("state").GetString());
         Assert.False(string.IsNullOrEmpty(json.GetProperty("csrfToken").GetString()));
         Assert.False(json.TryGetProperty("user", out _));
+        Assert.False(json.GetProperty("deviceRemembered").GetBoolean());
         var antiforgery = SetCookie(response, "__Host-mc_af");
         Assert.NotNull(antiforgery);
         Assert.Contains("httponly", antiforgery, StringComparison.OrdinalIgnoreCase);
@@ -120,7 +121,8 @@ public class AuthEndpointsTests(PostgresFixture db) : IAsyncLifetime
     [Fact]
     public async Task A_setup_left_at_the_notice_cannot_be_finished_with_the_password_alone()
     {
-        // T126 security review: the authenticator is already enrolled, so resuming must need its code.
+        // T126 security review: the authenticator is already enrolled, so resuming must need its code. With two-step
+        // sign-in the password alone gets only a pending sign-in, which cannot reach the notice step (004 R1).
         var code = await TestUsers.InviteAsync(db, "carol");
         var first = new AuthClient(_factory);
         await first.SessionAsync();
@@ -133,8 +135,8 @@ public class AuthEndpointsTests(PostgresFixture db) : IAsyncLifetime
 
         var attacker = new AuthClient(_factory);
         await attacker.SessionAsync();
-        await AssertProblem(await attacker.PostAsync("/api/auth/sign-in", new { username = "carol", password = TestUsers.DefaultPassword }),
-            HttpStatusCode.Unauthorized, "sign_in_failed");
+        var pending = await attacker.PostForStateAsync("/api/auth/sign-in", new { username = "carol", password = TestUsers.DefaultPassword });
+        Assert.Equal("mfa", pending.GetProperty("state").GetString());
         await AssertProblem(await attacker.PostAsync("/api/auth/setup/notice", new { acknowledged = true }),
             HttpStatusCode.Unauthorized, "unauthenticated");
         Assert.Equal(0L, await Sql.Scalar<long>(db.AdminConnectionString, "select count(*) from macro.sessions where kind = 'full'"));
@@ -153,10 +155,9 @@ public class AuthEndpointsTests(PostgresFixture db) : IAsyncLifetime
         var client = new AuthClient(_factory);
         await client.SessionAsync();
 
-        var wrong = await client.PostAsync("/api/auth/sign-in", new { username = "carol", password = "not the password", code = carol.Code(1) });
+        var wrong = await client.PostAsync("/api/auth/sign-in", new { username = "carol", password = "not the password" });
         await AssertProblem(wrong, HttpStatusCode.Unauthorized, "sign_in_failed");
-        Assert.Equal("Could not sign in. Check your details and try again.",
-            (await AuthClient.Json(wrong)).GetProperty("detail").GetString());
+        Assert.Equal("Username or password is incorrect.", (await AuthClient.Json(wrong)).GetProperty("detail").GetString());
 
         var state = await client.SignInAsync("carol", carol.Password, carol.Code(1));
         Assert.Equal("signed_in", state.GetProperty("state").GetString());
@@ -226,11 +227,54 @@ public class AuthEndpointsTests(PostgresFixture db) : IAsyncLifetime
     [InlineData("12345a")]
     public async Task Codes_must_be_six_digits(string code)
     {
+        var carol = await TestUsers.ActivateDirectlyAsync(db, _factory, "carol");
+        var client = new AuthClient(_factory);
+        await client.SessionAsync();
+        await client.PasswordStepAsync("carol", carol.Password);
+
+        await AssertProblem(await client.PostAsync("/api/auth/mfa", new { code }), HttpStatusCode.BadRequest, "invalid_request");
+    }
+
+    [Fact]
+    public async Task Sign_in_no_longer_accepts_a_code()
+    {
+        // 004 FR-002: the code has its own step; an old client that still sends it is refused, not half-handled.
+        var carol = await TestUsers.ActivateDirectlyAsync(db, _factory, "carol");
         var client = new AuthClient(_factory);
         await client.SessionAsync();
 
-        await AssertProblem(await client.PostAsync("/api/auth/sign-in", new { username = "carol", password = "whatever-pass", code }),
+        await AssertProblem(await client.PostAsync("/api/auth/sign-in", new { username = "carol", password = carol.Password, code = carol.Code() }),
             HttpStatusCode.BadRequest, "invalid_request");
+    }
+
+    [Theory]
+    [InlineData("\"yes\"")]
+    [InlineData("1")]
+    public async Task Remember_device_must_be_a_boolean_when_present(string value)
+    {
+        var client = new AuthClient(_factory);
+        await client.SessionAsync();
+
+        await AssertProblem(await client.PostRawAsync("/api/auth/sign-in",
+                $$"""{"username":"carol","password":"whatever-pass","rememberDevice":{{value}}}"""),
+            HttpStatusCode.BadRequest, "invalid_request");
+    }
+
+    [Fact]
+    public async Task A_pending_sign_in_reports_the_mfa_state()
+    {
+        var carol = await TestUsers.ActivateDirectlyAsync(db, _factory, "carol");
+        var client = new AuthClient(_factory);
+        await client.SessionAsync();
+
+        var pending = await client.PasswordStepAsync("carol", carol.Password);
+        Assert.Equal("mfa", pending.GetProperty("state").GetString());
+        Assert.False(pending.TryGetProperty("user", out _));
+
+        var session = await client.SessionAsync();
+        Assert.Equal("mfa", session.GetProperty("state").GetString());
+        Assert.False(session.TryGetProperty("user", out _));
+        Assert.Equal(1L, await Sql.Scalar<long>(db.AdminConnectionString, "select count(*) from macro.sessions where kind = 'mfa'"));
     }
 
     [Theory]

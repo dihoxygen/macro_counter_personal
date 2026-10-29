@@ -18,6 +18,12 @@ public sealed class SecurityOptions
         public TimeSpan IdleTimeout { get; set; } = TimeSpan.FromHours(24);
         public TimeSpan AbsoluteLifetime { get; set; } = TimeSpan.FromDays(7);
         public TimeSpan SetupLifetime { get; set; } = TimeSpan.FromMinutes(15);
+
+        /// <summary>A pending sign-in (correct password, waiting for the code): idle and absolute (004 FR-006).</summary>
+        public TimeSpan MfaLifetime { get; set; } = TimeSpan.FromMinutes(5);
+
+        /// <summary>Remember User: fixed from the sign-in that set it, never extended (004 FR-017).</summary>
+        public TimeSpan RememberDeviceLifetime { get; set; } = TimeSpan.FromDays(7);
     }
 
     public sealed class SignInSettings
