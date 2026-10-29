@@ -23,9 +23,11 @@ export default function App() {
 
   return (
     <main className="app">
-      {view === 'today' ? (
-        <TodayScreen onNavigate={setView} />
-      ) : (
+      {/* Today stays mounted while another view shows, so an open estimate and drafts survive (FR-006). */}
+      <div hidden={view !== 'today'}>
+        <TodayScreen active={view === 'today'} onNavigate={setView} />
+      </div>
+      {view !== 'today' && (
         <section>
           <ScreenHeader title={titles[view]} onBack={goToday} />
           {view === 'add' && <AddFood onDone={goToday} />}

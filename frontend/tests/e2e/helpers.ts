@@ -70,6 +70,22 @@ export async function mockApi(
   if (options.text) await page.route((url) => url.pathname === '/api/estimates/text', options.text);
 }
 
+/** The composer on Today, where food is described, photographed or entered (feature 004). */
+export function composer(page: Page) {
+  return page.getByRole('region', { name: 'Log food' });
+}
+
+/** Describes a food in the composer and sends it with Enter. */
+export async function describeFood(page: Page, text: string) {
+  await composer(page).getByLabel('What did you eat?').fill(text);
+  await composer(page).getByLabel('What did you eat?').press('Enter');
+}
+
+/** The inline review card for an AI estimate. */
+export function reviewCard(page: Page) {
+  return page.getByRole('region', { name: 'Review estimate' });
+}
+
 /** Reads a labelled total (e.g. "Protein") from the totals panel. */
 export function total(page: Page, label: string) {
   return page.getByRole('region', { name: /totals/i }).getByRole('group', { name: label });

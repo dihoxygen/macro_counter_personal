@@ -21,13 +21,21 @@ interface Props {
   initial: ReviewState;
   onConfirm: (state: ReviewState) => Promise<void>;
   onDiscard: () => void;
+  /** Called with the state after every edit, not on first render (feature 004: pending protein). */
+  onChange?: (state: ReviewState) => void;
 }
 
 /** Review, edit and confirm an AI estimate. Nothing is saved until Confirm (FR-006). */
-export function ReviewEstimate({ initial, onConfirm, onDiscard }: Props) {
+export function ReviewEstimate({ initial, onConfirm, onDiscard, onChange }: Props) {
   const [state, setState] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
+
+  const apply = (change: (s: ReviewState) => ReviewState) => {
+    const next = change(state);
+    setState(next);
+    onChange?.(next);
+  };
 
   const confirm = async () => {
     setSaving(true);
@@ -48,15 +56,15 @@ export function ReviewEstimate({ initial, onConfirm, onDiscard }: Props) {
         <ReviewItemCard
           key={index}
           item={item}
-          onEdit={(patch) => setState((s) => editItem(s, index, patch))}
-          onAccept={() => setState((s) => acceptWarning(s, index))}
-          onRemove={() => setState((s) => removeItem(s, index))}
+          onEdit={(patch) => apply((s) => editItem(s, index, patch))}
+          onAccept={() => apply((s) => acceptWarning(s, index))}
+          onRemove={() => apply((s) => removeItem(s, index))}
         />
       ))}
       {adding ? (
         <NewItemForm
           onAdd={(item) => {
-            setState((s) => addItem(s, item));
+            apply((s) => addItem(s, item));
             setAdding(false);
           }}
           onCancel={() => setAdding(false)}

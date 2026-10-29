@@ -42,6 +42,11 @@
   box-sizing: border-box;
 }
 
+/* Classes such as .stack and .row set display, which would override the hidden attribute (feature 004). */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);

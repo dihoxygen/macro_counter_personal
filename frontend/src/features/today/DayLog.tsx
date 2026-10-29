@@ -9,7 +9,14 @@ import { EntryList } from './EntryList';
 import { TotalsPanel } from './TotalsPanel';
 
 /** One day's totals and entries, with editing. Shared by Today and the day history view. */
-export function DayLog({ dayKey, onSetGoal }: { dayKey: DayKey; onSetGoal?: () => void }) {
+interface Props {
+  dayKey: DayKey;
+  /** Changing it reloads the day (feature 004: Today refreshes after logging or when shown again). */
+  refreshKey?: number;
+  onSetGoal?: () => void;
+}
+
+export function DayLog({ dayKey, refreshKey = 0, onSetGoal }: Props) {
   const services = useServices();
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [goals, setGoals] = useState<ProteinGoal[]>([]);
@@ -27,7 +34,7 @@ export function DayLog({ dayKey, onSetGoal }: { dayKey: DayKey; onSetGoal?: () =
     return () => {
       active = false;
     };
-  }, [services, dayKey, version]);
+  }, [services, dayKey, version, refreshKey]);
 
   // An editor opened on another day (before a rollover or navigation) is not shown.
   const editing = selected?.dayKey === dayKey ? selected : null;

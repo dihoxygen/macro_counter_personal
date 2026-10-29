@@ -39,8 +39,8 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 **Purpose**: Confirm a green baseline and add shared e2e helpers. No scaffolding is needed
 
-- [ ] T001 Confirm the baseline is green before changing anything. Run `.\scripts\check.ps1` from the repo root if PowerShell is available. Otherwise, from `frontend/`, run `npm run typecheck`, `npm run lint`, `npm test` and `npx playwright test --project=desktop --project=mobile --project=offline`. If anything fails, stop and report the failure to the user instead of continuing
-- [ ] T002 [P] In `frontend/tests/e2e/helpers.ts`, add and export:
+- [X] T001 Confirm the baseline is green before changing anything. Run `.\scripts\check.ps1` from the repo root if PowerShell is available. Otherwise, from `frontend/`, run `npm run typecheck`, `npm run lint`, `npm test` and `npx playwright test --project=desktop --project=mobile --project=offline`. If anything fails, stop and report the failure to the user instead of continuing
+- [X] T002 [P] In `frontend/tests/e2e/helpers.ts`, add and export:
   - `composer(page: Page)`: returns `page.getByRole('region', { name: 'Log food' })`.
   - `describeFood(page: Page, text: string)`: fills `composer(page).getByLabel('What did you eat?')` with `text` and presses Enter.
   - `reviewCard(page: Page)`: returns `page.getByRole('region', { name: 'Review estimate' })`.
@@ -55,18 +55,18 @@ No IndexedDB schema change, no new repository, nothing new persisted ([data-mode
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 [P] Write failing tests in `frontend/tests/components/App.test.tsx`:
+- [X] T003 [P] Write failing tests in `frontend/tests/components/App.test.tsx`:
   - (a) Seed one entry and open its entry editor on Today. Navigate to Previous days: the **Today** heading is not visible (`toBeVisible()` is false, because Today has `hidden`). After **← Back**, the heading is visible again and the same entry editor is still open, which proves Today was not remounted.
   - (b) An entry logged while away (create it through `services.entries.create` while Previous days shows) appears in **Entries** after **← Back**, because Today refreshes when it becomes visible again.
-- [ ] T004 [P] Write a failing test in `frontend/tests/components/ReviewEstimate.test.tsx` (new file): `ReviewEstimate` calls the optional `onChange(state)` prop with the updated `ReviewState` after each Edit → Done, Remove, Add item and accepted warning. It is not called on first render
-- [ ] T005 Make T003 pass in `frontend/src/App.tsx`, `frontend/src/features/today/TodayScreen.tsx` and `frontend/src/features/today/DayLog.tsx`:
+- [X] T004 [P] Write a failing test in `frontend/tests/components/ReviewEstimate.test.tsx` (new file): `ReviewEstimate` calls the optional `onChange(state)` prop with the updated `ReviewState` after each Edit → Done, Remove, Add item and accepted warning. It is not called on first render
+- [X] T005 Make T003 pass in `frontend/src/App.tsx`, `frontend/src/features/today/TodayScreen.tsx` and `frontend/src/features/today/DayLog.tsx`:
   - `App` always renders `<TodayScreen active={view === 'today'} … />` inside a wrapper with `hidden={view !== 'today'}`, and renders the other views as now.
   - `TodayScreen` keeps a `refreshKey` state and increments it whenever `active` goes from false to true.
   - `DayLog` takes `refreshKey: number` and adds it to its load effect's dependencies.
   - Add `[hidden] { display: none !important; }` to `frontend/src/styles.css`. Without it, `.stack`, `.row` and the later grid classes set `display`, which overrides the browser's built-in `hidden` style, so hidden screens and inputs would still show.
 
   Keep every existing App and TodayScreen test green
-- [ ] T006 Make T004 pass in `frontend/src/features/add-food/ReviewEstimate.tsx`: add `onChange?: (state: ReviewState) => void`, called from a `useEffect` on `state` that skips the first render. No other behaviour changes
+- [X] T006 Make T004 pass in `frontend/src/features/add-food/ReviewEstimate.tsx`: add `onChange?: (state: ReviewState) => void`, called with the new state after every edit and never on first render. No other behaviour changes. *(Done: called from the edit handlers rather than a `useEffect`, which the React lint rules flagged.)*
 
 **Checkpoint**: Foundation ready. Today survives navigation, and review edits can be observed
 
