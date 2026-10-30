@@ -21,6 +21,14 @@ sent. The owner runs the server.
 - `specs/001-ai-macro-logging/`, `specs/002-add-photo-from-source/`, `specs/003-auth-security-foundations/`:
   specs, plans, data models, API contracts and validation scenarios.
 
+**Splash intro.** The first time the app opens in a browser session, a 10-second intro plays: the
+letters of "Macro Counter" shuffle through typefaces and land on the logo, with the M and both Os
+flickering in lit shapes. It doesn't replay on reloads in the same tab. Any tap, click, Enter, Space
+or Escape skips it, and with reduce motion turned on it shows a still logo for 2 seconds instead.
+The app keeps loading underneath. Its 13 fonts are small subsets bundled with the app (no font
+service); regenerate them as described in `frontend/public/fonts/intro/README.md`. Spec:
+`specs/005-splash-intro-animation/`.
+
 ## Prerequisites
 
 | Tool | Version | Check |

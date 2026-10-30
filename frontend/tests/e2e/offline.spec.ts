@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { test as baseTest } from '@playwright/test';
+import { expect, test } from './test';
 import { composer } from './helpers';
 
 // Runs against the production build (`vite preview`), where the service worker is active.
@@ -43,7 +44,8 @@ test('the app works offline: Today, history and manual entry; AI shows as unavai
 }) => {
   const requested: string[] = [];
   page.on('request', (request) => {
-    if (!request.url().startsWith('data:') && !request.url().startsWith('blob:')) requested.push(request.url());
+    if (!request.url().startsWith('data:') && !request.url().startsWith('blob:'))
+      requested.push(request.url());
   });
   await page.goto('/');
   await rememberSignedInAccount(page);
@@ -87,7 +89,10 @@ test('the app works offline: Today, history and manual entry; AI shows as unavai
   await expect(page.getByRole('list', { name: /entries/i })).toContainText('Boiled egg');
 
   // A quick-pick re-log works offline too (quickstart Q11).
-  await box.getByRole('group', { name: 'Recent foods' }).getByRole('button', { name: 'Boiled egg' }).click();
+  await box
+    .getByRole('group', { name: 'Recent foods' })
+    .getByRole('button', { name: 'Boiled egg' })
+    .click();
   await box.getByRole('button', { name: /^log$/i }).click();
   await expect(page.getByRole('list', { name: /entries/i }).getByRole('listitem')).toHaveCount(2);
 
@@ -99,6 +104,48 @@ test('the app works offline: Today, history and manual entry; AI shows as unavai
   await page.getByRole('button', { name: /previous days/i }).click();
   await expect(page.getByRole('heading', { level: 1, name: /previous days/i })).toBeVisible();
   await expect(page.getByText(/nothing logged/i)).toBeVisible();
+});
+
+// Feature 005 (FR-015, SC-006): the splash intro plays offline, its fonts served from the precache. The base
+// `test` on purpose: ./test.ts would mark the intro as already played in every page of the context.
+baseTest('the splash intro plays offline in a new tab', async ({ page, context }) => {
+  await page.goto('/');
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve) =>
+        navigator.serviceWorker.addEventListener('controllerchange', resolve),
+      );
+    }
+  });
+  await context.route('**/api/**', (route) => route.abort('connectionrefused'));
+  await context.setOffline(true);
+
+  // A new tab is a new browser session, so the intro is due again.
+  const tab = await context.newPage();
+  const failedFonts: string[] = [];
+  tab.on('requestfailed', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/fonts/intro/'))
+      failedFonts.push(request.url());
+  });
+  await tab.goto('/');
+  await expect(tab.getByTestId('splash-intro')).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        tab
+          .locator('[data-testid="splash-letter"][data-shape]')
+          .evaluateAll((els) => els.map((el) => Number((el as HTMLElement).dataset.index))),
+      { timeout: 9_000 },
+    )
+    .toEqual([0, 4, 7]);
+  const fontStatus = await tab.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts].filter((f) => f.family.includes('MC Intro')).map((f) => f.status);
+  });
+  expect(fontStatus).not.toContain('error');
+  expect(fontStatus.filter((s) => s === 'loaded').length).toBeGreaterThanOrEqual(12);
+  expect(failedFonts).toEqual([]);
 });
 
 test('the service worker never serves /api from the cache', async ({ page, context }) => {
