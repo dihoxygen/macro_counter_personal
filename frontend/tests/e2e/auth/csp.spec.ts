@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../test';
 import { composer, describeFood, reviewCard } from '../helpers';
 import { invite, uniqueUsername } from './db';
 import { completeSetup } from './flows';

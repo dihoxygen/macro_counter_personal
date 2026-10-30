@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { type Locator, type Page } from '@playwright/test';
+import { expect, test } from './test';
 import { composer, logManually, mockApi } from './helpers';
 
 // Feature 004 User Story 4 (FR-013, FR-014, FR-016): one layout from 360 px phones to 1280 px desktops.

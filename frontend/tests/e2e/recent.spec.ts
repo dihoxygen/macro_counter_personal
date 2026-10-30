@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { banana, composer, describeFood, estimate, mockApi, reviewCard, total } from './helpers';
 
 test.describe('Re-log a recent food (User Story 4; feature 004 User Story 2)', () => {

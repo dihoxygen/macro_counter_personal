@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { logManually, mockApi } from './helpers';
 
 test.describe('Daily protein goal (User Story 5)', () => {

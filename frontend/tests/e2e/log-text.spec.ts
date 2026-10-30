@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from './test';
 import { banana, composer, describeFood, egg, estimate, mockApi, reviewCard, toast, total } from './helpers';
 
 // Feature 004: describing, reviewing and confirming all happen on Today, in the composer.

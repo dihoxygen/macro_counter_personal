@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../test';
 import { composer, describeFood, reviewCard } from '../helpers';
 import { adminSql, invite, uniqueUsername } from './db';
 import { completeSetup, nextCode, PASSWORD, signIn } from './flows';

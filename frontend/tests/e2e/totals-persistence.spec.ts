@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { logManually, mockApi, total } from './helpers';
 
 const yogurt = { name: 'Greek yogurt', amount: '170', kcal: '100', protein: '17', carbs: '6', fat: '0.7' };

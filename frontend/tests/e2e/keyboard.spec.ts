@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { banana, composer, estimate, mockApi, reviewCard } from './helpers';
 
 // Feature 004 User Story 4 (FR-015, SC-004): describe, review and confirm with the keyboard alone.
