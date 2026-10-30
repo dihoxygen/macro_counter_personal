@@ -27,7 +27,18 @@ test.describe('US1: the intro plays once per session', () => {
       if (msg.type() === 'error' && /Content Security Policy/i.test(msg.text()))
         cspErrors.push(msg.text());
     });
-    const start = Date.now();
+    // Time the intro in the page itself, from when the overlay appears to when it goes: page load and
+    // Playwright's polling (slow on CI) must not count toward the 10 s (SC-001).
+    await page.addInitScript(() => {
+      const times: { shown?: number; gone?: number } = {};
+      (window as unknown as { __splashTimes: typeof times }).__splashTimes = times;
+      new MutationObserver(() => {
+        const present = !!document.querySelector('[data-testid="splash-intro"]');
+        if (present && times.shown === undefined) times.shown = performance.now();
+        if (!present && times.shown !== undefined && times.gone === undefined)
+          times.gone = performance.now();
+      }).observe(document, { childList: true, subtree: true });
+    });
     await page.goto('/');
     await expect(overlay(page)).toBeVisible();
     await expect(page.getByRole('img', { name: 'Macro Counter' })).toBeVisible();
@@ -39,10 +50,12 @@ test.describe('US1: the intro plays once per session', () => {
     await expect.poll(() => shapedIndices(page), { timeout: 9_000 }).toEqual([0, 4, 7]);
     await expect(letter(page, 12)).toHaveAttribute('data-visible', 'true');
 
-    await expect(overlay(page)).toBeHidden({ timeout: 11_000 });
-    const elapsed = Date.now() - start;
-    expect(elapsed).toBeGreaterThan(9_000);
-    expect(elapsed).toBeLessThan(11_500);
+    await expect(overlay(page)).toBeHidden({ timeout: 12_000 });
+    const { shown, gone } = await page.evaluate(
+      () => (window as unknown as { __splashTimes: { shown: number; gone: number } }).__splashTimes,
+    );
+    expect(gone - shown).toBeGreaterThan(9_500);
+    expect(gone - shown).toBeLessThan(10_500);
     await expect(today(page)).toBeVisible();
     expect(cspErrors).toEqual([]);
   });
