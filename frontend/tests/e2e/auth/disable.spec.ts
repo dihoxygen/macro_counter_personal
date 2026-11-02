@@ -1,7 +1,7 @@
 import { expect, test } from '../test';
 import { composer, describeFood, reviewCard } from '../helpers';
 import { adminSql, invite, uniqueUsername } from './db';
-import { completeSetup, nextCode, PASSWORD, signIn } from './flows';
+import { completeSetup, nextCode, PASSWORD, SIGN_IN_FAILED, signIn } from './flows';
 
 // US2.4 / quickstart V5: the owner disables an account while the person is using the app.
 
@@ -29,13 +29,11 @@ test('a disabled person is sent to sign-in on their next server request, without
 
   // Signing in is refused while disabled, with the same generic message.
   await signIn(page, username, PASSWORD, nextCode(setupKey));
-  await expect(dialog.getByRole('alert')).toHaveText(
-    'Could not sign in. Check your details and try again.',
-  );
+  await expect(dialog.getByRole('alert')).toHaveText(SIGN_IN_FAILED);
 
   // Re-enabled: the person signs in again and AI lookup works (Testing-only fake estimator).
   adminSql(`select macro_admin.enable_user('${username}');`);
-  // The refused attempt never consumed its code (disabled accounts fail before the code is checked).
+  // The refused attempt never reached the code screen, so the same code is still unused.
   await signIn(page, username, PASSWORD, nextCode(setupKey));
   await expect(dialog).toHaveCount(0);
   await describeFood(page, '1 medium banana');

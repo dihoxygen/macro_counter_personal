@@ -13,11 +13,13 @@ const enrollment = {
 const nextStep = (step: 'password' | 'totp' | 'notice') => ({
   state: 'setup' as const,
   csrfToken: 't',
+  deviceRemembered: false,
   setupStep: step,
 });
 const signedIn = {
   state: 'signed_in' as const,
   csrfToken: 't',
+  deviceRemembered: false,
   user: { id: '6f1c2a4e-0000-4000-8000-000000000001', username: 'alice', role: 'user' as const },
 };
 
@@ -38,6 +40,8 @@ describe('SetupFlow', () => {
       const auth = fakeAuth({ setupPassword: vi.fn(async () => nextStep('totp')) });
       const onSession = vi.fn();
       await renderWithServices(<SetupFlow step="password" onSession={onSession} />, { auth });
+
+      expect(screen.getByRole('heading', { name: 'Set your password' })).toBeInTheDocument();
 
       expect(screen.getByLabelText(/^new password$/i)).toHaveAttribute(
         'autocomplete',
@@ -70,7 +74,7 @@ describe('SetupFlow', () => {
 
       await choose(user, 'a long and private passphrase', 'a long and private passphrasf');
 
-      expect(await screen.findByRole('alert')).toHaveTextContent("The passwords don't match.");
+      expect(await screen.findByRole('alert')).toHaveTextContent(/^The passwords do not match\.$/);
       expect(auth.setupPassword).not.toHaveBeenCalled();
     });
 
@@ -182,6 +186,50 @@ describe('SetupFlow', () => {
 
       expect(auth.acknowledgeNotice).toHaveBeenCalled();
       expect(onSession).toHaveBeenCalledWith(signedIn);
+    });
+  });
+
+  describe('when rate limited', () => {
+    const limited = async () => {
+      throw new AuthError('rate_limited');
+    };
+
+    it('says so on the password step', async () => {
+      const user = userEvent.setup();
+      const auth = fakeAuth({ setupPassword: vi.fn(limited) });
+      await renderWithServices(<SetupFlow step="password" onSession={vi.fn()} />, { auth });
+
+      await user.type(screen.getByLabelText(/^new password$/i), 'a long and private passphrase');
+      await user.type(
+        screen.getByLabelText(/confirm new password/i),
+        'a long and private passphrase',
+      );
+      await user.click(screen.getByRole('button', { name: /set password/i }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Too many attempts. Try again later.',
+      );
+    });
+
+    it('says so when the authenticator setup cannot start', async () => {
+      const auth = fakeAuth({ setupTotpStart: vi.fn(limited) });
+      await renderWithServices(<SetupFlow step="totp" onSession={vi.fn()} />, { auth });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Too many attempts. Try again later.',
+      );
+    });
+
+    it('says so on the notice step', async () => {
+      const user = userEvent.setup();
+      const auth = fakeAuth({ acknowledgeNotice: vi.fn(limited) });
+      await renderWithServices(<SetupFlow step="notice" onSession={vi.fn()} />, { auth });
+
+      await user.click(screen.getByRole('button', { name: 'I understand' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Too many attempts. Try again later.',
+      );
     });
   });
 });

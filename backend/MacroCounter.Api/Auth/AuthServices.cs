@@ -29,6 +29,7 @@ public static class AuthServices
         services.AddScoped<SignInService>();
         services.AddScoped<SetupService>();
         services.AddSingleton<PostgresTicketStore>();
+        services.AddScoped<TrustedDeviceStore>();
         services.AddHttpClient<IBreachedPasswordChecker, HibpBreachedPasswordChecker>(client =>
         {
             client.BaseAddress = HibpBreachedPasswordChecker.BaseAddress;

@@ -133,7 +133,7 @@ public class SchemaTests(PostgresFixture db) : IAsyncLifetime
             new[]
             {
                 "__EFMigrationsHistory", "ai_usage_daily", "ai_usage_global_daily", "audit_events", "data_protection_keys",
-                "sessions", "user_claims", "user_logins", "user_tokens", "users",
+                "sessions", "trusted_devices", "user_claims", "user_logins", "user_tokens", "users",
             }.Order(StringComparer.Ordinal),
             tables.Order(StringComparer.Ordinal));
     }

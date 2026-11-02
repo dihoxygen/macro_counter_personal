@@ -54,7 +54,7 @@ public class PasswordChangeTests(PostgresFixture db) : IAsyncLifetime
         _factory.Clock.Advance(TimeSpan.FromMinutes(6)); // past the code replay window
         var next = new AuthClient(_factory);
         await next.SessionAsync();
-        await AssertProblem(await next.PostAsync("/api/auth/sign-in", new { username = "carol", password = carol.Password, code = carol.Code() }),
+        await AssertProblem(await next.PostAsync("/api/auth/sign-in", new { username = "carol", password = carol.Password }),
             HttpStatusCode.Unauthorized, "sign_in_failed");
         Assert.Equal("signed_in", (await next.SignInAsync("carol", NewPassword, carol.Code(1))).GetProperty("state").GetString());
     }

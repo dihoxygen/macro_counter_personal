@@ -18,13 +18,15 @@ public class AccountLifecycleTests(PostgresFixture db) : IAsyncLifetime
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
 
+    /// <summary>Both sign-in steps: the first refusal, or the authenticator step's status.</summary>
     private async Task<HttpStatusCode> SignInStatus(ActiveUser user, int stepsAhead)
     {
         var client = new AuthClient(_factory);
         await client.SessionAsync();
-        var response = await client.PostAsync("/api/auth/sign-in",
-            new { username = user.Username, password = user.Password, code = user.Code(stepsAhead) });
-        return response.StatusCode;
+        var password = await client.PostAsync("/api/auth/sign-in", new { username = user.Username, password = user.Password });
+        if (password.StatusCode != HttpStatusCode.OK) return password.StatusCode;
+        client.Csrf = (await AuthClient.Json(password)).GetProperty("csrfToken").GetString();
+        return (await client.PostAsync("/api/auth/mfa", new { code = user.Code(stepsAhead) })).StatusCode;
     }
 
     [Fact]

@@ -61,7 +61,7 @@ public class DatabaseOutageTests(PostgresFixture db) : IAsyncLifetime
 
         down = true;
         var response = await client.PostAsync("/api/auth/sign-in",
-            new { username = "alice", password = "a long and private passphrase", code = "123456" });
+            new { username = "alice", password = "a long and private passphrase" });
 
         await AssertServiceUnavailable(response);
     }

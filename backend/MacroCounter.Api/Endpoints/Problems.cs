@@ -5,7 +5,7 @@ namespace MacroCounter.Api.Endpoints;
 /// <summary>RFC 9457 problem responses carrying the contract's machine-readable <c>code</c>.</summary>
 public static class Problems
 {
-    public const string SignInFailedDetail = "Could not sign in. Check your details and try again.";
+    public const string SignInFailedDetail = "Username or password is incorrect.";
 
     public static IResult InvalidRequest(string detail) =>
         Create(StatusCodes.Status400BadRequest, "invalid_request", "The request is invalid.", detail);

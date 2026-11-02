@@ -241,11 +241,11 @@ namespace MacroCounter.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("ck_audit_events_actor", "actor in ('user', 'system', 'owner')");
 
-                            t.HasCheckConstraint("ck_audit_events_event_type", "event_type in ('sign_in', 'sign_in_locked', 'rate_limited', 'sign_out', 'sign_out_everywhere', 'session_revoked', 'setup_started', 'password_set', 'password_rejected', 'totp_enrolled', 'totp_failed', 'ai_notice_acknowledged', 'account_invited', 'account_reset', 'account_disabled', 'account_enabled', 'account_unlocked', 'quota_exceeded', 'ceiling_hit')");
+                            t.HasCheckConstraint("ck_audit_events_event_type", "event_type in ('sign_in', 'sign_in_locked', 'rate_limited', 'sign_out', 'sign_out_everywhere', 'session_revoked', 'setup_started', 'password_set', 'password_rejected', 'totp_enrolled', 'totp_failed', 'ai_notice_acknowledged', 'account_invited', 'account_reset', 'account_disabled', 'account_enabled', 'account_unlocked', 'quota_exceeded', 'ceiling_hit', 'password_accepted', 'device_remembered', 'device_forgotten')");
 
                             t.HasCheckConstraint("ck_audit_events_outcome", "outcome in ('success', 'failure', 'info')");
 
-                            t.HasCheckConstraint("ck_audit_events_reason", "reason is null or reason in ('bad_credentials', 'locked', 'rate_limited', 'account_incomplete', 'account_disabled', 'setup_expired', 'breach_check_unavailable', 'quota_user_daily', 'quota_global_daily', 'quota_global_monthly', 'invalid_code')");
+                            t.HasCheckConstraint("ck_audit_events_reason", "reason is null or reason in ('bad_credentials', 'locked', 'rate_limited', 'account_incomplete', 'account_disabled', 'setup_expired', 'breach_check_unavailable', 'quota_user_daily', 'quota_global_daily', 'quota_global_monthly', 'invalid_code', 'remembered_device', 'invite_code')");
                         });
                 });
 
@@ -299,8 +299,39 @@ namespace MacroCounter.Api.Data.Migrations
 
                     b.ToTable("sessions", "macro", t =>
                         {
-                            t.HasCheckConstraint("ck_sessions_kind", "kind in ('setup', 'full')");
+                            t.HasCheckConstraint("ck_sessions_kind", "kind in ('setup', 'full', 'mfa')");
                         });
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.TrustedDevice", b =>
+                {
+                    b.Property<byte[]>("TokenHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("security_stamp");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("TokenHash");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_trusted_devices_user_id");
+
+                    b.ToTable("trusted_devices", "macro");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -419,6 +450,15 @@ namespace MacroCounter.Api.Data.Migrations
                 });
 
             modelBuilder.Entity("MacroCounter.Api.Data.SessionRecord", b =>
+                {
+                    b.HasOne("MacroCounter.Api.Auth.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.TrustedDevice", b =>
                 {
                     b.HasOne("MacroCounter.Api.Auth.AppUser", null)
                         .WithMany()
