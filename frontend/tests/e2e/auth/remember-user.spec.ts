@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test';
+import { type Browser, type Page, type TestInfo } from '@playwright/test';
+import { expect, test } from '../test';
 import { invite, uniqueUsername } from './db';
 import { completeSetup, nextCode, PASSWORD, signIn, signOut } from './flows';
 
@@ -13,6 +14,8 @@ const rememberBox = (page: Page) => page.getByRole('checkbox', { name: 'Remember
 /** A second browser profile: its own cookies, nothing remembered. */
 async function otherBrowser(browser: Browser, testInfo: TestInfo): Promise<Page> {
   const context = await browser.newContext({ ...testInfo.project.use });
+  // A bare context misses the shared fixture, so skip the splash intro here too (see ../test.ts).
+  await context.addInitScript(() => sessionStorage.setItem('macro.introPlayed', '1'));
   const page = await context.newPage();
   await page.goto('/');
   return page;

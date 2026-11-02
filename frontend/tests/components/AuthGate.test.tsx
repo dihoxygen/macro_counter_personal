@@ -241,12 +241,13 @@ describe('AuthGate', () => {
     expect(screen.getByLabelText('Draft')).toHaveValue('2 eggs on toast');
   });
 
-  // Feature 004 (spec edge case): an estimate card open on Today survives the sign-in overlay.
+  // Feature 004 (composer spec edge case): an estimate card open on Today survives the sign-in overlay.
   it('on session expiry keeps an open review card on Today, which can then be confirmed', async () => {
     const user = userEvent.setup();
     const auth = fakeAuth({
       getSession: vi.fn(async () => signedIn()),
-      signIn: vi.fn(async () => signedIn()),
+      signIn: vi.fn(async () => pending),
+      verifyMfa: vi.fn(async () => signedIn()),
     });
     const { services } = await renderWithServices(
       <AuthGate>
@@ -264,9 +265,10 @@ describe('AuthGate', () => {
     expect(await screen.findByRole('dialog', { name: /sign in again/i })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/username/i), 'alice');
-    await user.type(screen.getByLabelText(/password or temporary code/i), 'my long passphrase');
-    await user.type(screen.getByLabelText(/authenticator code/i), '123456');
+    await user.type(screen.getByLabelText('Password (or Invite Code)'), 'my long passphrase');
     await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    await user.type(await screen.findByLabelText('Authenticator code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     const card = screen.getByRole('region', { name: 'Review estimate' });
