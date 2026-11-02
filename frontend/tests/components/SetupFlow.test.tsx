@@ -188,4 +188,48 @@ describe('SetupFlow', () => {
       expect(onSession).toHaveBeenCalledWith(signedIn);
     });
   });
+
+  describe('when rate limited', () => {
+    const limited = async () => {
+      throw new AuthError('rate_limited');
+    };
+
+    it('says so on the password step', async () => {
+      const user = userEvent.setup();
+      const auth = fakeAuth({ setupPassword: vi.fn(limited) });
+      await renderWithServices(<SetupFlow step="password" onSession={vi.fn()} />, { auth });
+
+      await user.type(screen.getByLabelText(/^new password$/i), 'a long and private passphrase');
+      await user.type(
+        screen.getByLabelText(/confirm new password/i),
+        'a long and private passphrase',
+      );
+      await user.click(screen.getByRole('button', { name: /set password/i }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Too many attempts. Try again later.',
+      );
+    });
+
+    it('says so when the authenticator setup cannot start', async () => {
+      const auth = fakeAuth({ setupTotpStart: vi.fn(limited) });
+      await renderWithServices(<SetupFlow step="totp" onSession={vi.fn()} />, { auth });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Too many attempts. Try again later.',
+      );
+    });
+
+    it('says so on the notice step', async () => {
+      const user = userEvent.setup();
+      const auth = fakeAuth({ acknowledgeNotice: vi.fn(limited) });
+      await renderWithServices(<SetupFlow step="notice" onSession={vi.fn()} />, { auth });
+
+      await user.click(screen.getByRole('button', { name: 'I understand' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Too many attempts. Try again later.',
+      );
+    });
+  });
 });

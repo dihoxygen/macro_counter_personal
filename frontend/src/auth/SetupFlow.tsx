@@ -34,6 +34,13 @@ export const reasonMessages: Record<string, string> = {
 };
 const SETUP_FAILED = 'Something went wrong. Please try again.';
 
+/** Sign-in and setup share one per-source rate limit (003 R7), so a 429 can land on any step. */
+function setupFailure(e: unknown): string {
+  return e instanceof AuthError && e.code === 'rate_limited'
+    ? 'Too many attempts. Try again later.'
+    : SETUP_FAILED;
+}
+
 function PasswordStep({ onSession }: { onSession: (session: SessionState) => void }) {
   const { auth } = useServices();
   const [password, setPassword] = useState('');
@@ -57,7 +64,7 @@ function PasswordStep({ onSession }: { onSession: (session: SessionState) => voi
       } else if (e instanceof AuthError && e.code === 'breach_check_unavailable') {
         setError("We couldn't check this password right now. Please try again in a minute.");
       } else {
-        setError(SETUP_FAILED);
+        setError(setupFailure(e));
       }
     } finally {
       setBusy(false);
@@ -101,7 +108,7 @@ function AuthenticatorStep({ onSession }: { onSession: (session: SessionState) =
     let current = true;
     auth.setupTotpStart().then(
       (result) => current && setEnrollment(result),
-      () => current && setError(SETUP_FAILED),
+      (e: unknown) => current && setError(setupFailure(e)),
     );
     return () => {
       current = false;
@@ -119,7 +126,7 @@ function AuthenticatorStep({ onSession }: { onSession: (session: SessionState) =
         const left = e.attemptsLeft ?? 0;
         setError(`Code didn't match. ${left} ${left === 1 ? 'attempt' : 'attempts'} left.`);
       } else {
-        setError(SETUP_FAILED);
+        setError(setupFailure(e));
       }
       setCode('');
     } finally {
@@ -193,8 +200,8 @@ function NoticeStep({ onSession }: { onSession: (session: SessionState) => void 
     setError(undefined);
     try {
       onSession(await auth.acknowledgeNotice());
-    } catch {
-      setError(SETUP_FAILED);
+    } catch (e) {
+      setError(setupFailure(e));
     } finally {
       setBusy(false);
     }
