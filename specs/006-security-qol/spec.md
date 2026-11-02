@@ -1,6 +1,6 @@
 # Feature Specification: Security Quality-of-Life Improvements
 
-**Feature Branch**: `004-security-qol`
+**Feature Branch**: `006-security-qol`
 
 **Created**: 2026-10-29
 

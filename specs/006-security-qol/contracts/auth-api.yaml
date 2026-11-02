@@ -3,7 +3,7 @@ info:
   title: Macro Counter API (auth & security)
   version: 3.0.0
   description: >
-    **004 changes (security quality of life).** Sign-in is now two steps: `/auth/sign-in` checks
+    **006 changes (security quality of life).** Sign-in is now two steps: `/auth/sign-in` checks
     the password (or invite code) and `/auth/mfa` checks the authenticator code. A "Remember User"
     device cookie can skip the second step for 7 days. This file replaces
     specs/003-auth-security-foundations/contracts/auth-api.yaml as the contract the endpoint
@@ -28,7 +28,7 @@ info:
     **Cookies.** `__Host-mc_session` (HttpOnly; Secure; SameSite=Strict; Path=/) carries the
     session. `__Host-mc_af` (HttpOnly; Secure; SameSite=Strict) is the antiforgery cookie.
     `__Host-mc_device` (HttpOnly; Secure; SameSite=Strict; Path=/; Expires = 7 days after it was set)
-    holds the Remember User token (004 research R3). Scripts can read none of them (FR-010; 004 FR-019).
+    holds the Remember User token (006 research R3). Scripts can read none of them (FR-010; 006 FR-019).
 
 
     **CSRF.** Every non-GET request MUST send `X-CSRF-Token`, using the `csrfToken` from the most
@@ -89,26 +89,26 @@ paths:
       x-access: public
       summary: "Step 1: check the username and password, or start first-time setup with an invite code"
       description: >
-        Checks only the password (or invite code); there is no `code` field (004 FR-002, FR-004).
+        Checks only the password (or invite code); there is no `code` field (006 FR-002, FR-004).
         Every failure returns the same 401 `sign_in_failed` with the same timing: unknown user,
         wrong password, wrong, used or expired invite code, disabled account, expired setup, or an
-        incomplete account (004 FR-005).
+        incomplete account (006 FR-005).
 
 
         On success the response is one of:
           `state: mfa`, with a pending sign-in session valid for 5 minutes (authenticator set up,
           device not remembered for this account);
           `state: signed_in`, with a full session (correct password, `rememberDevice` absent or
-          `true`, and a valid `__Host-mc_device` cookie for this account; 004 FR-016);
+          `true`, and a valid `__Host-mc_device` cookie for this account; 006 FR-016);
           `state: setup`, with `setupStep: password` (valid invite code) or `setupStep: totp`
           (password already chosen, authenticator not yet set up, before the setup deadline;
-          004 FR-013).
+          006 FR-013).
 
 
         The app always sends `rememberDevice` with the value the "Remember User" box shows; absent
-        still means "keep the current state" (004 FR-003, research R3 table). With
+        still means "keep the current state" (006 FR-003, research R3 table). With
         `rememberDevice: false` and a device cookie for this account, the device is forgotten (row
-        deleted, cookie cleared) before continuing (004 FR-016a). An explicit `true` is carried on
+        deleted, cookie cleared) before continuing (006 FR-016a). An explicit `true` is carried on
         the pending or setup session and used only when the authenticator step (or setup) completes.
         A correct password never resets failure counters; only a completed authenticator step does.
 
@@ -157,16 +157,16 @@ paths:
   /auth/mfa:
     post:
       x-access: mfa
-      summary: "Step 2: the authenticator code for a pending sign-in (004 FR-007 – FR-010)"
+      summary: "Step 2: the authenticator code for a pending sign-in (006 FR-007 – FR-010)"
       description: >
         A correct, unused code replaces the pending session with a brand-new session:
         `state: signed_in`, or `state: setup` with `setupStep: notice` when the account has not yet
         acknowledged the notice. If "Remember User" was ticked on step 1, `__Host-mc_device` is also
-        set (004 FR-015).
+        set (006 FR-015).
 
 
         A wrong code returns 400 `invalid_code` with `attemptsLeft`. It counts toward the same
-        per-account lockout and per-username throttle as a wrong password (004 FR-009). The 5th
+        per-account lockout and per-username throttle as a wrong password (006 FR-009). The 5th
         wrong code on one pending session returns 400 `invalid_code` with `attemptsLeft: 0`, ends
         the pending session and clears its cookie. After that, or after 5 minutes, this endpoint
         returns 401 and the person starts again from step 1. To go back, call `/auth/sign-out`.
@@ -317,7 +317,7 @@ paths:
   /auth/sign-out:
     post:
       x-access: any-session
-      summary: End this session (works for pending, setup and full sessions; it is also the "Use a different account" action on the authenticator screen). Local data is kept on the device (FR-017). The `__Host-mc_device` cookie is kept (004 FR-018).
+      summary: End this session (works for pending, setup and full sessions; it is also the "Use a different account" action on the authenticator screen). Local data is kept on the device (FR-017). The `__Host-mc_device` cookie is kept (006 FR-018).
       operationId: signOut
       parameters:
         - $ref: "#/components/parameters/CsrfHeader"
@@ -328,7 +328,7 @@ paths:
 
   /auth/sign-out-everywhere:
     post:
-      summary: End all of this user's sessions on every device, forget every remembered device, and rotate the security stamp (FR-011; 004 FR-018)
+      summary: End all of this user's sessions on every device, forget every remembered device, and rotate the security stamp (FR-011; 006 FR-018)
       operationId: signOutEverywhere
       parameters:
         - $ref: "#/components/parameters/CsrfHeader"
@@ -453,7 +453,7 @@ components:
             On `GET /auth/session`: true when this request carries a valid `__Host-mc_device` cookie
             for any account. It does not say which account; the sign-in screen pre-ticks "Remember
             User" only when it is true and the typed username is the one the app recorded at its
-            last remembered sign-in (004 FR-003). On the sign-in steps' responses it is true only when that
+            last remembered sign-in (006 FR-003). On the sign-in steps' responses it is true only when that
             response used or set the device cookie, and false otherwise.
         setupStep:
           enum: [password, totp, notice]

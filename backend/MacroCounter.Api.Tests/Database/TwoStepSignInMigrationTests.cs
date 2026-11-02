@@ -3,7 +3,7 @@ using MacroCounter.Api.Tests.Infrastructure;
 namespace MacroCounter.Api.Tests.Database;
 
 /// <summary>
-/// 004 data-model.md: the pending-sign-in session kind, the remembered-device table and its grants, the new audit
+/// 006 data-model.md: the pending-sign-in session kind, the remembered-device table and its grants, the new audit
 /// codes, and the owner procedures that end remembering.
 /// </summary>
 [Collection("Postgres")]

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { SessionState } from '../../../src/api/auth';
 import { noteSignIn, readRememberedUser } from '../../../src/auth/rememberedUser';
 
-// 004 FR-003: the sign-in screen pre-ticks Remember User only for the account this browser was remembered for.
+// 006 FR-003: the sign-in screen pre-ticks Remember User only for the account this browser was remembered for.
 
 function signedIn(username: string, deviceRemembered: boolean): SessionState {
   return {

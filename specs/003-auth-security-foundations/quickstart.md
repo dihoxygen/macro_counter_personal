@@ -51,10 +51,10 @@ and compute codes with a small `node:crypto` helper.
 
 Run these against the local app. Expected results are in **bold**.
 
-> **Feature 004 changed sign-in to two screens** (password first, then the authenticator code) and
+> **Feature 006 changed sign-in to two screens** (password first, then the authenticator code) and
 > renamed the temporary code to the **invite code**. The steps below are updated for that; the full
-> 004 scenarios, including Remember User, are in
-> [specs/004-security-qol/quickstart.md](../004-security-qol/quickstart.md).
+> 006 scenarios, including Remember User, are in
+> [specs/006-security-qol/quickstart.md](../006-security-qol/quickstart.md).
 
 ### V1. First-time setup (US1.5, US2.3, SC-001, SC-002)
 1. Open the app signed out. **The sign-in screen has no sign-up, register or "request invite"
@@ -76,7 +76,7 @@ Run these against the local app. Expected results are in **bold**.
    under 20 seconds.**
 2. Try a wrong password and an unknown username. **Both show the same message on the sign-in
    screen**, in about the same time, and no code is asked for. A wrong code on the code screen
-   says "That code is incorrect." (004 research R1 accepts that the first step reveals a correct
+   says "That code is incorrect." (006 research R1 accepts that the first step reveals a correct
    password).
 3. Enter ` YOU ` (spaces and capitals) with the right credentials. **You are signed in.**
 

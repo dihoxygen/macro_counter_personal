@@ -28,7 +28,7 @@ public enum AuditEvent
     QuotaExceeded,
     CeilingHit,
 
-    /// <summary>The password was right; the authenticator code is still needed (004 FR-021).</summary>
+    /// <summary>The password was right; the authenticator code is still needed (006 FR-021).</summary>
     PasswordAccepted,
     DeviceRemembered,
     DeviceForgotten,

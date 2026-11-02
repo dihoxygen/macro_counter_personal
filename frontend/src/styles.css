@@ -357,7 +357,7 @@ button.entry {
   flex: 1;
 }
 
-/* Remember User (feature 004): the whole row is the touch target. */
+/* Remember User (feature 006): the whole row is the touch target. */
 .checkbox-row {
   display: flex;
   align-items: center;

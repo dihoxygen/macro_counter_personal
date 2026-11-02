@@ -34,7 +34,7 @@ async function enter(user: ReturnType<typeof userEvent.setup>, code = '123456') 
   await user.click(screen.getByRole('button', { name: 'Verify' }));
 }
 
-describe('MfaScreen (specs/004-security-qol/contracts/ui-flow.md)', () => {
+describe('MfaScreen (specs/006-security-qol/contracts/ui-flow.md)', () => {
   it('asks only for the 6-digit code, with the numeric keypad and focus', async () => {
     await renderWithServices(<MfaScreen {...handlers()} />);
 

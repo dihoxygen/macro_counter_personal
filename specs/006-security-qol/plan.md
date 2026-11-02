@@ -1,8 +1,8 @@
 # Implementation Plan: Security Quality-of-Life Improvements
 
-**Branch**: `004-security-qol` | **Date**: 2026-10-29 | **Spec**: [spec.md](./spec.md)
+**Branch**: `006-security-qol` | **Date**: 2026-10-29 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/004-security-qol/spec.md`
+**Input**: Feature specification from `/specs/006-security-qol/spec.md`
 
 ## Summary
 
@@ -54,7 +54,7 @@ EF Core, zod, Vite, Playwright. No new packages
 - Backend: xUnit + `WebApplicationFactory` against local PostgreSQL 17 as `macro_app`, with
   `FakeTimeProvider` for the 5-minute and 7-day windows.
 - Frontend: Vitest + React Testing Library, and Playwright e2e.
-- `EndpointInventoryTests` is pointed at `specs/004-security-qol/contracts/auth-api.yaml`, which
+- `EndpointInventoryTests` is pointed at `specs/006-security-qol/contracts/auth-api.yaml`, which
   becomes the live contract, and learns the `mfa` access level.
 
 **Target Platform**: Unchanged (Azure App Service B1; evergreen desktop and mobile browsers).
@@ -133,7 +133,7 @@ least-privilege role).
 ### Documentation (this feature)
 
 ```text
-specs/004-security-qol/
+specs/006-security-qol/
 ├── plan.md              # This file
 ├── research.md          # Phase 0
 ├── data-model.md        # Phase 1
@@ -172,7 +172,7 @@ backend/
     ├── Auth/TrustedDeviceTests.cs    # NEW
     ├── Auth/SignInTimingTests.cs     # NEW (SC-004)
     ├── Infrastructure/AuthClient.cs  # two-step helper
-    └── Security/EndpointInventoryTests.cs  # read 004 contract; mfa access level
+    └── Security/EndpointInventoryTests.cs  # read 006 contract; mfa access level
 
 frontend/
 ├── src/

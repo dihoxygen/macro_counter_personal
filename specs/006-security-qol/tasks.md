@@ -4,7 +4,7 @@ description: "Task list for Security Quality-of-Life Improvements"
 
 # Tasks: Security Quality-of-Life Improvements
 
-**Input**: Design documents from `/specs/004-security-qol/`
+**Input**: Design documents from `/specs/006-security-qol/`
 
 **Prerequisites**: [plan.md](./plan.md), [spec.md](./spec.md), [research.md](./research.md),
 [data-model.md](./data-model.md), [contracts/](./contracts/), [quickstart.md](./quickstart.md)
@@ -43,10 +43,10 @@ built and checked as its own increment.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Confirm a green baseline and make the 004 contract the live one.
+**Purpose**: Confirm a green baseline and make the 006 contract the live one.
 
-- [X] T001 Run the full gate on branch `004-security-qol` before any change: `dotnet test backend` and, in `frontend/`, `npm test` and `npm run e2e`. Record any test that already fails in the Notes section at the end of this file. If the local gate cannot finish because of memory pressure, follow the project rule: push and let PR CI be the gate
-- [X] T002 Point `ReadContract()` in `backend/MacroCounter.Api.Tests/Security/EndpointInventoryTests.cs` at `specs/004-security-qol/contracts/auth-api.yaml` instead of the 003 file, and accept the new access level `mfa`, alongside `public`, `setup`, `any-session` and `full`, wherever the test maps an access level to a policy. Run it and see it **fail**: `/api/auth/mfa` is in the contract but not in the app
+- [X] T001 Run the full gate on branch `006-security-qol` before any change: `dotnet test backend` and, in `frontend/`, `npm test` and `npm run e2e`. Record any test that already fails in the Notes section at the end of this file. If the local gate cannot finish because of memory pressure, follow the project rule: push and let PR CI be the gate
+- [X] T002 Point `ReadContract()` in `backend/MacroCounter.Api.Tests/Security/EndpointInventoryTests.cs` at `specs/006-security-qol/contracts/auth-api.yaml` instead of the 003 file, and accept the new access level `mfa`, alongside `public`, `setup`, `any-session` and `full`, wherever the test maps an access level to a policy. Run it and see it **fail**: `/api/auth/mfa` is in the contract but not in the app
 
 ---
 
@@ -168,7 +168,7 @@ built and checked as its own increment.
   - A 401 shows exactly "Username or password is incorrect.", clears the password and keeps the username.
   - The `mfa_expired` notice shows "Your sign-in timed out. Enter your password again."
   - The `mfa_attempts` notice shows "Too many incorrect codes. Enter your password again."
-- [X] T020 [P] [US1] Create `frontend/tests/components/MfaScreen.test.tsx` per `specs/004-security-qol/contracts/ui-flow.md`:
+- [X] T020 [P] [US1] Create `frontend/tests/components/MfaScreen.test.tsx` per `specs/006-security-qol/contracts/ui-flow.md`:
   - Heading "Enter your authenticator code".
   - The field labelled "Authenticator code" has `inputmode="numeric"` and `autocomplete="one-time-code"`, is focused on mount, and strips non-digits.
   - "Verify" is disabled until there are 6 digits.
@@ -200,7 +200,7 @@ built and checked as its own increment.
     - Re-check the lockout, then use `CodeAccepted`.
     - On success, reset `AccessFailedCount` and `LockoutEnd`, set `LastSignInAt`, call `throttle.RecordSuccess`, and audit `sign_in` / success.
     - On failure, call `RecordFailure` with reason `invalid_code`, call `throttle.RecordFailure(name)`, and increment the session's `setup_failed_codes` through `PostgresTicketStore.IncrementSetupFailuresAsync`. At `Totp:SetupMaxFailures`, remove the session and return `PendingRevoked`. Otherwise return `InvalidCode(attemptsLeft)`.
-  - Update the class doc comment (it now cites 004 research R1 instead of 003 R4).
+  - Update the class doc comment (it now cites 006 research R1 instead of 003 R4).
   - Make T013 pass.
 - [X] T024 [US1] Update `backend/MacroCounter.Api/Auth/AuthEndpoints.cs`:
   - `SignInRequest(string? Username, string? Password, bool? RememberDevice)`: drop `Code`, so `StrictJson` rejects it, and update the validation message to "Enter a username and a password."
@@ -233,9 +233,9 @@ built and checked as its own increment.
   - Set `SIGN_IN_FAILED = 'Username or password is incorrect.'`.
   - Add the notice texts `mfa_expired` → "Your sign-in timed out. Enter your password again." and `mfa_attempts` → "Too many incorrect codes. Enter your password again."
   - On failure, keep the username.
-  - Rewrite the doc comment: password only; the code is asked for on the next screen (004 R1).
+  - Rewrite the doc comment: password only; the code is asked for on the next screen (006 R1).
   - Make T019 pass.
-- [X] T029 [US1] Create `frontend/src/auth/MfaScreen.tsx` with exactly the text and behaviour in `specs/004-security-qol/contracts/ui-flow.md` ("Authenticator screen"). Reuse `FieldError` and the `stack auth-form` classes from `SignInScreen`. Props: `onSession`, `onExpired`, `onAttemptsExceeded` and `onSignedOut`. Make T020 pass
+- [X] T029 [US1] Create `frontend/src/auth/MfaScreen.tsx` with exactly the text and behaviour in `specs/006-security-qol/contracts/ui-flow.md` ("Authenticator screen"). Reuse `FieldError` and the `stack auth-form` classes from `SignInScreen`. Props: `onSession`, `onExpired`, `onAttemptsExceeded` and `onSignedOut`. Make T020 pass
 - [X] T030 [US1] Route the `mfa` state to `MfaScreen` in `frontend/src/auth/AuthGate.tsx`, with the same page chrome as the sign-in screen. Wire `onExpired` to dispatch `session-expired`, `onAttemptsExceeded` to dispatch `mfa-attempts-exceeded`, and `onSignedOut` to a fresh `getSession()`. Make T021 and T022 pass
 
 **Checkpoint**: A returning user signs in in two steps. A wrong password fails before the code screen, and code failures share the lockout. MVP complete.
@@ -341,7 +341,7 @@ built and checked as its own increment.
   - `ForgetAsync(context, ct)`: deletes the current cookie's row, deletes the cookie and audits `device_forgotten`.
   - `ForgetAllForUserAsync(userId, ct)`.
   - Use raw Npgsql commands in the style of `PostgresTicketStore`. There is no `update` statement, because the app role cannot update.
-- [X] T044 [US3] Wire remembering into step 1 in `backend/MacroCounter.Api/Auth/SignInService.cs` and `AuthEndpoints.cs`. `SignInRequest.RememberDevice` is `bool?`, where `null` means "not changed". After a **successful** password check on an active account, apply exactly the table in `specs/004-security-qol/research.md` R3:
+- [X] T044 [US3] Wire remembering into step 1 in `backend/MacroCounter.Api/Auth/SignInService.cs` and `AuthEndpoints.cs`. `SignInRequest.RememberDevice` is `bool?`, where `null` means "not changed". After a **successful** password check on an active account, apply exactly the table in `specs/006-security-qol/research.md` R3:
   - Valid device cookie for this user, `RememberDevice` null or true: return `SignedIn(user, viaRememberedDevice: true)`, audit with reason `remembered_device`, and reset the counters as a full sign-in does.
   - Valid device cookie for this user, `RememberDevice` false: call `ForgetAsync`, then continue to `PasswordAccepted`.
   - Any other cookie state: `PasswordAccepted`, with the `remember` claim set only when `RememberDevice == true`. Never touch another account's device at step 1.
@@ -355,7 +355,7 @@ built and checked as its own increment.
   - Make T039 (a), (d), (e), (k) and (n) pass.
 - [X] T046 [US3] Revocation:
   - In `SignOutEverywhere` (`AuthEndpoints.cs`), call `ForgetAllForUserAsync` and delete the device cookie.
-  - Confirm that `SetupService.StorePasswordAsync` rotating the stamp invalidates devices. No delete is needed, but add a comment citing 004 FR-018.
+  - Confirm that `SetupService.StorePasswordAsync` rotating the stamp invalidates devices. No delete is needed, but add a comment citing 006 FR-018.
   - Leave `SignOut` untouched.
   - Make T039 (i) and (j) pass.
 - [X] T047 [US3] `GetSession` in `AuthEndpoints.cs` sets `DeviceRemembered = token is not null && await devices.FindValidAsync(token) is not null`, with `token = devices.ReadToken(context)`. `ReadToken` unprotects first, so a missing or tampered cookie costs no database query. Make T039 (m) pass
@@ -374,10 +374,10 @@ built and checked as its own increment.
 - [X] T049 [P] Create `backend/MacroCounter.Api.Tests/Auth/SignInTimingTests.cs` (SC-004). Use the real PBKDF2 hasher. Send 30 step-1 requests each for an unknown username, a wrong password and a used invite code, interleaved, after 5 warm-up requests. Assert that all three bodies are byte-identical and that the means differ by less than 100 ms. Mark the test `[Trait("Category","Timing")]` so CI can rerun it once if it flakes under load. Disable the throttle and lockout through test options so they do not interfere
 - [X] T050 [P] Add a wording guard test in `frontend/tests/unit/auth/wording.test.ts`. It reads every `.tsx` and `.ts` file under `frontend/src/` and fails if the case-insensitive text "temporary code" appears in a string literal or JSX text (FR-001). Fix any remaining hits in `frontend/src/` (for example `AccountMenu.tsx` and `ChangePasswordForm.tsx`)
 - [X] T051 [P] Check the 360 px layout in `frontend/tests/e2e/auth/mfa.spec.ts`: add a test at `viewport: { width: 360, height: 740 }` on the sign-in screen and the authenticator screen. It asserts there is no horizontal scroll (`document.documentElement.scrollWidth <= 360`), and that the "Remember User" checkbox label and the "Verify" and "Use a different account" controls have bounding boxes of at least 44 × 44 (FR-023)
-- [X] T052 [P] Update the owner docs: in `specs/003-auth-security-foundations/quickstart.md` and any deploy or owner runbook under `docs/` or the repo root that tells friends to put the "temporary code" in the password field, change the instructions to the new two-screen flow and the "invite code" wording. Add one line to `specs/003-auth-security-foundations/research.md` R4: "Superseded by 004 research R1 (two-step sign-in)."
-- [X] T053 Update `specs/003-auth-security-foundations/checklists/asvs-l2.md`: note the 2.2.1 deviation (password oracle, risk-accepted in the "Recorded ASVS deviations" table of `specs/004-security-qol/plan.md`). Add an entry for the remembered-device control (3.x session-equivalent token: HttpOnly, hashed, fixed expiry, revocable)
+- [X] T052 [P] Update the owner docs: in `specs/003-auth-security-foundations/quickstart.md` and any deploy or owner runbook under `docs/` or the repo root that tells friends to put the "temporary code" in the password field, change the instructions to the new two-screen flow and the "invite code" wording. Add one line to `specs/003-auth-security-foundations/research.md` R4: "Superseded by 006 research R1 (two-step sign-in)."
+- [X] T053 Update `specs/003-auth-security-foundations/checklists/asvs-l2.md`: note the 2.2.1 deviation (password oracle, risk-accepted in the "Recorded ASVS deviations" table of `specs/006-security-qol/plan.md`). Add an entry for the remembered-device control (3.x session-equivalent token: HttpOnly, hashed, fixed expiry, revocable)
 - [X] T054 Run `/security-review` on the branch diff. Resolve or risk-accept, in writing in this file's Notes, every finding about the pending session, the device cookie or the migration grants
-- [ ] T055 Run the full gate (`dotnet test backend`; in `frontend/`, `npm test`, `npm run lint` if present, `npm run e2e`; plus `dotnet list package --vulnerable` and `npm audit`). Then walk through every manual scenario in `specs/004-security-qol/quickstart.md` and record pass or fail in Notes
+- [ ] T055 Run the full gate (`dotnet test backend`; in `frontend/`, `npm test`, `npm run lint` if present, `npm run e2e`; plus `dotnet list package --vulnerable` and `npm audit`). Then walk through every manual scenario in `specs/006-security-qol/quickstart.md` and record pass or fail in Notes
 
 ---
 
@@ -441,7 +441,7 @@ Each checkpoint leaves the app deployable. US1 without US3 simply never offers t
 
 ### Implementation log (2026-10-29)
 
-- **T001 baseline**: green on `004-security-qol` before any change (backend 431, frontend 513, e2e 69).
+- **T001 baseline**: green on `006-security-qol` before any change (backend 431, frontend 513, e2e 69).
   The local `node_modules` was missing `uqr`; `npm ci` fixed it.
 - **Deviations from the task text**:
   - T035 (setup routing) was built together with T023, because removing `code` from step 1 forces it.
@@ -473,6 +473,17 @@ Each checkpoint leaves the app deployable. US1 without US3 simply never offers t
   the remembered username, recorded in `localStorage` (`src/auth/rememberedUser.ts`), and its
   value is always sent. No backend change. Quickstart 12b and an e2e test were added. Re-run 8 and
   10–16 after this fix.
+  - 2026-10-30, after the fix: 1–13 passed (12a and 12b on the box behaviour and e2e).
+  - 2026-11-02: 14 passed. Loading the page with carol's expired device cookie deleted the row
+    and left the box unticked; the password was followed by a code, then remembering again and
+    signing in gave `sign_in/remembered_device`. 15 passed. dave was locked at the 10th failure
+    (2 wrong passwords and 8 wrong codes, across two password entries) with `sign_in_locked`
+    and a 15-minute `lockout_end`. Quickstart 14 and 15 were reworded to match.
+  - 16 (360 px): no horizontal scroll on the sign-in, authenticator setup and code screens. Code
+    fields use `inputmode="numeric"` and buttons and the checkbox row are 44 px tall. During it,
+    the shared per-source rate limit (003, 20 requests per 15 minutes) refused
+    `POST /api/auth/setup/totp` after the earlier scenarios, and the setup step showed "Something
+    went wrong". Setup steps now show "Too many attempts. Try again later." for a 429.
 - **Known flake, already in 003**: two `GET /api/auth/session` requests start at launch. If the
   second one answers after a fast sign-in, it overwrites the CSRF token with the signed-out token,
   and the next setup step gets `403 csrf_failed`. Not fixed here.

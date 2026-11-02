@@ -5,7 +5,7 @@ using MacroCounter.Api.Tests.Infrastructure;
 namespace MacroCounter.Api.Tests.Auth;
 
 /// <summary>
-/// The authenticator step, POST /api/auth/mfa (004 FR-006 – FR-010, FR-020, research R1/R2), over HTTP.
+/// The authenticator step, POST /api/auth/mfa (006 FR-006 – FR-010, FR-020, research R1/R2), over HTTP.
 /// </summary>
 [Collection("Postgres")]
 public class MfaStepTests(PostgresFixture db) : IAsyncLifetime

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-// 004 FR-001: user-facing text calls the owner's one-time code an "invite code", never a "temporary code".
+// 006 FR-001: user-facing text calls the owner's one-time code an "invite code", never a "temporary code".
 
 const sources = import.meta.glob<string>('../../../src/**/*.{ts,tsx}', {
   query: '?raw',

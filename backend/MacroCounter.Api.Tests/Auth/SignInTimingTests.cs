@@ -9,7 +9,7 @@ namespace MacroCounter.Api.Tests.Auth;
 /// <summary>
 /// SC-004 / FR-005: on the password step, an unknown username, a wrong password and a wrong invite code give the
 /// same answer in about the same time (mean within 100 ms), with the real PBKDF2 hasher. Only success is allowed
-/// to differ (004 research R4).
+/// to differ (006 research R4).
 /// </summary>
 [Collection("Postgres")]
 [Trait("Category", "Timing")]

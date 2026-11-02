@@ -19,7 +19,7 @@ import { SignInFlow } from './SignInFlow';
 
 export const OFFLINE_BANNER = 'Offline – sign in or reconnect to use AI lookup';
 
-/** The auth state plus whether this browser is remembered, from the latest session response (004 FR-003). */
+/** The auth state plus whether this browser is remembered, from the latest session response (006 FR-003). */
 interface GateState {
   auth: AuthState;
   deviceRemembered: boolean;

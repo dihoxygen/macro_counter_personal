@@ -3,7 +3,7 @@ import { invite, uniqueUsername } from './db';
 import { PASSWORD, SIGN_IN_FAILED, signIn } from './flows';
 import { totp } from './totp';
 
-// US1 (003) and US2 (004) end to end against the real backend: invite code → set your password →
+// US1 (003) and US2 (006) end to end against the real backend: invite code → set your password →
 // authenticator → notice → Today. Each project invites its own user.
 
 /** Every visible control is at least 44×44 CSS px (Principle IV). */

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { invite, uniqueUsername } from './db';
 import { completeSetup, nextCode, PASSWORD, SIGN_IN_FAILED, signIn } from './flows';
 
-// 004 US1 / quickstart 5–7, 9: the password first, then the authenticator code on its own screen.
+// 006 US1 / quickstart 5–7, 9: the password first, then the authenticator code on its own screen.
 
 async function setUpAndSignOut(
   page: Page,

@@ -8,7 +8,7 @@ export type SignInNotice = 'expired' | 'unavailable' | 'mfa_expired' | 'mfa_atte
 export type AuthState =
   | { kind: 'loading' }
   | { kind: 'signed_out'; notice?: SignInNotice }
-  /** A pending sign-in found at launch: the password was right, the authenticator code is next (004 R1). */
+  /** A pending sign-in found at launch: the password was right, the authenticator code is next (006 R1). */
   | { kind: 'mfa' }
   | { kind: 'setup'; step: SetupStep }
   /** expired: the server no longer accepts the session; the app stays mounted under a sign-in overlay. */

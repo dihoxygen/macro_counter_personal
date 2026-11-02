@@ -12,7 +12,7 @@ public static class AccessPolicies
     /// <summary>Only during first-time setup.</summary>
     public const string SetupSession = "SetupSession";
 
-    /// <summary>Only a pending sign-in waiting for its authenticator code (004 FR-006).</summary>
+    /// <summary>Only a pending sign-in waiting for its authenticator code (006 FR-006).</summary>
     public const string MfaSession = "MfaSession";
 
     /// <summary>Any kind: pending, setup or full (sign-out).</summary>

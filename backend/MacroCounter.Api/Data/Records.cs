@@ -8,7 +8,7 @@ public sealed class SessionRecord
     public const string SetupKind = "setup";
     public const string FullKind = "full";
 
-    /// <summary>A pending sign-in: the password was right, the authenticator code is still needed (004 R1).</summary>
+    /// <summary>A pending sign-in: the password was right, the authenticator code is still needed (006 R1).</summary>
     public const string MfaKind = "mfa";
 
     public required byte[] KeyHash { get; set; }
@@ -37,7 +37,7 @@ public sealed class AiUsageGlobalDaily
 }
 
 /// <summary>
-/// A browser that skips the authenticator step for one account until <see cref="ExpiresAt"/> (004 R3). The cookie
+/// A browser that skips the authenticator step for one account until <see cref="ExpiresAt"/> (006 R3). The cookie
 /// holds only the token whose SHA-256 is stored here. Valid only while the user's security stamp still matches.
 /// Mapped so migrations create the table; rows are written with raw SQL by TrustedDeviceStore (no update grant).
 /// </summary>

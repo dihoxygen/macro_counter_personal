@@ -7,7 +7,7 @@ using MacroCounter.Api.Tests.Infrastructure;
 namespace MacroCounter.Api.Tests.Auth;
 
 /// <summary>
-/// Remember User (004 US3, FR-015 – FR-019, research R3): a browser skips only the authenticator step for one
+/// Remember User (006 US3, FR-015 – FR-019, research R3): a browser skips only the authenticator step for one
 /// account, for a fixed 7 days, and every revocation path ends it.
 /// </summary>
 [Collection("Postgres")]

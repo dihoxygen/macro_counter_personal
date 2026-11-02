@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MacroCounter.Api.Data.Migrations
 {
     /// <summary>
-    /// Two-step sign-in and Remember User (specs/004-security-qol/data-model.md): the pending-sign-in session kind,
+    /// Two-step sign-in and Remember User (specs/006-security-qol/data-model.md): the pending-sign-in session kind,
     /// the trusted_devices table (no update grant, so expiry can never be extended), new audit codes, and the owner
     /// procedures that end access now also forget every remembered device.
     /// </summary>
@@ -125,7 +125,7 @@ namespace MacroCounter.Api.Data.Migrations
                 execute format('grant select, insert, update, delete on macro.%I to %I', t, p_role);
               end loop;
             {{(withTrustedDevices ? """
-              -- Remembered devices: no update, so an expiry can never be extended (004 threat T8).
+              -- Remembered devices: no update, so an expiry can never be extended (006 threat T8).
               execute format('grant select, insert, delete on macro.trusted_devices to %I', p_role);
             """ : "")}}
               execute format('grant select on macro.user_claims, macro.user_logins to %I', p_role);
@@ -149,7 +149,7 @@ namespace MacroCounter.Api.Data.Migrations
 
         /// <summary>
         /// reset_user, disable_user and revoke_sessions as defined in OwnerProcedures, and purge_expired as defined in
-        /// AuditRetention, each also deleting remembered devices (004 FR-018).
+        /// AuditRetention, each also deleting remembered devices (006 FR-018).
         /// </summary>
         private static string OwnerProcedures(bool withTrustedDevices)
         {

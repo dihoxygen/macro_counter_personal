@@ -12,11 +12,11 @@ namespace MacroCounter.Api.Auth;
 
 public abstract record SignInOutcome
 {
-    /// <param name="ViaRememberedDevice">The password was right on a browser remembered for this account (004 R3).</param>
+    /// <param name="ViaRememberedDevice">The password was right on a browser remembered for this account (006 R3).</param>
     public sealed record SignedIn(AppUser User, bool ViaRememberedDevice = false) : SignInOutcome;
 
-    /// <summary>The password was right; the authenticator code is asked for next, on a pending sign-in (004 R1).</summary>
-    /// <param name="ForgetDevice">The person unticked Remember User on a browser remembered for them (004 FR-016a).</param>
+    /// <summary>The password was right; the authenticator code is asked for next, on a pending sign-in (006 R1).</summary>
+    /// <param name="ForgetDevice">The person unticked Remember User on a browser remembered for them (006 FR-016a).</param>
     public sealed record PasswordAccepted(AppUser User, bool ForgetDevice = false) : SignInOutcome;
 
     public sealed record SetupRequired(AppUser User, string Step) : SignInOutcome;
@@ -41,7 +41,7 @@ public abstract record SignInOutcome
 }
 
 /// <summary>
-/// Two-step sign-in (004 research R1, R2). Step 1 checks the password (or invite code) and runs exactly one
+/// Two-step sign-in (006 research R1, R2). Step 1 checks the password (or invite code) and runs exactly one
 /// password-hash verification on every path, so timing does not reveal whether the account exists. Step 2 checks
 /// the authenticator code. Wrong passwords and wrong codes count toward one lockout, and only a completed second
 /// step resets it: a correct password alone resets nothing (threat T10).
@@ -194,7 +194,7 @@ public sealed partial class SignInService(
             return await RecordFailure(user, now, AuditReason.BadCredentials, sourceIp, cancellationToken);
         }
 
-        // Only after a correct password: the device lookup must not change how long a failure takes (004 R4).
+        // Only after a correct password: the device lookup must not change how long a failure takes (006 R4).
         if (deviceToken is not null && await devices.FindValidAsync(deviceToken, cancellationToken) == user.Id)
         {
             // Untouched or ticked: the remembered browser stands in for the code. Unticked: forget it, ask for the code.

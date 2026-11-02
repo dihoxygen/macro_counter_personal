@@ -91,7 +91,7 @@ here (limits, lifetimes) are the defaults the implementation and tests use; all 
 
 ## R4. Sign-in flow shape and first-time setup (US1, FR-004, FR-006)
 
-> **Superseded by [004 research R1](../004-security-qol/research.md#r1-two-step-sign-in-replaces-the-single-request-fr-001--fr-010-supersedes-003-r4)
+> **Superseded by [006 research R1](../006-security-qol/research.md#r1-two-step-sign-in-replaces-the-single-request-fr-001--fr-010-supersedes-003-r4)
 > (two-step sign-in).** The setup steps below still apply.
 
 - **Decision**:

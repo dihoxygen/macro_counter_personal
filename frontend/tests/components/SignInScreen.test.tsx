@@ -24,7 +24,7 @@ describe('SignInScreen', () => {
     const password = screen.getByLabelText(PASSWORD_LABEL);
     expect(password).toHaveAttribute('type', 'password');
     expect(password).toHaveAttribute('autocomplete', 'current-password');
-    // 004 FR-002: the authenticator code has its own screen.
+    // 006 FR-002: the authenticator code has its own screen.
     expect(screen.queryByLabelText(/authenticator/i)).toBeNull();
     expect(screen.queryByText(/temporary code/i)).toBeNull();
   });
@@ -102,7 +102,7 @@ describe('SignInScreen', () => {
     expect(screen.getByLabelText(PASSWORD_LABEL)).toHaveValue('');
   });
 
-  describe('Remember User (004 US3)', () => {
+  describe('Remember User (006 US3)', () => {
     it('sits after the password field, unticked unless this browser is remembered', async () => {
       const user = userEvent.setup();
       await renderWithServices(<SignInScreen onSession={vi.fn()} />);

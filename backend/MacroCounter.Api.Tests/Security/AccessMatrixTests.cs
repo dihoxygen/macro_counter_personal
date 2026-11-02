@@ -50,7 +50,7 @@ public class AccessMatrixTests(PostgresFixture db) : IAsyncLifetime
         var (client, carol) = await TestUsers.ActivateAsync(db, _factory, "carol");
         if (credential == "mfa-pending")
         {
-            // A correct password, but no authenticator code yet (004 FR-006).
+            // A correct password, but no authenticator code yet (006 FR-006).
             var pending = new AuthClient(_factory);
             await pending.SessionAsync();
             var state = await pending.PostForStateAsync("/api/auth/sign-in", new { username = "carol", password = carol.Password });

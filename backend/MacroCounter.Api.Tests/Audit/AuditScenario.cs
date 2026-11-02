@@ -85,7 +85,7 @@ public sealed class AuditScenario(PostgresFixture db, ApiFactory factory)
         await dave.SessionAsync();
         var daveCode = daveUser.Code();
         Secrets.Add(daveCode);
-        // With Remember User ticked (004 US3): the device token is a secret too.
+        // With Remember User ticked (006 US3): the device token is a secret too.
         await dave.SignInAsync("dave", daveUser.Password, daveCode, rememberDevice: true);
         Remember(dave);
         var deviceToken = dave.Cookies.GetCookies(dave.Address)["__Host-mc_device"]!.Value;

@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace MacroCounter.Api.Tests.Auth;
 
 /// <summary>
-/// Two-step sign-in (004 research R1, R2): the password is checked first and every failure looks the same; a
+/// Two-step sign-in (006 research R1, R2): the password is checked first and every failure looks the same; a
 /// correct password resets nothing until the authenticator step completes (threat T10).
 /// </summary>
 [Collection("Postgres")]

@@ -12,7 +12,7 @@ public static class AuthClaims
 
     /// <summary>
     /// "true" on a pending or setup session when the person explicitly ticked Remember User at sign-in; the device
-    /// is remembered only once the authenticator step completes (004 FR-015).
+    /// is remembered only once the authenticator step completes (006 FR-015).
     /// </summary>
     public const string Remember = "remember";
 }

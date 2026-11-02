@@ -10,7 +10,7 @@ using Npgsql;
 namespace MacroCounter.Api.Auth;
 
 /// <summary>
-/// Remember User (004 research R3): a browser that skips only the authenticator step for one account. The cookie
+/// Remember User (006 research R3): a browser that skips only the authenticator step for one account. The cookie
 /// carries a 256-bit random token wrapped by Data Protection; the database keeps only its SHA-256. A device is
 /// honoured only before its fixed expiry and while the user's security stamp is unchanged, so every path that
 /// rotates the stamp (password change, sign out everywhere, owner reset, disable, revoke) ends it too.
@@ -89,7 +89,7 @@ public sealed class TrustedDeviceStore(
             context.Connection.RemoteIpAddress, cancellationToken);
     }
 
-    /// <summary>The person unticked Remember User on this browser (004 FR-016a).</summary>
+    /// <summary>The person unticked Remember User on this browser (006 FR-016a).</summary>
     public async Task ForgetAsync(HttpContext context, string token, Guid userId, CancellationToken cancellationToken)
     {
         await DeleteAsync(token, cancellationToken);
@@ -98,7 +98,7 @@ public sealed class TrustedDeviceStore(
             context.Connection.RemoteIpAddress, cancellationToken);
     }
 
-    /// <summary>Sign out everywhere or a password change: no browser stays remembered for this user (004 FR-018).</summary>
+    /// <summary>Sign out everywhere or a password change: no browser stays remembered for this user (006 FR-018).</summary>
     public async Task ForgetAllForUserAsync(HttpContext context, Guid userId, CancellationToken cancellationToken)
     {
         int removed;

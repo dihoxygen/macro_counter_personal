@@ -23,7 +23,7 @@ const notices: Record<SignInNotice, string> = {
 
 /**
  * The password step: username and password, or the one-time invite code on first sign-in. A wrong
- * password fails here; the authenticator code is asked for on the next screen (004 research R1).
+ * password fails here; the authenticator code is asked for on the next screen (006 research R1).
  * There is deliberately no sign-up.
  */
 export function SignInScreen({
@@ -33,13 +33,13 @@ export function SignInScreen({
 }: {
   onSession: (session: SessionState) => void;
   notice?: SignInNotice;
-  /** The account this browser is remembered for, normalized: Remember User starts ticked for it (004 FR-003). */
+  /** The account this browser is remembered for, normalized: Remember User starts ticked for it (006 FR-003). */
   rememberedUsername?: string;
 }) {
   const { auth } = useServices();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  // What the box shows is what is sent (004 FR-003). Until the person clicks it, it follows the username: ticked
+  // What the box shows is what is sent (006 FR-003). Until the person clicks it, it follows the username: ticked
   // only for the account this browser is remembered for.
   const [rememberChoice, setRememberChoice] = useState<boolean | undefined>();
   const remember =

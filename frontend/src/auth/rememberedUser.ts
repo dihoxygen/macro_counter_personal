@@ -1,7 +1,7 @@
 import type { SessionState } from '../api/auth';
 
 /**
- * Which account this browser was last remembered for, so Remember User pre-ticks only for that username (004
+ * Which account this browser was last remembered for, so Remember User pre-ticks only for that username (006
  * FR-003). The server stays the authority: the box is pre-ticked only while it also reports a remembered device.
  * Browser storage can be missing or blocked; then the box simply starts unticked.
  */

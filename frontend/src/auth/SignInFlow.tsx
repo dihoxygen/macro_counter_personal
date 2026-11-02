@@ -5,7 +5,7 @@ import { MfaScreen } from './MfaScreen';
 import { SignInScreen } from './SignInScreen';
 
 /**
- * The two sign-in steps (004 research R1): the password screen, then, when the password was right, the
+ * The two sign-in steps (006 research R1): the password screen, then, when the password was right, the
  * authenticator screen. A pending sign-in stays inside this flow; only a completed step (signed in, or setup)
  * reaches `onSession`, so the expired overlay can run both steps over the app without replacing it.
  */
@@ -17,7 +17,7 @@ export function SignInFlow({
 }: {
   onSession: (session: SessionState) => void;
   notice?: SignInNotice;
-  /** The account this browser is remembered for: Remember User starts ticked for it (004 FR-003). */
+  /** The account this browser is remembered for: Remember User starts ticked for it (006 FR-003). */
   rememberedUsername?: string;
   /** 'mfa' when a pending sign-in already exists (the page was reloaded on the code screen). */
   startAt?: 'password' | 'mfa';

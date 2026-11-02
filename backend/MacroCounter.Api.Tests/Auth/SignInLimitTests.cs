@@ -21,7 +21,7 @@ public class SignInLimitTests(PostgresFixture db) : IAsyncLifetime
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
 
-    /// <summary>The password step (004 R1); the limits apply before any authenticator code is asked for.</summary>
+    /// <summary>The password step (006 R1); the limits apply before any authenticator code is asked for.</summary>
     private static async Task<HttpResponseMessage> Attempt(AuthClient client, string username, string password,
         string? forwardedFor = null)
     {

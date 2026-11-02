@@ -6,7 +6,7 @@ export const PASSWORD = 'a long and private test passphrase';
 export const SIGN_IN_FAILED = 'Username or password is incorrect.';
 
 /**
- * Signs in like a person (004 research R1): the password (or invite code) screen, then, if the password was
+ * Signs in like a person (006 research R1): the password (or invite code) screen, then, if the password was
  * accepted and a `code` is given, the authenticator screen. A refused password leaves the alert showing.
  */
 export async function signIn(

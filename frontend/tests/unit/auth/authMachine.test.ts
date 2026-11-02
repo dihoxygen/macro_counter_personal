@@ -111,7 +111,7 @@ describe('authMachine', () => {
     });
   });
 
-  describe('pending sign-in (004: the authenticator code on its own screen)', () => {
+  describe('pending sign-in (006: the authenticator code on its own screen)', () => {
     it('mfa from signed out → the authenticator screen', () => {
       expect(transition({ kind: 'signed_out' }, { type: 'session', session: pending })).toEqual({
         kind: 'mfa',

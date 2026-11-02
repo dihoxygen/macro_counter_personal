@@ -9,7 +9,7 @@ and running the API and frontend) is the same as
 ## Automated gate
 
 ```powershell
-dotnet test backend                       # includes EndpointInventoryTests, now reading the 004 contract
+dotnet test backend                       # includes EndpointInventoryTests, now reading the 006 contract
 cd frontend; npm test; npm run e2e        # Vitest + Playwright
 ```
 
@@ -39,8 +39,8 @@ app ready.
 | 12a | Remember `alice` again. Sign out, then sign in as a second account `bob` without touching the box. Sign out and sign in as `alice`. | The box stays clear for `bob`, and `bob` is asked for a code. `alice` then still needs only the password. |
 | 12b | With `alice` remembered, sign in as `bob` with the box **ticked** and complete the code. Sign out, then sign in as `bob`, then as `alice`. | `bob` needs only the password. `alice` is asked for a code (a browser is remembered for one account). |
 | 13 | Remember the device again. In profile 2, use "Sign out everywhere". Back in profile 1, sign in. | A code is asked for again. |
-| 14 | Remember the device. Run `update macro.trusted_devices set expires_at = now() - interval '1 second';` as the owner. Sign in. | A code is asked for. |
-| 15 | Get a wrong code 10 times, across password re-entries, within 15 minutes. | Locked: "Too many attempts. Try again later." |
+| 14 | Remember the device. Run `update macro.trusted_devices set expires_at = now() - interval '1 second';` as the owner. Reload, type the username and sign in. | The box is unticked (the server no longer reports the device as remembered). A code is asked for. |
+| 15 | Within 15 minutes, keep entering wrong codes, choosing "Use a different account" and re-entering the password at least once. | "*n* attempts left." appears from 2 left on one password entry. At 10 failures in total (wrong passwords and wrong codes count together): "Too many attempts. Try again later." |
 | 16 | At a 360 px viewport (DevTools), repeat 1, 4 and 7. | No horizontal scroll. The checkbox and links are easy to tap. The code field opens the numeric keypad on a phone. |
 
 ## Audit check

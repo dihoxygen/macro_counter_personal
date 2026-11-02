@@ -8,7 +8,7 @@ const WRONG_CODE = 'That code is incorrect. Try again.';
 const LOCKED = 'Too many attempts. Try again later.';
 
 /**
- * The authenticator step of a pending sign-in (004 research R1; contracts/ui-flow.md). Only the 6-digit code
+ * The authenticator step of a pending sign-in (006 research R1; contracts/ui-flow.md). Only the 6-digit code
  * is asked for; the password was already checked on the previous screen.
  */
 export function MfaScreen({

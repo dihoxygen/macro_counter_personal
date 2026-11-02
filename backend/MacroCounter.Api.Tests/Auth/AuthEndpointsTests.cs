@@ -122,7 +122,7 @@ public class AuthEndpointsTests(PostgresFixture db) : IAsyncLifetime
     public async Task A_setup_left_at_the_notice_cannot_be_finished_with_the_password_alone()
     {
         // T126 security review: the authenticator is already enrolled, so resuming must need its code. With two-step
-        // sign-in the password alone gets only a pending sign-in, which cannot reach the notice step (004 R1).
+        // sign-in the password alone gets only a pending sign-in, which cannot reach the notice step (006 R1).
         var code = await TestUsers.InviteAsync(db, "carol");
         var first = new AuthClient(_factory);
         await first.SessionAsync();
@@ -238,7 +238,7 @@ public class AuthEndpointsTests(PostgresFixture db) : IAsyncLifetime
     [Fact]
     public async Task Sign_in_no_longer_accepts_a_code()
     {
-        // 004 FR-002: the code has its own step; an old client that still sends it is refused, not half-handled.
+        // 006 FR-002: the code has its own step; an old client that still sends it is refused, not half-handled.
         var carol = await TestUsers.ActivateDirectlyAsync(db, _factory, "carol");
         var client = new AuthClient(_factory);
         await client.SessionAsync();

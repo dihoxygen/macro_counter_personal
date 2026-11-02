@@ -15,10 +15,10 @@ export const SessionUserSchema = z.object({
 export type SessionUser = z.infer<typeof SessionUserSchema>;
 
 export const SessionStateSchema = z.object({
-  /** mfa: the password was right and the authenticator code is asked for next (004 R1). */
+  /** mfa: the password was right and the authenticator code is asked for next (006 R1). */
   state: z.enum(['signed_out', 'mfa', 'setup', 'signed_in']),
   csrfToken: z.string().min(1),
-  /** This browser is remembered for some account: the sign-in screen pre-ticks Remember User (004 FR-003). */
+  /** This browser is remembered for some account: the sign-in screen pre-ticks Remember User (006 FR-003). */
   deviceRemembered: z.boolean(),
   setupStep: SetupStepSchema.optional(),
   user: SessionUserSchema.optional(),
@@ -93,7 +93,7 @@ export function getSession(): Promise<SessionState> {
 
 /**
  * The password step. `rememberDevice` is what the Remember User box shows: true remembers this browser for this
- * account (replacing any other), false forgets it if it was remembered for this account (004 FR-003, FR-016a).
+ * account (replacing any other), false forgets it if it was remembered for this account (006 FR-003, FR-016a).
  */
 export async function signIn(
   username: string,

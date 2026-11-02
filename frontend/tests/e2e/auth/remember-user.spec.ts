@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page, type TestInfo } from '@playwrigh
 import { invite, uniqueUsername } from './db';
 import { completeSetup, nextCode, PASSWORD, signIn, signOut } from './flows';
 
-// 004 US3 / quickstart 10–13: Remember User skips only the authenticator code, on one browser, for one account.
+// 006 US3 / quickstart 10–13: Remember User skips only the authenticator code, on one browser, for one account.
 // The box sends what it shows; it starts ticked only once the remembered account's username is typed.
 
 const codeScreen = (page: Page) =>

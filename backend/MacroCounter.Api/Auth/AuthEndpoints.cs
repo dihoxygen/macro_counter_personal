@@ -15,7 +15,7 @@ namespace MacroCounter.Api.Auth;
 
 // Request and response shapes from contracts/auth-api.yaml.
 
-/// <summary>RememberDevice is sent only when the person changed the box: null keeps the current state (004 FR-003).</summary>
+/// <summary>RememberDevice is sent only when the person changed the box: null keeps the current state (006 FR-003).</summary>
 public sealed record SignInRequest(string? Username, string? Password, bool? RememberDevice);
 
 public sealed record NewPasswordRequest(string? NewPassword);
@@ -64,7 +64,7 @@ public static partial class AuthEndpoints
     {
         var kind = context.User.FindFirstValue(AuthClaims.SessionKind);
         var user = kind is null ? null : await CurrentUser(context, users);
-        // Pre-ticks Remember User (004 FR-003). A cookie that does not unprotect costs no database query.
+        // Pre-ticks Remember User (006 FR-003). A cookie that does not unprotect costs no database query.
         var remembered = devices.ReadToken(context) is { } token && await devices.FindValidAsync(token, context.RequestAborted) is not null;
         if (user is not null && kind == SessionRecord.FullKind)
         {
@@ -94,7 +94,7 @@ public static partial class AuthEndpoints
             return Problems.InvalidRequest("Enter a username and a password.");
         }
 
-        // Only an explicit tick is carried to the step that completes sign-in (004 FR-003, FR-015).
+        // Only an explicit tick is carried to the step that completes sign-in (006 FR-003, FR-015).
         var remember = request.RememberDevice == true;
         var deviceToken = devices.ReadToken(context);
         var outcome = await signIn.VerifyPasswordAsync(username, password, request.RememberDevice, deviceToken,
@@ -212,7 +212,7 @@ public static partial class AuthEndpoints
         if (user is null) return Problems.Unauthenticated();
         var remember = context.User.FindFirstValue(AuthClaims.Remember) == "true";
         var result = await setup.AcknowledgeNoticeAsync(user, context.Connection.RemoteIpAddress, context.RequestAborted);
-        // Setup is complete: if Remember User was ticked when it started, remember this browser now (004 FR-015).
+        // Setup is complete: if Remember User was ticked when it started, remember this browser now (006 FR-015).
         if (remember && result is SetupResult.Advanced { NextStep: null })
         {
             await devices.RememberAsync(context, user, context.RequestAborted);
@@ -236,7 +236,7 @@ public static partial class AuthEndpoints
         if (user is null) return Problems.Unauthenticated();
         var result = await setup.ChangePasswordAsync(user, currentPassword, code, newPassword, SessionKey(context),
             context.Connection.RemoteIpAddress, context.RequestAborted);
-        // The stamp rotation already makes every remembered device stale; delete them now too (004 FR-018).
+        // The stamp rotation already makes every remembered device stale; delete them now too (006 FR-018).
         if (result is SetupResult.PasswordChanged) await devices.ForgetAllForUserAsync(context, user.Id, context.RequestAborted);
         return result switch
         {
