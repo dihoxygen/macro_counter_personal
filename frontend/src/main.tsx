@@ -17,6 +17,8 @@ import { LogService } from './data/logService.ts';
 import { IdbProteinGoalRepository } from './data/proteinGoalRepository.ts';
 import { IdbSavedFoodRepository } from './data/savedFoodRepository.ts';
 import { IdbDevicePreferences } from './data/devicePreferences.ts';
+import { browserIntroSession } from './data/introSession.ts';
+import { SplashGate } from './features/splash/SplashGate.tsx';
 import { browserCameraService } from './media/camera.ts';
 import { reencodePhoto } from './media/reencodePhoto.ts';
 import './styles.css';
@@ -59,12 +61,20 @@ const services: Services = {
     }),
 };
 
+// Feature 005: the splash intro plays once per browser session. Decided here, before React renders,
+// because StrictMode runs state initializers twice and the second run would see the flag already set.
+const introSession = browserIntroSession();
+const playIntro = !introSession.hasPlayed();
+if (playIntro) introSession.markPlayed();
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ServicesProvider services={services}>
-      <AuthGate>
-        <App />
-      </AuthGate>
-    </ServicesProvider>
+    <SplashGate play={playIntro}>
+      <ServicesProvider services={services}>
+        <AuthGate>
+          <App />
+        </AuthGate>
+      </ServicesProvider>
+    </SplashGate>
   </StrictMode>,
 );

@@ -1,0 +1,241 @@
+/* Feature 005: the splash intro. Fonts are the subsets in public/fonts/intro (same origin: font-src 'self'). */
+@font-face {
+  font-family: 'MC Intro inter-800';
+  src: url('/fonts/intro/inter-800.woff2') format('woff2');
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro playfair-700i';
+  src: url('/fonts/intro/playfair-700i.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro bungee';
+  src: url('/fonts/intro/bungee.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro kaushan';
+  src: url('/fonts/intro/kaushan.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro spacemono-700';
+  src: url('/fonts/intro/spacemono-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro abril';
+  src: url('/fonts/intro/abril.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro pacifico';
+  src: url('/fonts/intro/pacifico.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro monoton';
+  src: url('/fonts/intro/monoton.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro unifraktur';
+  src: url('/fonts/intro/unifraktur.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro bebas';
+  src: url('/fonts/intro/bebas.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro cinzel-700';
+  src: url('/fonts/intro/cinzel-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro rubikmono';
+  src: url('/fonts/intro/rubikmono.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MC Intro lobster';
+  src: url('/fonts/intro/lobster.woff2') format('woff2');
+  font-display: swap;
+}
+
+/* The app stays mounted under the overlay; this wrapper only carries `inert`. */
+.splash-gate {
+  display: contents;
+}
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+  /* Taps go to the overlay (skip), never through to the app. */
+  touch-action: manipulation;
+}
+
+/* Sized for the widest case (every letter in a wide face, plus three shapes) so it fits from 360 px up (FR-016). */
+.splash-logo {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  font-size: min(104px, calc((100vw - 32px) / 12.6));
+  line-height: 1.2;
+  user-select: none;
+}
+
+.splash-letter {
+  display: inline-block;
+  color: #f2f2f2;
+}
+
+.splash-space {
+  width: 0.35em;
+}
+
+.splash-box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.27em;
+  height: 1.27em;
+  margin: 0 0.12em;
+}
+
+.splash-shell,
+.splash-light {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.splash-shell {
+  background: #0d0d0d;
+  border: 2px solid #262626;
+  box-shadow:
+    inset 0 -12px 26px rgba(0, 0, 0, 0.9),
+    inset 0 8px 18px rgba(255, 255, 255, 0.04),
+    0 28px 30px -12px #000;
+}
+
+.splash-light {
+  background: radial-gradient(circle at 50% 45%, #ffd58a66 0%, #ffd58a22 45%, transparent 75%);
+  border: 2px solid #ffd58a66;
+  box-shadow:
+    0 0 36px #ffd58a55,
+    inset 0 0 22px #ffd58a44;
+}
+
+/* Light the bulb casts on the surface below it. */
+.splash-pool {
+  position: absolute;
+  left: -0.23em;
+  right: -0.23em;
+  bottom: -0.5em;
+  height: 0.35em;
+  background: radial-gradient(ellipse at center, #ffd58a55 0%, #ffd58a18 45%, transparent 72%);
+}
+
+.splash-box--square .splash-shell,
+.splash-box--square .splash-light {
+  inset: 4px;
+  border-radius: 14px;
+}
+
+.splash-box--diamond .splash-shell,
+.splash-box--diamond .splash-light {
+  inset: 0.19em;
+  border-radius: 12px;
+  transform: rotate(45deg);
+}
+
+.splash-glyph--lit {
+  position: relative;
+  font-size: 0.79em;
+  line-height: 1;
+  color: #ffd58a;
+  text-shadow:
+    0 0 0.12em #ffd58a,
+    0 0 0.33em #ffd58a,
+    0 0.1em 0.13em rgba(0, 0, 0, 0.85);
+}
+
+/* Two identical animations, alternated per frame, so every step re-pops. */
+.splash-pop-a {
+  animation: splash-pop-a 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+.splash-pop-b {
+  animation: splash-pop-b 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+@keyframes splash-pop-a {
+  0% {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes splash-pop-b {
+  0% {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.splash-skip {
+  position: absolute;
+  top: 24px;
+  right: 16px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 22px;
+  border: 1px solid #3a3a3a;
+  background: transparent;
+  color: #bdbdbd;
+  font:
+    600 14px/1 system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.splash-skip:focus-visible {
+  outline: 2px solid #ffd58a;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-pop-a,
+  .splash-pop-b {
+    animation: none;
+  }
+}

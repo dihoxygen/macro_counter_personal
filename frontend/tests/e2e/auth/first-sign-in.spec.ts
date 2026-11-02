@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from '../test';
 import { invite, uniqueUsername } from './db';
 import { PASSWORD, SIGN_IN_FAILED, signIn } from './flows';
 import { totp } from './totp';

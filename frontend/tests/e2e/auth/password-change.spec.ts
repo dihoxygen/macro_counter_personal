@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../test';
 import { invite, uniqueUsername } from './db';
 import { completeSetup, nextCode, PASSWORD, SIGN_IN_FAILED, signIn, signOut } from './flows';
 

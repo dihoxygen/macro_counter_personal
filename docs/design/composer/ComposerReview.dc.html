@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Composer — Inline review</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#5cc493}a:hover{color:#8ad9b2}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #111312; color: #ececea; font-family: 'DM Sans', system-ui, sans-serif; line-height: 1.4; display: flex; flex-direction: column; overflow: hidden">
+  <header style="padding: 16px 20px 14px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #262927">
+    <div style="display: flex; align-items: baseline; gap: 6px">
+      <span style="font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: {{accent}}">96</span>
+      <span style="font-size: 16px; color: #a8a8a3">/ 150 g protein</span>
+      <span style="margin-left: auto; font-size: 14px; color: {{accent}}; font-weight: 600">+54 g pending</span>
+    </div>
+    <div role="progressbar" aria-label="Protein toward goal" aria-valuemin="0" aria-valuemax="150" aria-valuenow="96" style="height: 6px; border-radius: 3px; background: #262927; overflow: hidden; display: flex">
+      <div style="width: 64%; height: 100%; background: {{accent}}"></div>
+      <div style="width: 36%; height: 100%; background: repeating-linear-gradient(135deg, {{accent}} 0 3px, transparent 3px 6px)"></div>
+    </div>
+  </header>
+
+  <div style="flex: 1; overflow: hidden; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="font-size: 13px; color: #a8a8a3; padding: 0 4px">16:30 · Apple · 0.5 g</div>
+
+    <div style="align-self: flex-end; max-width: 80%; background: #2a2e2b; border-radius: 16px 16px 4px 16px; padding: 10px 14px; font-size: 15px">Chipotle chicken burrito bowl, side of guac</div>
+
+    <section aria-label="Review estimate" style="background: #1a1d1b; border: 1px solid #333734; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span style="font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid #4a4f4b; color: #a8a8a3">AI estimate</span>
+        <span style="font-size: 13px; color: #a8a8a3">Not logged until you confirm</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; align-items: baseline; gap: 8px">
+          <strong style="flex: 1; font-weight: 600">Chicken burrito bowl</strong>
+          <span style="font-weight: 700; color: {{accent}}">46 g</span>
+        </div>
+        <div style="font-size: 13px; color: #a8a8a3">1 bowl · 640 kcal · C 72 · F 18</div>
+      </div>
+
+      <div style="border-top: 1px solid #262927; padding-top: 12px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; align-items: baseline; gap: 8px">
+          <strong style="flex: 1; font-weight: 600">Side of guacamole</strong>
+          <span style="font-weight: 700; color: {{accent}}">8 g</span>
+        </div>
+        <div style="font-size: 13px; color: #a8a8a3">400 g · 640 kcal · C 34 · F 58</div>
+        <div style="background: #3a3014; border: 1px solid #d9b13a; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 14px; color: #f2dd9a">This is an unusually large portion. Check the amount.</span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <button type="button" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #d9b13a; background: none; color: #f2dd9a; font: inherit; font-size: 14px">Change to 100 g</button>
+            <button type="button" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #4a4f4b; background: none; color: #ececea; font: inherit; font-size: 14px">400 g is right</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px">
+        <button type="button" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: none; background: #262927; color: #ececea; font: inherit; font-size: 14px">Edit</button>
+        <button type="button" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: none; background: #262927; color: #ececea; font: inherit; font-size: 14px">Add item</button>
+        <button type="button" style="margin-left: auto; min-height: 44px; padding: 0 12px; border-radius: 10px; border: none; background: none; color: #a8a8a3; font: inherit; font-size: 14px">Discard</button>
+      </div>
+      <button type="button" disabled style="min-height: 52px; border-radius: 14px; border: none; background: {{accent}}; color: #0d1f17; font: inherit; font-weight: 700; opacity: 0.45">Log 2 items · +54 g</button>
+    </section>
+  </div>
+
+  <section aria-label="Log food" style="background: #1a1d1b; border-top: 1px solid #262927; padding: 12px 16px 24px; display: flex; gap: 8px; align-items: flex-end">
+    <label style="flex: 1; display: flex">
+      <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">What did you eat?</span>
+      <textarea rows="1" placeholder="Correct it, e.g. “half the guac”" style="flex: 1; min-height: 48px; box-sizing: border-box; font: inherit; font-size: 16px; color: #ececea; background: #111312; border: 1px solid #333734; border-radius: 14px; padding: 12px 14px; resize: none"></textarea>
+    </label>
+    <button type="button" aria-label="Send" style="width: 48px; height: 48px; border-radius: 14px; border: none; background: #262927; color: #ececea; display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+    </button>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5cc493","options":["#5cc493","#7aa7ff","#ffa366","#e5e5e0"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#5cc493' };
+  }
+}
+</script>
+</body>
+</html>

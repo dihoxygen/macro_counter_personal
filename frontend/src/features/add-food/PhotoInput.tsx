@@ -1,48 +1,49 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useServices } from '../../app/services';
 import type { CameraSupport } from '../../media/camera';
-import { SubmitOrProgress } from './AddFoodText';
 import { CameraCapture } from './CameraCapture';
 import { PhotoSourcePicker } from './PhotoSourcePicker';
-import { ReviewEstimate } from './ReviewEstimate';
-import { useEstimateFlow } from './useEstimateFlow';
-import { usePhotoSelection, type PhotoSource } from './usePhotoSelection';
+import type { PhotoSource, usePhotoSelection } from './usePhotoSelection';
 
 interface Props {
-  onConfirmed: () => void;
-  onText: () => void;
-  onManual: () => void;
+  /** Owned by the composer, so the chosen photo survives switching method (FR-011). */
+  selection: ReturnType<typeof usePhotoSelection>;
+  note: string;
+  onNoteChange: (note: string) => void;
+  onSend: (jpeg: Blob, note: string | undefined) => void;
+  /** True while an estimate is loading or under review. */
+  disabled: boolean;
+  /** False when another method is selected or Today is hidden: the live camera is then turned off. */
+  active: boolean;
+  onFocus?: () => void;
 }
 
 /**
- * Log a meal from a photo: an existing one from the library or files, or a new one from the camera
- * (feature 002). The photo is re-encoded on the device as soon as it is chosen, then goes through
- * the feature 001 estimate → review → confirm flow.
+ * The composer's Photo method (feature 004): an existing photo from the library or files, or a new one from the
+ * camera (feature 002). The photo is re-encoded as soon as it is chosen; the estimate itself is the composer's.
  */
-export function AddFoodPhoto({ onConfirmed, onText, onManual }: Props) {
+export function PhotoInput({ selection, note, onNoteChange, onSend, disabled, active, onFocus }: Props) {
   const services = useServices();
-  const selection = usePhotoSelection();
   const { photo } = selection;
   const [support, setSupport] = useState<CameraSupport | null>(null);
-  const [note, setNote] = useState('');
   const [missingPhoto, setMissingPhoto] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const libraryInput = useRef<HTMLInputElement>(null);
   const cameraAppInput = useRef<HTMLInputElement>(null);
-  const flow = useEstimateFlow(onConfirmed);
-  const { phase } = flow;
-  const loading = phase.kind === 'loading';
+
+  // Never keep the camera running out of sight (feature 002 FR-007): close it as soon as this is inactive.
+  if (!active && cameraOpen) setCameraOpen(false);
 
   useEffect(() => {
-    let active = true;
+    let isMounted = true;
     services.camera
       .detectSupport()
       .catch(() => 'camera-app' as const)
       .then((result) => {
-        if (active) setSupport(result);
+        if (isMounted) setSupport(result);
       });
     return () => {
-      active = false;
+      isMounted = false;
     };
   }, [services]);
 
@@ -76,38 +77,16 @@ export function AddFoodPhoto({ onConfirmed, onText, onManual }: Props) {
     cameraAppInput.current?.click();
   };
 
-  const estimate = () => {
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
     if (!photo) {
       if (selection.rejected) selection.remove(); // one message at a time
       setMissingPhoto(true);
       return;
     }
     setMissingPhoto(false);
-    void flow.run((signal) => services.estimateFromPhoto(photo.jpeg, note.trim() || undefined, signal));
+    onSend(photo.jpeg, note.trim() || undefined);
   };
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    estimate();
-  };
-
-  if (phase.kind === 'review') {
-    return <ReviewEstimate initial={phase.state} onConfirm={flow.confirm} onDiscard={flow.reset} />;
-  }
-
-  const recovery = (
-    <div className="row">
-      <button type="button" onClick={estimate}>
-        Retry
-      </button>
-      <button type="button" onClick={onText}>
-        Describe in text
-      </button>
-      <button type="button" onClick={onManual}>
-        Enter manually
-      </button>
-    </div>
-  );
 
   return (
     <form className="stack" onSubmit={submit} noValidate>
@@ -117,7 +96,7 @@ export function AddFoodPhoto({ onConfirmed, onText, onManual }: Props) {
         accept="image/*"
         hidden
         aria-label="Existing photo file"
-        disabled={loading}
+        disabled={disabled}
         onChange={onFile('library')}
       />
       <input
@@ -127,7 +106,7 @@ export function AddFoodPhoto({ onConfirmed, onText, onManual }: Props) {
         capture="environment"
         hidden
         aria-label="Camera app photo file"
-        disabled={loading}
+        disabled={disabled}
         onChange={onFile('camera')}
       />
 
@@ -155,13 +134,13 @@ export function AddFoodPhoto({ onConfirmed, onText, onManual }: Props) {
           <PhotoSourcePicker
             support={support}
             photoSource={photo?.source ?? null}
-            disabled={loading}
+            disabled={disabled}
             onTakePhoto={takePhoto}
             onChooseExisting={() => libraryInput.current?.click()}
           />
           {photo && (
             <div className="row">
-              <button type="button" disabled={loading} onClick={selection.remove}>
+              <button type="button" disabled={disabled} onClick={selection.remove}>
                 Remove photo
               </button>
             </div>
@@ -181,28 +160,17 @@ export function AddFoodPhoto({ onConfirmed, onText, onManual }: Props) {
           maxLength={300}
           value={note}
           placeholder="e.g. cooked in olive oil"
-          onChange={(e) => setNote(e.target.value)}
-          disabled={loading || cameraOpen}
+          onChange={(e) => onNoteChange(e.target.value)}
+          onFocus={onFocus}
+          disabled={disabled || cameraOpen}
         />
       </label>
 
-      <SubmitOrProgress loading={loading} disabled={cameraOpen} onCancel={flow.cancel} />
-
-      {phase.kind === 'unrecognized' && (
-        <div className="warning stack">
-          <span>Couldn’t identify food in this photo.</span>
-          {recovery}
-        </div>
-      )}
-
-      {phase.kind === 'error' && (
-        <div className="stack">
-          <p role="alert" className="error">
-            {phase.message}
-          </p>
-          {recovery}
-        </div>
-      )}
+      <div className="row">
+        <button type="submit" className="primary" disabled={disabled || cameraOpen}>
+          Estimate
+        </button>
+      </div>
     </form>
   );
 }

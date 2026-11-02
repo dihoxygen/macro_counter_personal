@@ -6,13 +6,15 @@ interface Props {
   totals: Macros;
   goalG: number | null;
   onSetGoal?: () => void;
+  /** Protein of an open estimate card, shown as pending (feature 004). */
+  pendingG?: number;
 }
 
 /** Protein comes first and largest, with goal progress on top; this is a protein-focused app (FR-009). */
-export function TotalsPanel({ totals, goalG, onSetGoal }: Props) {
+export function TotalsPanel({ totals, goalG, onSetGoal, pendingG }: Props) {
   return (
     <section aria-label="Totals" className="totals card">
-      <ProteinProgress loggedG={totals.proteinG} goalG={goalG} onSetGoal={onSetGoal} />
+      <ProteinProgress loggedG={totals.proteinG} goalG={goalG} onSetGoal={onSetGoal} pendingG={pendingG} />
       <Total label="Protein" value={formatGrams(totals.proteinG)} primary />
       <div className="totals-secondary">
         <Total label="Calories" value={formatKcal(totals.kcal)} />

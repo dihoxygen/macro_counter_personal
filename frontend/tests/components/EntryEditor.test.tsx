@@ -148,8 +148,11 @@ describe('Editing from the Today screen (FR-010)', () => {
 
     // Edit: halve the yogurt.
     await user.click(screen.getByRole('button', { name: /greek yogurt/i }));
-    await setField(user, /amount/i, '85');
-    await user.click(screen.getByRole('button', { name: /^save$/i }));
+    // The composer's hidden Manual form has an Amount field too (feature 004); edit within the editor.
+    const editor = screen.getByRole('form', { name: 'Edit Greek yogurt' });
+    await user.clear(within(editor).getByLabelText(/amount/i));
+    await user.type(within(editor).getByLabelText(/amount/i), '85');
+    await user.click(within(editor).getByRole('button', { name: /^save$/i }));
     await vi.waitFor(() => expect(protein()).toHaveTextContent('55 g'));
 
     // Delete: remove the chicken.
