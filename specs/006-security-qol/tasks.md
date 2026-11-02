@@ -479,11 +479,16 @@ Each checkpoint leaves the app deployable. US1 without US3 simply never offers t
     signing in gave `sign_in/remembered_device`. 15 passed. dave was locked at the 10th failure
     (2 wrong passwords and 8 wrong codes, across two password entries) with `sign_in_locked`
     and a 15-minute `lockout_end`. Quickstart 14 and 15 were reworded to match.
-  - 16 (360 px): no horizontal scroll on the sign-in, authenticator setup and code screens. Code
+  - 16 passed (360 px): no horizontal scroll on the sign-in, authenticator setup and code screens
+    (code screen confirmed by erin's sign-in at 10:59). Code
     fields use `inputmode="numeric"` and buttons and the checkbox row are 44 px tall. During it,
     the shared per-source rate limit (003, 20 requests per 15 minutes) refused
     `POST /api/auth/setup/totp` after the earlier scenarios, and the setup step showed "Something
     went wrong". Setup steps now show "Too many attempts. Try again later." for a 429.
+  - Audit check passed. Since 2026-10-29 the dev accounts' rows include every expected event
+    (`setup_started/invite_code`, `password_accepted`, `sign_in` with `bad_credentials` and
+    `invalid_code`, `device_remembered`, `sign_in/remembered_device`, `device_forgotten`). The
+    only text columns, `actor` and `reason`, hold fixed values only: no password, code or token.
 - **Known flake, already in 003**: two `GET /api/auth/session` requests start at launch. If the
   second one answers after a fast sign-in, it overwrites the CSRF token with the signed-out token,
   and the next setup step gets `403 csrf_failed`. Not fixed here.
