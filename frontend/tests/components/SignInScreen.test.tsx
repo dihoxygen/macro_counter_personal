@@ -61,7 +61,7 @@ describe('SignInScreen', () => {
 
     await fill(user);
 
-    expect(auth.signIn).toHaveBeenCalledWith('alice', 'my long passphrase', undefined);
+    expect(auth.signIn).toHaveBeenCalledWith('alice', 'my long passphrase', false);
     expect(onSession).toHaveBeenCalledWith(pending);
   });
 
@@ -116,50 +116,56 @@ describe('SignInScreen', () => {
       expect(box).toHaveFocus();
     });
 
-    it('shows ticked when this browser is already remembered', async () => {
-      await renderWithServices(<SignInScreen onSession={vi.fn()} deviceRemembered />);
-      expect(screen.getByRole('checkbox', { name: 'Remember User' })).toBeChecked();
+    it('starts ticked only once the username matches the remembered account', async () => {
+      const user = userEvent.setup();
+      await renderWithServices(<SignInScreen onSession={vi.fn()} rememberedUsername="ALICE" />);
+      const box = screen.getByRole('checkbox', { name: 'Remember User' });
+
+      expect(box).not.toBeChecked();
+      await user.type(screen.getByLabelText(/username/i), ' Alice');
+      expect(box).toBeChecked();
+      await user.type(screen.getByLabelText(/username/i), '2');
+      expect(box).not.toBeChecked();
     });
 
-    it.each([false, true])(
-      'sends no choice when the box is left alone (remembered: %s)',
-      async (deviceRemembered) => {
-        const user = userEvent.setup();
-        const auth = fakeAuth({ signIn: vi.fn(async () => pending) });
-        await renderWithServices(
-          <SignInScreen onSession={vi.fn()} deviceRemembered={deviceRemembered} />,
-          { auth },
-        );
-
-        await fill(user);
-
-        expect(auth.signIn).toHaveBeenCalledWith('alice', 'my long passphrase', undefined);
-      },
-    );
-
     it.each([
-      ['ticking it', false, 1, true],
-      ['ticking then unticking it', false, 2, false],
-      ['unticking a remembered browser', true, 1, false],
-      ['unticking then re-ticking a remembered browser', true, 2, true],
+      ['left alone, another account remembered', 'BOB', 0, false],
+      ['left alone, nothing remembered', undefined, 0, false],
+      ['left alone, this account remembered', 'ALICE', 0, true],
+      ['ticked, another account remembered', 'BOB', 1, true],
+      ['ticked then unticked', undefined, 2, false],
+      ['unticked, this account remembered', 'ALICE', 1, false],
+      ['unticked then re-ticked, this account remembered', 'ALICE', 2, true],
     ] as const)(
-      'sends the final choice after %s',
-      async (_name, deviceRemembered, clicks, expected) => {
+      'sends what the box shows: %s',
+      async (_name, rememberedUsername, clicks, expected) => {
         const user = userEvent.setup();
         const auth = fakeAuth({ signIn: vi.fn(async () => pending) });
         await renderWithServices(
-          <SignInScreen onSession={vi.fn()} deviceRemembered={deviceRemembered} />,
+          <SignInScreen onSession={vi.fn()} rememberedUsername={rememberedUsername} />,
           { auth },
         );
 
+        await user.type(screen.getByLabelText(/username/i), 'alice');
         for (let i = 0; i < clicks; i++) {
           await user.click(screen.getByRole('checkbox', { name: 'Remember User' }));
         }
-        await fill(user);
+        await user.type(screen.getByLabelText(PASSWORD_LABEL), 'my long passphrase');
+        await user.click(screen.getByRole('button', { name: /^sign in$/i }));
 
         expect(auth.signIn).toHaveBeenCalledWith('alice', 'my long passphrase', expected);
       },
     );
+
+    it('a click wins over a later username change', async () => {
+      const user = userEvent.setup();
+      await renderWithServices(<SignInScreen onSession={vi.fn()} rememberedUsername="ALICE" />);
+      const box = screen.getByRole('checkbox', { name: 'Remember User' });
+
+      await user.click(box);
+      await user.type(screen.getByLabelText(/username/i), 'alice');
+      expect(box).toBeChecked();
+    });
 
     it('a remembered browser signs straight in, with no code screen', async () => {
       const user = userEvent.setup();
@@ -175,7 +181,9 @@ describe('SignInScreen', () => {
       };
       const auth = fakeAuth({ signIn: vi.fn(async () => signedIn) });
       const onSession = vi.fn();
-      await renderWithServices(<SignInScreen onSession={onSession} deviceRemembered />, { auth });
+      await renderWithServices(<SignInScreen onSession={onSession} rememberedUsername="ALICE" />, {
+        auth,
+      });
 
       await fill(user);
 

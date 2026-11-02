@@ -105,8 +105,8 @@ paths:
           004 FR-013).
 
 
-        `rememberDevice` is sent only when the person changed the "Remember User" box during this
-        sign-in; absent means "keep the current state" (004 FR-003, research R3 table). With
+        The app always sends `rememberDevice` with the value the "Remember User" box shows; absent
+        still means "keep the current state" (004 FR-003, research R3 table). With
         `rememberDevice: false` and a device cookie for this account, the device is forgotten (row
         deleted, cookie cleared) before continuing (004 FR-016a). An explicit `true` is carried on
         the pending or setup session and used only when the authenticator step (or setup) completes.
@@ -140,8 +140,8 @@ paths:
                 rememberDevice:
                   type: boolean
                   description: >
-                    Optional. Present only when the person changed the "Remember User" box during
-                    this sign-in; the value is the box's final state. Absent keeps the current state.
+                    Optional. The app sends what the "Remember User" box shows at sign-in. Absent
+                    keeps the current state.
       responses:
         "200": { $ref: "#/components/responses/SessionState" }
         "400": { $ref: "#/components/responses/Problem" }
@@ -451,8 +451,9 @@ components:
           type: boolean
           description: >
             On `GET /auth/session`: true when this request carries a valid `__Host-mc_device` cookie
-            for any account. The sign-in screen pre-ticks "Remember User" only then (004 FR-003). It
-            does not say which account. On the sign-in steps' responses it is true only when that
+            for any account. It does not say which account; the sign-in screen pre-ticks "Remember
+            User" only when it is true and the typed username is the one the app recorded at its
+            last remembered sign-in (004 FR-003). On the sign-in steps' responses it is true only when that
             response used or set the device cookie, and false otherwise.
         setupStep:
           enum: [password, totp, notice]

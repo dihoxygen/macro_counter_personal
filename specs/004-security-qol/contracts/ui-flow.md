@@ -9,7 +9,7 @@ written as exact text, so tests can match them. API shapes are in [auth-api.yaml
 |---------|----------|
 | Username | `autocomplete=username`, max 64 |
 | Password | Label exactly **"Password (or Invite Code)"**, `autocomplete=current-password`, max 128 |
-| Remember | Checkbox labelled exactly **"Remember User"**, below the password field. Initially ticked only when `session.deviceRemembered` is true. `rememberDevice` is sent only if the person changed the box (any change event) during this sign-in, with its final value; otherwise it is omitted. |
+| Remember | Checkbox labelled exactly **"Remember User"**, below the password field. Initially clear. Shown ticked while `session.deviceRemembered` is true **and** the typed username (trimmed, case-insensitive) matches the `mc.rememberedUser` record; once the person clicks it, the click wins. `rememberDevice` is always sent with the value the box shows. |
 | Authenticator field | **Absent** |
 | Submit | "Sign in", disabled until username and password are both non-empty |
 | Failure (401) | "Username or password is incorrect." The password is cleared and the username kept. |

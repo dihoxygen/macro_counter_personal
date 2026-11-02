@@ -64,13 +64,13 @@ describe('auth client', () => {
     expect(new Headers(next.mock.calls[0]![1]?.headers).get('X-CSRF-Token')).toBe('csrf-1');
   });
 
-  it('signIn POSTs exactly username and password when the box was not touched, and adopts the new token', async () => {
+  it('signIn POSTs exactly username, password and the box, and adopts the new token', async () => {
     setCsrfToken('csrf-0');
     const fetchMock = stubFetch(async () =>
       Response.json({ state: 'mfa', csrfToken: 'csrf-9', deviceRemembered: false }),
     );
 
-    const state = await signIn('alice', 'secret passphrase', undefined);
+    const state = await signIn('alice', 'secret passphrase', false);
 
     expect(state).toEqual({ state: 'mfa', csrfToken: 'csrf-9', deviceRemembered: false });
     const [url, init] = fetchMock.mock.calls[0]!;
@@ -79,6 +79,7 @@ describe('auth client', () => {
     expect(JSON.parse(init?.body as string)).toEqual({
       username: 'alice',
       password: 'secret passphrase',
+      rememberDevice: false,
     });
     expect(new Headers(init?.headers).get('X-CSRF-Token')).toBe('csrf-0');
 
@@ -99,7 +100,7 @@ describe('auth client', () => {
         : problem(403, { code: 'csrf_failed' });
     });
 
-    const state = await signIn('alice', 'secret passphrase', undefined);
+    const state = await signIn('alice', 'secret passphrase', false);
 
     expect(state.state).toBe('signed_in');
     expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
@@ -116,24 +117,21 @@ describe('auth client', () => {
         : problem(403, { code: 'csrf_failed' }),
     );
 
-    expect((await caught(signIn('alice', 'x', undefined))).code).toBe('csrf_failed');
+    expect((await caught(signIn('alice', 'x', false))).code).toBe('csrf_failed');
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it.each([true, false])(
-    'signIn sends rememberDevice: %s when the box was changed',
-    async (remember) => {
-      const fetchMock = stubFetch(async () =>
-        Response.json({ state: 'mfa', csrfToken: 'c', deviceRemembered: false }),
-      );
-      await signIn('alice', 'secret passphrase', remember);
-      expect(JSON.parse(fetchMock.mock.calls[0]![1]?.body as string)).toEqual({
-        username: 'alice',
-        password: 'secret passphrase',
-        rememberDevice: remember,
-      });
-    },
-  );
+  it.each([true, false])('signIn sends rememberDevice: %s as the box shows', async (remember) => {
+    const fetchMock = stubFetch(async () =>
+      Response.json({ state: 'mfa', csrfToken: 'c', deviceRemembered: false }),
+    );
+    await signIn('alice', 'secret passphrase', remember);
+    expect(JSON.parse(fetchMock.mock.calls[0]![1]?.body as string)).toEqual({
+      username: 'alice',
+      password: 'secret passphrase',
+      rememberDevice: remember,
+    });
+  });
 
   it('verifyMfa POSTs only the trimmed code with the CSRF token and adopts the new one', async () => {
     setCsrfToken('csrf-mfa');
@@ -264,7 +262,7 @@ describe('auth client', () => {
 
   it('surfaces rate limiting with Retry-After seconds', async () => {
     stubFetch(async () => problem(429, { code: 'rate_limited' }, { 'Retry-After': '120' }));
-    const error = await caught(signIn('alice', 'x', undefined));
+    const error = await caught(signIn('alice', 'x', false));
     expect(error.code).toBe('rate_limited');
     expect(error.retryAfterSeconds).toBe(120);
   });
@@ -276,7 +274,7 @@ describe('auth client', () => {
     ['wrong_setup_step', 409],
   ])('surfaces %s', async (code, status) => {
     stubFetch(async () => problem(status, { code }));
-    expect((await caught(signIn('alice', 'x', undefined))).code).toBe(code);
+    expect((await caught(signIn('alice', 'x', false))).code).toBe(code);
   });
 
   it('maps a network failure to network', async () => {

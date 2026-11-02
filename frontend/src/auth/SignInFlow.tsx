@@ -12,13 +12,13 @@ import { SignInScreen } from './SignInScreen';
 export function SignInFlow({
   onSession,
   notice,
-  deviceRemembered = false,
+  rememberedUsername,
   startAt = 'password',
 }: {
   onSession: (session: SessionState) => void;
   notice?: SignInNotice;
-  /** From the last session response: Remember User starts ticked (004 FR-003). */
-  deviceRemembered?: boolean;
+  /** The account this browser is remembered for: Remember User starts ticked for it (004 FR-003). */
+  rememberedUsername?: string;
   /** 'mfa' when a pending sign-in already exists (the page was reloaded on the code screen). */
   startAt?: 'password' | 'mfa';
 }) {
@@ -43,7 +43,7 @@ export function SignInFlow({
   return (
     <SignInScreen
       notice={shown}
-      deviceRemembered={deviceRemembered}
+      rememberedUsername={rememberedUsername}
       onSession={(session) => (session.state === 'mfa' ? setStep('mfa') : onSession(session))}
     />
   );

@@ -466,8 +466,13 @@ Each checkpoint leaves the app deployable. US1 without US3 simply never offers t
   - Scans: no vulnerable NuGet packages; npm audit has 4 low-severity issues only.
   - `dotnet format`: clean for every changed file. The only complaints are end-of-line warnings in
     untouched files, which have CRLF in this Windows working copy.
-- **T055 manual quickstart walk-through**: **not done yet**. It needs a person with an
-  authenticator app. Left open.
+- **T055 manual quickstart walk-through**: in progress (2026-10-30). Scenarios 1–7 and 9 passed.
+  Scenarios 10 and 12a found that the box was pre-ticked for every account on a remembered
+  browser but sent nothing unless clicked, so a second account could never be remembered. The
+  owner chose "what you see is what you get" (spec FR-003 revised): the box pre-ticks only for
+  the remembered username, recorded in `localStorage` (`src/auth/rememberedUser.ts`), and its
+  value is always sent. No backend change. Quickstart 12b and an e2e test were added. Re-run 8 and
+  10–16 after this fix.
 - **Known flake, already in 003**: two `GET /api/auth/session` requests start at launch. If the
   second one answers after a fast sign-in, it overwrites the CSRF token with the signed-out token,
   and the next setup step gets `403 csrf_failed`. Not fixed here.

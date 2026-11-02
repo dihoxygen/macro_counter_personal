@@ -92,23 +92,16 @@ export function getSession(): Promise<SessionState> {
 }
 
 /**
- * The password step. `rememberDevice` is sent only when the person changed the Remember User box during this
- * sign-in; undefined keeps the current state (004 FR-003, FR-016a).
+ * The password step. `rememberDevice` is what the Remember User box shows: true remembers this browser for this
+ * account (replacing any other), false forgets it if it was remembered for this account (004 FR-003, FR-016a).
  */
 export async function signIn(
   username: string,
   password: string,
-  rememberDevice: boolean | undefined,
+  rememberDevice: boolean,
 ): Promise<SessionState> {
   const request = () =>
-    sessionRequest(
-      '/api/auth/sign-in',
-      json(
-        rememberDevice === undefined
-          ? { username, password }
-          : { username, password, rememberDevice },
-      ),
-    );
+    sessionRequest('/api/auth/sign-in', json({ username, password, rememberDevice }));
   try {
     return await request();
   } catch (error) {

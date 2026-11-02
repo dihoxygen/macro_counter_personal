@@ -121,9 +121,9 @@ and after 7 days, and confirm the authenticator code is asked for both times.
 **Acceptance Scenarios**:
 
 1. **Given** the sign-in screen, **When** it is displayed, **Then** a "Remember User" tick-box is
-   shown below the password field. It is clear by default, unless this browser is already
-   remembered, in which case it shows as ticked so a returning person does not opt out by
-   accident. Only a change the person makes to the box counts as a choice (FR-003).
+   shown below the password field. It is clear by default. It shows as ticked once the username
+   typed is the account this browser is remembered for, so a returning person does not opt out by
+   accident. What the box shows when the person signs in is their choice (FR-003).
 2. **Given** the person ticked "Remember User" and completed sign-in, **When** they return on the
    same device and browser within 7 days, **Then** a correct password signs them straight in to Today, with no authenticator screen.
 3. **Given** a remembered device, **When** 7 days have passed since the sign-in that set it,
@@ -150,12 +150,11 @@ and after 7 days, and confirm the authenticator code is asked for both times.
 - A person ticks "Remember User", passes the password screen, then abandons the authenticator
   screen: nothing is remembered. Remembering takes effect only after a complete sign-in.
 - Two people share one browser and only one ticks "Remember User": the other person still needs
-  their own authenticator code. The box shows ticked for them too, but leaving it untouched does
-  not remember them or replace the first person's device. Remembering never lets one person reach
-  another's data (Principle III scoping still applies).
-- The second person on a shared browser does want to be remembered while the box already shows
-  ticked: they untick and re-tick it. That counts as a choice and replaces the first person's
-  device, because a browser is remembered for one account at a time.
+  their own authenticator code. The box stays clear for their username, so signing in without
+  ticking it neither remembers them nor replaces the first person's device. Remembering never
+  lets one person reach another's data (Principle III scoping still applies).
+- The second person on a shared browser does want to be remembered: they tick the box. That
+  replaces the first person's device, because a browser is remembered for one account at a time.
 - A remembered person signs out normally: the device stays remembered. Their next sign-in on it
   within the 7 days still needs only the password. To end remembering, they use "Sign out
   everywhere" or untick the box on their next sign-in.
@@ -193,10 +192,13 @@ and after 7 days, and confirm the authenticator code is asked for both times.
   "invite code".
 - **FR-002**: The sign-in screen MUST NOT show an authenticator code field.
 - **FR-003**: The sign-in screen MUST show a "Remember User" tick-box. It MUST be clear by default,
-  and shown ticked only when this browser is currently remembered for some account. The system
-  MUST treat the box as a choice only when the person changes it during this sign-in. Leaving it
-  untouched MUST keep the current state: a remembered account stays remembered, and nobody else
-  becomes remembered.
+  and shown ticked only while the username typed is the account this browser is currently
+  remembered for. What the box shows when the person signs in is their choice: ticked remembers
+  this browser for this account (replacing any other account), and clear forgets it if it was
+  remembered for this account. Another account's remembered device is never changed by a clear
+  box. *(Revised 2026-10-30 after the manual quickstart: the earlier "only a change to the box
+  counts" rule pre-ticked the box for every account, so a second account could not be remembered
+  by leaving it ticked.)*
 
 **Password step**
 

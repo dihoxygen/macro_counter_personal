@@ -33,10 +33,11 @@ app ready.
 | 7 | Sign in with the right password. | The authenticator screen appears. A wrong code shows "That code is incorrect. Try again." The right code goes to Today. |
 | 8 | Sign out. Enter the right password, wait more than 5 minutes on the authenticator screen, then enter a code. | Back to sign-in with "Your sign-in timed out…" |
 | 9 | On the authenticator screen, choose "Use a different account". | The sign-in screen appears. In DevTools, the pending session cookie is gone. |
-| 10 | Sign in with "Remember User" ticked and complete the code. Sign out. | Sign-in shows "Remember User" pre-ticked. The right password goes straight to Today with no code. |
+| 10 | Sign in with "Remember User" ticked and complete the code. Sign out. | The box is clear until you type `alice`, then shows ticked. The right password goes straight to Today with no code. |
 | 11 | In a second browser profile, sign in as `alice`. | A code is asked for (this device is not remembered). |
 | 12 | In profile 1, untick "Remember User" and sign in. | A code is asked for. On the next visit the box is unticked. |
-| 12a | Remember `alice` again. Sign out, then sign in as a second account `bob` without touching the pre-ticked box. Sign out and sign in as `alice`. | `bob` is asked for a code. `alice` then still needs only the password. |
+| 12a | Remember `alice` again. Sign out, then sign in as a second account `bob` without touching the box. Sign out and sign in as `alice`. | The box stays clear for `bob`, and `bob` is asked for a code. `alice` then still needs only the password. |
+| 12b | With `alice` remembered, sign in as `bob` with the box **ticked** and complete the code. Sign out, then sign in as `bob`, then as `alice`. | `bob` needs only the password. `alice` is asked for a code (a browser is remembered for one account). |
 | 13 | Remember the device again. In profile 2, use "Sign out everywhere". Back in profile 1, sign in. | A code is asked for again. |
 | 14 | Remember the device. Run `update macro.trusted_devices set expires_at = now() - interval '1 second';` as the owner. Sign in. | A code is asked for. |
 | 15 | Get a wrong code 10 times, across password re-entries, within 15 minutes. | Locked: "Too many attempts. Try again later." |

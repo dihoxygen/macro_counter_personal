@@ -3,6 +3,7 @@ import { invite, uniqueUsername } from './db';
 import { completeSetup, nextCode, PASSWORD, signIn, signOut } from './flows';
 
 // 004 US3 / quickstart 10–13: Remember User skips only the authenticator code, on one browser, for one account.
+// The box sends what it shows; it starts ticked only once the remembered account's username is typed.
 
 const codeScreen = (page: Page) =>
   page.getByRole('heading', { name: 'Enter your authenticator code' });
@@ -36,6 +37,8 @@ test('a ticked box skips the code next time on this browser only, until unticked
   await signIn(page, username, PASSWORD, nextCode(key), { remember: true });
   await expect(today(page)).toBeVisible();
   await signOut(page);
+  await expect(rememberBox(page)).not.toBeChecked();
+  await page.getByLabel('Username').fill(username);
   await expect(rememberBox(page)).toBeChecked();
   await signIn(page, username, PASSWORD);
   await expect(today(page)).toBeVisible();
@@ -53,12 +56,13 @@ test('a ticked box skips the code next time on this browser only, until unticked
   await signIn(page, username, PASSWORD, nextCode(key, 2), { remember: false });
   await expect(today(page)).toBeVisible();
   await signOut(page);
+  await page.getByLabel('Username').fill(username);
   await expect(rememberBox(page)).not.toBeChecked();
   await signIn(page, username, PASSWORD);
   await expect(codeScreen(page)).toBeVisible();
 });
 
-test('a second account that leaves the pre-ticked box alone neither gets remembered nor displaces the first', async ({
+test('a second account that leaves the box alone neither gets remembered nor displaces the first', async ({
   page,
 }, testInfo) => {
   // Quickstart 12a.
@@ -69,7 +73,9 @@ test('a second account that leaves the pre-ticked box alone neither gets remembe
   await expect(today(page)).toBeVisible();
   await signOut(page);
 
-  await expect(rememberBox(page)).toBeChecked();
+  // Remembered for alice, so the box stays unticked for bob.
+  await page.getByLabel('Username').fill(bob.username);
+  await expect(rememberBox(page)).not.toBeChecked();
   await signIn(page, bob.username, PASSWORD, nextCode(bob.key));
   await expect(today(page)).toBeVisible();
   await signOut(page);
@@ -78,6 +84,29 @@ test('a second account that leaves the pre-ticked box alone neither gets remembe
   await expect(today(page)).toBeVisible();
   await signOut(page);
   await signIn(page, bob.username, PASSWORD);
+  await expect(codeScreen(page)).toBeVisible();
+});
+
+test('ticking the box for a second account remembers it instead of the first', async ({
+  page,
+}, testInfo) => {
+  // Quickstart 12b.
+  const alice = await newAccount(page, testInfo, 'r');
+  const bob = await newAccount(page, testInfo, 'p');
+
+  await signIn(page, alice.username, PASSWORD, nextCode(alice.key), { remember: true });
+  await expect(today(page)).toBeVisible();
+  await signOut(page);
+  await signIn(page, bob.username, PASSWORD, nextCode(bob.key), { remember: true });
+  await expect(today(page)).toBeVisible();
+  await signOut(page);
+
+  await page.getByLabel('Username').fill(bob.username);
+  await expect(rememberBox(page)).toBeChecked();
+  await signIn(page, bob.username, PASSWORD);
+  await expect(today(page)).toBeVisible();
+  await signOut(page);
+  await signIn(page, alice.username, PASSWORD);
   await expect(codeScreen(page)).toBeVisible();
 });
 

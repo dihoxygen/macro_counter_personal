@@ -7,10 +7,10 @@ import { SignInFlow } from './SignInFlow';
  */
 export function SessionExpiredOverlay({
   onSession,
-  deviceRemembered = false,
+  rememberedUsername,
 }: {
   onSession: (session: SessionState) => void;
-  deviceRemembered?: boolean;
+  rememberedUsername?: string;
 }) {
   return (
     <div className="overlay">
@@ -22,7 +22,7 @@ export function SessionExpiredOverlay({
       >
         <h2 id="session-expired-title">Sign in again</h2>
         <p className="muted">Your session ended. Your entries are safe on this device.</p>
-        <SignInFlow onSession={onSession} deviceRemembered={deviceRemembered} />
+        <SignInFlow onSession={onSession} rememberedUsername={rememberedUsername} />
       </div>
     </div>
   );

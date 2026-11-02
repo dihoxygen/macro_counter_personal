@@ -3,6 +3,7 @@ import { AuthError, type AuthErrorCode, type SessionState } from '../api/auth';
 import { useServices } from '../app/services';
 import { FieldError, PasswordInput } from '../features/shared/FormBits';
 import type { SignInNotice } from './authMachine';
+import { normalizeUsername } from './rememberedUser';
 
 export const SIGN_IN_FAILED = 'Username or password is incorrect.';
 export const SIGN_IN_UNAVAILABLE = 'Sign-in is temporarily unavailable.';
@@ -28,19 +29,22 @@ const notices: Record<SignInNotice, string> = {
 export function SignInScreen({
   onSession,
   notice,
-  deviceRemembered = false,
+  rememberedUsername,
 }: {
   onSession: (session: SessionState) => void;
   notice?: SignInNotice;
-  /** This browser is remembered for some account: Remember User starts ticked (004 FR-003). */
-  deviceRemembered?: boolean;
+  /** The account this browser is remembered for, normalized: Remember User starts ticked for it (004 FR-003). */
+  rememberedUsername?: string;
 }) {
   const { auth } = useServices();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(deviceRemembered);
-  // Only a change the person makes is a choice; an untouched box keeps the current state (004 FR-003).
-  const [rememberTouched, setRememberTouched] = useState(false);
+  // What the box shows is what is sent (004 FR-003). Until the person clicks it, it follows the username: ticked
+  // only for the account this browser is remembered for.
+  const [rememberChoice, setRememberChoice] = useState<boolean | undefined>();
+  const remember =
+    rememberChoice ??
+    (rememberedUsername !== undefined && normalizeUsername(username) === rememberedUsername);
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
@@ -49,9 +53,7 @@ export function SignInScreen({
     setBusy(true);
     setError(undefined);
     try {
-      onSession(
-        await auth.signIn(username.trim(), password, rememberTouched ? remember : undefined),
-      );
+      onSession(await auth.signIn(username.trim(), password, remember));
     } catch (e) {
       setError((e instanceof AuthError && messages[e.code]) || SIGN_IN_FAILED);
       setPassword('');
@@ -86,10 +88,7 @@ export function SignInScreen({
         <input
           type="checkbox"
           checked={remember}
-          onChange={(e) => {
-            setRemember(e.target.checked);
-            setRememberTouched(true);
-          }}
+          onChange={(e) => setRememberChoice(e.target.checked)}
         />
         Remember User
       </label>

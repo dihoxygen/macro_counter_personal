@@ -99,10 +99,9 @@ No `NEEDS CLARIFICATION` items were left in the Technical Context. The spec's on
   - **One per browser**: a browser holds at most one device cookie. When a second account ticks
     the box on the same browser, the earlier account's row is deleted and the cookie is replaced.
     The other account simply goes back to entering codes.
-  - **The request field is a choice, not a state**: `rememberDevice` is **optional**. The client
-    sends it only when the person changed the box during this sign-in, with the box's final value.
-    If it is absent, the current state is kept (FR-003). After a correct password on an active
-    account:
+  - **The request field is what the box shows**: the app always sends `rememberDevice` with the
+    box's value at sign-in (FR-003, revised 2026-10-30). The server still accepts it absent and
+    then keeps the current state. After a correct password on an active account:
 
     | Cookie on this browser | `rememberDevice` | Result |
     |------------------------|------------------|--------|
@@ -128,13 +127,18 @@ No `NEEDS CLARIFICATION` items were left in the Technical Context. The spec's on
   - `GET /api/auth/session` adds `deviceRemembered: boolean`. This is true when the request
     carries a currently valid device cookie for *any* account. The cookie is unprotected first,
     and the database is queried only if that succeeds, so junk cookies cost nothing.
-  - The sign-in screen pre-ticks "Remember User" only in that case. Otherwise it is clear, as
-    spec US3 scenario 1 requires.
-  - Because only a *change* to the box is sent, a remembered person who leaves it alone stays
-    remembered. A second person on a shared browser who leaves the pre-ticked box alone is
-    neither remembered nor able to displace the first person.
-  - It reveals only that *someone* on this browser is remembered, which that browser already
-    knows from the cookie.
+  - Which account that is stays out of the API. After a completed sign-in the app records, in
+    `localStorage` (`mc.rememberedUser`), the normalized username the browser was remembered for,
+    or clears it when that account is no longer remembered. It reads only sign-in step responses,
+    where `deviceRemembered` is about the account that signed in.
+  - The sign-in screen pre-ticks "Remember User" only while the server reports a remembered
+    device **and** the typed username matches the record. Otherwise it is clear, as spec US3
+    scenario 1 requires. Once the person clicks the box, their click wins.
+  - A remembered person who types their username sees the box ticked and stays remembered. A
+    second person on a shared browser sees it clear, so signing in as is neither remembers them
+    nor displaces the first person; ticking it replaces the first person's device.
+  - The record holds a username, not a credential, on the browser where that person signs in.
+    If storage is blocked the box simply starts clear.
 - **Rationale**:
   - This is the standard "trust this device" pattern.
   - The stamp comparison gives immediate revocation with no new bookkeeping in each revocation
@@ -144,9 +148,15 @@ No `NEEDS CLARIFICATION` items were left in the Technical Context. The spec's on
     the password.
 - **Alternatives considered**:
   - *A longer full session (no idle timeout)*. This was option A, which the user declined.
-  - *Sending the box's value on every sign-in, with the pre-tick*. A second person on a shared
-    browser would replace the first person's device just by not noticing the box. Rejected
-    (analysis U1).
+  - *Sending the box's value on every sign-in, with a browser-wide pre-tick*. A second person on
+    a shared browser would replace the first person's device just by not noticing the box.
+    Rejected (analysis U1).
+  - *Sending only a change to the box, with a browser-wide pre-tick* (the first implementation).
+    The box looked ticked for every account but did nothing unless clicked, so a second account
+    could never be remembered by leaving it ticked. Found in the manual quickstart (scenarios 10
+    and 12a, 2026-10-30) and replaced by the per-username pre-tick above.
+  - *Returning the remembered username from `GET /auth/session`*. It would put the username in an
+    unauthenticated API response; the local record keeps it on the client that already knows it.
   - *No pre-tick, and a clear box forgets*. A remembered person would have to re-tick the box
     every time or silently lose remembering. Rejected.
   - *Storing the token in `localStorage`*. Page scripts could read it, which violates FR-019 and
