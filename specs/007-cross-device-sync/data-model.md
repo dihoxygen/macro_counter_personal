@@ -196,6 +196,19 @@ the same transaction (R6).
   `entryVersions`, and drop the alias key from the outbox, in one transaction
 - after each pull → remove versions whose `replacedAt` is more than 90 days before `sync.serverNow` (R16)
 
+## Export file
+
+One JSON document, named `macro-counter-export-<YYYY-MM-DD>.json` (R21):
+
+| Field | Contents |
+|---|---|
+| `format` | `macro-counter-export` |
+| `formatVersion` | `1` |
+| `exportedAt` | ISO 8601 time from the device |
+| `entries`, `savedFoods`, `proteinGoals`, `entryVersions` | The device's records, as stored |
+
+Local-only `outbox`, `quarantine` and `meta` content is left out, as are device preferences.
+
 ## State transitions
 
 **Server entry**: `absent → live` (first upsert) → `live` (newer upserts, R3) → `deleted` (tombstone) →

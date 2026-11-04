@@ -220,9 +220,8 @@ disclosure, the same way the AI notice is enforced (003).
   back.
 
 **Self-removal**: the app has no self-service account management (003 decision: owner-run procedures,
-no admin UI). For now, "by the user" in FR-016 means the user asks the owner. ⚠️ This narrows the
-spec wording. `/speckit-analyze` should flag it, and the spec should be updated to match, unless the
-owner wants a "delete my account" button, which would be its own small feature.
+no admin UI). FR-016 therefore covers removal by the owner, and users ask the owner for it. A "delete
+my account" button would be its own small feature.
 
 **Backups**: Supabase daily backups are kept for 7 days on the Pro plan, and the free plan has none.
 Both are within the spec's 30-day limit. Point-in-time recovery stays off. The deploy runbook records
@@ -308,7 +307,7 @@ The 60-per-minute limit is 5 s polling (12 per minute) plus pushes from two tabs
   ("3 changes haven't synced yet. They'll stay on this device and sync next time you sign in here")
   before signing out (FR-011). It is not a browser `confirm()` dialog. The data stays in the user's
   own locked database (003), so nothing else changes.
-- **Export**: there is still no export feature (noted in 001 and 003). This feature adds nothing new.
+- **Export**: a new Account screen action (R21).
 
 ---
 
@@ -470,3 +469,28 @@ Data that is not captured from the first sync can never be recovered, so these s
 
 US5–US8 then add the visible parts: the category control and grouping, the history and restore screens,
 quick-pick ordering, and trends.
+
+---
+
+## R21. Export (FR-036, FR-037, SC-009, constitution III)
+
+**Decision**: Build the file on the device from the local copy, as one versioned JSON document. There is
+no server endpoint.
+
+- A pure `buildExport(records, exportedAt)` assembles the document ([data-model.md](./data-model.md#export-file)).
+  `UserData.exportData()` reads through the repositories, so Principle III's storage rule holds and only
+  the signed-in user's database is ever read.
+- A small `downloadFile` helper saves it through a `Blob` and a temporary `download` link. It is injected
+  so tests can capture the file. The existing CSP does not restrict this.
+- Values are written as stored, so the export keeps full precision (Principle II).
+- The device counts as incomplete when the outbox is non-empty, quarantine is non-empty, a pull has more
+  pages to fetch, or the first pull has not finished. The Account screen then shows a note and still
+  allows the export (FR-037).
+- The file is not encrypted. The Account screen says it holds the user's food log.
+- Import is out of scope. Constitution III asks only for export.
+
+**Alternatives considered**:
+- *A server export endpoint.* Rejected: it would not work offline, and it would add a bulk-read route to
+  a health-data store for no gain.
+- *CSV.* Rejected: nested quantities and macros, and several record types, would need several files.
+  The constitution accepts either format.

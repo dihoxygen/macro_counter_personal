@@ -107,7 +107,8 @@ confirm a second browser receives the changes.
 ### User Story 4 - Trust that my data is mine (Priority: P2)
 
 My friends and I share the app. My log, saved foods and goals are visible only to me, on my devices.
-If I remove my account, or the owner removes me, my server-side data is deleted.
+I can download a copy of my data. If the owner removes my account, which I can ask them to do, my
+server-side data is deleted.
 
 **Why this priority**: Storing health data on a shared server is new. Users have to know who can see
 it before they rely on it.
@@ -123,6 +124,8 @@ server.
    it, **Then** the change is refused and Y's data is unchanged.
 3. **Given** a user is removed, **When** the removal completes, **Then** their synced food data is
    deleted from the server.
+4. **Given** I am signed in, online or offline, **When** I choose Export my data, **Then** a JSON file
+   downloads with my log entries, entry history, saved foods and goals, and no other user's data.
 4. **Given** I am about to use sync for the first time, **When** sync starts, **Then** I have been told
    what is stored on the server and who operates it.
 
@@ -233,7 +236,8 @@ view on another device shows matching per-day values and averages.
 - **Goal history**: goals changed on two devices are merged by their effective-from day, so the
   correct goal applies to each day on every device.
 - **Device-only preferences** (such as the remembered camera) are never synced.
-- **Data export**: export still works and includes the full synced history.
+- **Exporting before the device has finished syncing**: the export holds what is on the device, and the
+  user is told that it may be incomplete.
 - **Entries logged before categories existed**: they show as "Uncategorized" on every device. The user
   can assign a category to them, but is never forced to.
 - **Restoring after a deletion on another device**: an explicit restore is the newest change, so it
@@ -295,8 +299,9 @@ view on another device shows matching per-day values and averages.
   limits) and reject invalid records without applying any of that request's partial data.
 - **FR-015**: Food data stored on the server MUST be encrypted at rest and in transit, and MUST NOT
   be written to logs.
-- **FR-016**: Removing a user (by the owner or by the user) MUST delete all of that user's synced food
-  data from the server. Backups follow the stated retention period.
+- **FR-016**: When the owner removes a user, all of that user's synced food data MUST be deleted from
+  the server. Users request removal from the owner; a self-service option is out of scope. Backups
+  follow the stated retention period.
 - **FR-017**: Before a user's data is first synced, System MUST tell them what is stored on the
   server and that the owner operates it.
 - **FR-018**: Sync endpoints MUST be rate limited and size limited per user, consistent with
@@ -354,6 +359,15 @@ view on another device shows matching per-day values and averages.
 - **FR-035**: Trends MUST work offline from the data on the device, and MUST show identical values on
   every device for the same synced data.
 
+**Export**
+
+- **FR-036**: The user MUST be able to export their data as a single JSON file from the Account screen.
+  It MUST contain their log entries, entry history, saved foods and protein-goal history at full
+  precision, and MUST NOT contain photos, device-only preferences or another user's data.
+- **FR-037**: Export MUST work offline from the data on the device. If the device has unsynced changes
+  or has not finished downloading the user's history, System MUST say the export may be incomplete, and
+  MUST still allow it.
+
 **Audit**
 
 - **FR-019**: Security-relevant sync events (refused cross-user attempts, rejected payloads, rate-limit
@@ -399,6 +413,8 @@ view on another device shows matching per-day values and averages.
   and long offline periods, and the losing side of a same-record conflict (FR-007) is still recoverable from entry history.
 - **SC-008**: The trends view for a 90-day range opens within 2 seconds on a device holding at least one
   year of history, and its daily values match the day view for every day in the range.
+- **SC-009**: An export from a device holding at least one year of history finishes within 5 seconds, and
+  its record counts match the device's for every record type.
 
 ## Assumptions
 

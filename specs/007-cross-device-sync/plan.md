@@ -40,6 +40,9 @@ after the sync stories
   time. Quick-pick order and trends are computed on the device from synced entries and store nothing.
   New entries must now link to their saved food, which most do not today
   ([R17](./research.md#r17-meal-categories-fr-020-to-fr-023)–[R19](./research.md#r19-trends-fr-032-to-fr-035-sc-008)).
+- **Export.** An Account screen action builds one JSON file on the device, so it works offline and needs
+  no endpoint. This closes the export gap in constitution III
+  ([R21](./research.md#r21-export-fr-036-fr-037-sc-009-constitution-iii)).
 - **Freshness.** Visible tabs poll every 5 s and also sync right after local changes, on focus and on
   reconnect. Hidden tabs don't poll. No SSE or WebSockets
   ([R5](./research.md#r5-getting-changes-to-other-devices-within-10-seconds-fr-005-sc-001)).
@@ -111,12 +114,12 @@ single instance.
 - About 10–20 entries per user per day.
 - 4 new endpoints ([contracts/sync-api.yaml](./contracts/sync-api.yaml)).
 - 3 new screens (sync notice, entry history, trends), 1 Recently deleted list, 1 header indicator, 1
-  inline confirmation, and a Meal field on 4 forms.
+  inline confirmation, an export action, and a Meal field on 4 forms.
 
-No NEEDS CLARIFICATION remains. Research R1–R20 resolves storage layout, protocol, conflict rule,
+No NEEDS CLARIFICATION remains. Research R1–R21 resolves storage layout, protocol, conflict rule,
 natural-key merges, freshness, first sync, notice, removal and backups, encryption and logging, RLS,
-limits, UI, dependencies, entry history, restore, retention, categories, quick picks, trends and
-staging.
+limits, UI, dependencies, entry history, restore, retention, categories, quick picks, trends, staging
+and export.
 
 ## Constitution Check
 
@@ -138,8 +141,8 @@ Checked against constitution **v3.0.0**.
 | ‣ Offline changes kept and auto-synced; UI shows unsynced/failing | Outbox, scheduler triggers, status indicator (R5, R12). | ✅ |
 | ‣ Versioned schemas with tested migrations | IndexedDB v1→v2 (tested, including queueing existing data, new entry fields, food links and legacy adoption). EF migration for `macro_data` tested against real PostgreSQL (schema, constraints, grants, RLS). | ✅ |
 | ‣ Server validates every record; whole request rejected | Endpoint validator plus DB check constraints. All or nothing with indexed reason codes (data-model bounds). | ✅ |
-| ‣ User removal deletes data; backup retention stated | `macro_admin.delete_user` cascade, including `entry_versions`. Supabase backups ≤ 7 days (R8). | ✅. ⚠️ Self-removal is through the owner (R8). Spec FR-016 wording should be narrowed |
-| ‣ Export | Still no export feature, as noted since 001. This feature neither adds nor removes export. | ⚠️ Pre-existing gap, unchanged |
+| ‣ User removal deletes data; backup retention stated | `macro_admin.delete_user` cascade, including `entry_versions`. Supabase backups ≤ 7 days (R8). Removal is by the owner, on request (FR-016). | ✅ |
+| ‣ Export | A device-built JSON export from the Account screen (R21, FR-036). | ✅ Closes the gap open since 001 |
 | **IV. Fast Logging** | Logging writes locally and returns immediately. Sync runs in the background. The Meal field is pre-filled, so the interaction counts are unchanged (FR-021). Quick picks put repeat foods first. The new UI works at 360 px with 44 px targets and text labels. | ✅ |
 | **V. Simplicity** | No new dependencies, including for charts. Polling instead of a push channel. Record-level LWW instead of CRDTs. One migration stream. No stored counters or totals. New server state and the sync engine are recorded under Complexity Tracking. | ✅ See Complexity Tracking |
 | **VI. AI Lookup** | Untouched. AI-sourced records keep their `source` through sync, so "saved foods record that data came from AI" holds on every device. | ✅ |
@@ -159,8 +162,7 @@ Checked against constitution **v3.0.0**.
 | **Tech Constraints: Privacy** | No new third parties. Claude requests are unchanged and still carry no history or identity. | ✅ |
 | **Governance** | New data exposure. `/security-review` plus an ASVS L2 pass on the sync endpoints before release (quickstart, Production rollout step 4). | ✅ Planned |
 
-**Gate result (pre-research)**: PASS, with two ⚠️ notes that are not violations: self-removal goes
-through the owner, and export is a pre-existing gap.
+**Gate result (pre-research)**: PASS.
 
 **Post-design re-check (after Phase 1)**: PASS.
 - The data model puts `user_id` in every primary key and RLS policy.
@@ -175,8 +177,9 @@ through the owner, and export is a pre-existing gap.
 - Retention reuses the existing purge job (R16).
 - The notice discloses that deleted data stays for up to 90 days.
 
-No new violations. Spec FR-016's self-removal wording and the missing export feature remain as the two
-⚠️ notes above. The spec's "export still works" edge case assumes a feature that does not exist.
+- Export reads only the signed-in user's local database and adds no server route (R21).
+
+No new violations. Export (FR-036) and the narrowed FR-016 clear the two earlier ⚠️ notes.
 
 ### Threat model (Principle VII; baseline OWASP ASVS L2 / Top 10)
 
@@ -207,6 +210,7 @@ What is new is that boundary 2 now carries health data.
 | S12 | A deleted entry's food data outlives its 90 days (privacy) | Tombstones hold no food data. A daily purge removes versions. A test seeds expired rows and asserts both. A failed `pg_cron` job is visible in Supabase | Low: a stopped job delays removal until it runs again |
 | S13 | A forged version or restore rewrites history (A04, A08) | Versions are insert-only with no `update` or `delete` grant. `id` collisions are ignored. Same validator and RLS as entries. Restore is scoped to the session's user | Accepted: a user can only change their own history |
 | S14 | History grows without limit through repeated edits (A04/A05) | Versions count toward the 200-change and 256 KiB caps and the rate limiter. The 90-day purge bounds the total | Low |
+| S15 | An exported file is left somewhere others can read it (privacy) | The Account screen says the file holds the food log. Export is built only from the signed-in user's database, and a test signs in as a second user to confirm it | Accepted: the file is the user's own copy once saved |
 
 ## Project Structure
 
@@ -215,9 +219,9 @@ What is new is that boundary 2 now carries health data.
 ```text
 specs/007-cross-device-sync/
 ├── plan.md              # This file
-├── research.md          # Phase 0: R1–R20
-├── data-model.md        # Phase 1: server tables, device stores, bounds, state transitions
-├── quickstart.md        # Phase 1: setup, test suites, manual validation V1–V10, rollout
+├── research.md          # Phase 0: R1–R21
+├── data-model.md        # Phase 1: server tables, device stores, bounds, export file, state transitions
+├── quickstart.md        # Phase 1: setup, test suites, manual validation V1–V11, rollout
 ├── contracts/
 │   ├── sync-api.yaml    # Phase 1: /api/sync/* (OpenAPI 3.1)
 │   └── ui-sync.md       # Phase 1: notice, status, live refresh, sign-out, meals, history, quick picks, trends
@@ -262,6 +266,8 @@ frontend/
 │   │   ├── entryVersionRepository.ts # NEW: history, recently deleted, restore, local purge
 │   │   ├── logService.ts             # save the food first, so new entries link to it
 │   │   ├── legacyAdoption.ts         # queue copied records in the outbox
+│   │   ├── exportData.ts             # NEW: buildExport, read through the repositories
+│   │   ├── downloadFile.ts           # NEW: Blob and temporary download link (injected)
 │   │   ├── remoteApply.ts            # NEW: apply pulled changes, skip pending keys, alias rewrite
 │   │   └── changes.ts                # NEW: in-memory change emitter
 │   ├── domain/
@@ -279,7 +285,7 @@ frontend/
 │   ├── features/add-food, recent     # Meal field; quick picks use listQuickPicks
 │   ├── features/today|recent|goal|history  # subscribe to changes for live refresh
 │   ├── App.tsx                       # + 'trends' view
-│   ├── auth/AccountMenu.tsx          # inline unsynced-changes warning
+│   ├── auth/AccountMenu.tsx          # inline unsynced-changes warning, Export my data
 │   ├── auth/SetupFlow.tsx            # setup notice text includes sync (R7)
 │   └── app/services.tsx              # UserData + sync, changes
 └── tests/e2e/auth/

@@ -56,6 +56,14 @@ A `401` hands over to the existing session-expired overlay. The outbox is kept.
 - It is never a browser `confirm()` dialog.
 - With an empty outbox, sign-out behaves as today.
 
+## Export (FR-036, FR-037, US4)
+
+- The Account screen has an **Export my data** button, with a short note that the file holds the food log.
+- Pressing it downloads the JSON file and announces the result in a status message.
+- It works offline. When the device is incomplete (R21), a note says "Some changes haven't synced, so
+  this export may be incomplete", and the button stays enabled.
+- A failure shows an inline error and leaves the data unchanged.
+
 ## Meal categories (FR-020 to FR-023, US5)
 
 - The manual form, the estimate review, the re-log form and the entry editor have a **Meal** field with

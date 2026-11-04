@@ -24,7 +24,7 @@ There are no new tools.
 | Suite | Command | Covers |
 |---|---|---|
 | Backend | `dotnet test backend` | Push/pull contract, all-or-nothing validation (FR-014), last-writer-wins with skew correction and tombstones (FR-007, SC-007), the R15 restore table, losing edits and displaced states kept as versions without duplicates, a null category never replacing a category, tombstones holding no food data, 90-day purge, natural-key merges and aliases (FR-008), per-user revisions with no skipped changes under concurrent pushes, notice gate (FR-017), limits and rate limit (FR-018), cross-user isolation including ID collisions and RLS with `macro.user_id` unset (FR-013, SC-005), `delete_user` cascade (FR-016), audit events and the sentinel-name log scan (FR-015, FR-019), endpoint inventory, grants (no `delete` on `macro_data`) |
-| Frontend unit/component | `npm --prefix frontend test` | v1→v2 migration enqueues existing data, sets `mealCategory`, `versionId` and food links, legacy adoption queues what it copies, repositories write record, version and outbox atomically, restore, offline intermediate states kept, new entries linked to their food, `categoryForTime`, `groupByCategory`, `rankQuickPicks` and `buildTrend` (Principle II coverage), meal, history and trends UI, outbox `seq` handling, apply-pull skips pending keys, merge rewrite of IDs and `savedFoodId`, quarantine, sync scheduler (5 s visible polling, backoff, triggers), status states, sign-out warning, live refresh of Today, Recent and Goal, nutrition totals unchanged (Principle II suites stay at 100%) |
+| Frontend unit/component | `npm --prefix frontend test` | v1→v2 migration enqueues existing data, sets `mealCategory`, `versionId` and food links, legacy adoption queues what it copies, repositories write record, version and outbox atomically, restore, offline intermediate states kept, new entries linked to their food, `categoryForTime`, `groupByCategory`, `rankQuickPicks` and `buildTrend` (Principle II coverage), `buildExport` contents and exclusions, meal, history, trends and export UI, outbox `seq` handling, apply-pull skips pending keys, merge rewrite of IDs and `savedFoodId`, quarantine, sync scheduler (5 s visible polling, backoff, triggers), status states, sign-out warning, live refresh of Today, Recent and Goal, nutrition totals unchanged (Principle II suites stay at 100%) |
 | End-to-end | `scripts/e2e-db.ps1; npm --prefix frontend run e2e` | Two browser contexts, same account: log, edit, delete and see the change on the other within 10 s. Offline logging, then reconnect. First sync merging two pre-seeded devices. Two accounts never see each other's data. Category change, restore and quick-pick order matching on both devices, and trends matching the day view |
 
 ## Manual validation scenarios
@@ -114,6 +114,16 @@ Expected results are in **bold**.
    day matches the day view, gaps show "no data", and the averages leave those days out.**
 2. Edit an entry from last week. **That day's values update.**
 3. Go offline and open the 90-day range with a year of data. **It opens within 2 seconds (SC-008).**
+
+### V11. Export (US4, SC-009)
+
+1. With a year of seeded data, open Account → Export my data. **A JSON file downloads within 5 seconds.
+   Its record counts match the device, its values have full precision, and it holds no photos or camera
+   ID.**
+2. Go offline and export again. **It still works.**
+3. While offline, log a food and open Account. **A note says the export may be incomplete, and the button
+   still works.**
+4. Sign in on the same browser as another user and export. **The file holds only that user's data.**
 
 ## Production rollout
 
