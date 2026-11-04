@@ -23,9 +23,9 @@ There are no new tools.
 
 | Suite | Command | Covers |
 |---|---|---|
-| Backend | `dotnet test backend` | Push/pull contract, all-or-nothing validation (FR-014), last-writer-wins with skew correction and tombstones (FR-007, SC-007), natural-key merges and aliases (FR-008), per-user revisions with no skipped changes under concurrent pushes, notice gate (FR-017), limits and rate limit (FR-018), cross-user isolation including ID collisions and RLS with `macro.user_id` unset (FR-013, SC-005), `delete_user` cascade (FR-016), audit events and the sentinel-name log scan (FR-015, FR-019), endpoint inventory, grants (no `delete` on `macro_data`) |
-| Frontend unit/component | `npm --prefix frontend test` | v1→v2 migration enqueues existing data, repositories write record and outbox atomically, outbox `seq` handling, apply-pull skips pending keys, merge rewrite of IDs and `savedFoodId`, quarantine, sync scheduler (5 s visible polling, backoff, triggers), status states, sign-out warning, live refresh of Today, Recent and Goal, nutrition totals unchanged (Principle II suites stay at 100%) |
-| End-to-end | `scripts/e2e-db.ps1; npm --prefix frontend run e2e` | Two browser contexts, same account: log, edit, delete and see the change on the other within 10 s. Offline logging, then reconnect. First sync merging two pre-seeded devices. Two accounts never see each other's data |
+| Backend | `dotnet test backend` | Push/pull contract, all-or-nothing validation (FR-014), last-writer-wins with skew correction and tombstones (FR-007, SC-007), the R15 restore table, losing edits and displaced states kept as versions without duplicates, a null category never replacing a category, tombstones holding no food data, 90-day purge, natural-key merges and aliases (FR-008), per-user revisions with no skipped changes under concurrent pushes, notice gate (FR-017), limits and rate limit (FR-018), cross-user isolation including ID collisions and RLS with `macro.user_id` unset (FR-013, SC-005), `delete_user` cascade (FR-016), audit events and the sentinel-name log scan (FR-015, FR-019), endpoint inventory, grants (no `delete` on `macro_data`) |
+| Frontend unit/component | `npm --prefix frontend test` | v1→v2 migration enqueues existing data, sets `mealCategory`, `versionId` and food links, legacy adoption queues what it copies, repositories write record, version and outbox atomically, restore, offline intermediate states kept, new entries linked to their food, `categoryForTime`, `groupByCategory`, `rankQuickPicks` and `buildTrend` (Principle II coverage), meal, history and trends UI, outbox `seq` handling, apply-pull skips pending keys, merge rewrite of IDs and `savedFoodId`, quarantine, sync scheduler (5 s visible polling, backoff, triggers), status states, sign-out warning, live refresh of Today, Recent and Goal, nutrition totals unchanged (Principle II suites stay at 100%) |
+| End-to-end | `scripts/e2e-db.ps1; npm --prefix frontend run e2e` | Two browser contexts, same account: log, edit, delete and see the change on the other within 10 s. Offline logging, then reconnect. First sync merging two pre-seeded devices. Two accounts never see each other's data. Category change, restore and quick-pick order matching on both devices, and trends matching the day view |
 
 ## Manual validation scenarios
 
@@ -80,6 +80,41 @@ Expected results are in **bold**.
 2. Sign in on A as a different user. **The first user's unsynced entry is not visible.**
 3. Sign back in as the first user while online. **The entry syncs and appears on B.**
 
+### V7. Meal categories (US5)
+
+1. Log a food at 08:30 (or set the device clock). **The Meal field is pre-filled as Breakfast, and
+   logging takes no extra tap.**
+2. Change an entry to Dinner. **Today groups entries by meal with subtotals, the day total is unchanged,
+   and B shows the same within 10 s.**
+3. Open a day from before this feature. **Its entries are under Uncategorized and can be given a
+   category. No option moves one back.**
+
+### V8. History and restore (US6)
+
+1. Edit an entry twice, then open History. **The current version and both earlier versions show, newest
+   first.**
+2. Take A offline, edit X twice, and reconnect. **B's history for X shows both replaced states.**
+3. Repeat V4 step 1. **X shows 300 g on both devices, and the 200 g edit is listed in history.**
+4. Delete an entry on A. On B, open Recently deleted and restore it. **It returns on both devices with
+   the same ID, and history shows the deletion and the restore.**
+5. Take A offline before step 4's delete has reached it, then edit the entry on A and reconnect. **It
+   stays deleted until it is explicitly restored.**
+6. In `psql`, set a version's `replaced_at` to 91 days ago and run
+   `select macro_admin.purge_expired();`. **The version is gone from the server, and from the device
+   after its next sync.**
+
+### V9. Quick picks (US7)
+
+1. Log food X five times and Y twice, across both devices. **X is above Y on both.**
+2. Delete three of X's entries. **Y moves above X. Restore them, and X returns to the top.**
+
+### V10. Trends (US8)
+
+1. Seed 30 days with gaps using the e2e helper, then open Trends on another device for 30 days. **Each
+   day matches the day view, gaps show "no data", and the averages leave those days out.**
+2. Edit an entry from last week. **That day's values update.**
+3. Go offline and open the 90-day range with a year of data. **It opens within 2 seconds (SC-008).**
+
 ## Production rollout
 
 1. Generate and apply the idempotent migration script as the owner (`docs/deploy.md` §1, step 5). Then
@@ -87,6 +122,7 @@ Expected results are in **bold**.
 2. Deploy the app (`docs/deploy.md` §3). Every existing user sees the sync notice on next launch, and
    their existing local data uploads after they acknowledge it.
 3. Update `docs/deploy.md` §1. Its heading "identity and security data only" changes, and it gains the
-   backup-retention note (R8) and the `delete_user` procedure.
+   backup-retention note (R8), the 90-day version purge (R16), and the `delete_user` procedure. The
+   `pg_cron` step now also covers entry history.
 4. **Governance**: before release, run `/security-review` and an ASVS L2 pass on the new sync endpoints
    (new data exposure, constitution Governance). Record the findings in the PR.

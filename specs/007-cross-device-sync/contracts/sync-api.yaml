@@ -65,7 +65,7 @@ paths:
   /sync/push:
     post:
       x-access: full
-      summary: Apply local changes. All or nothing; last writer wins by skew-corrected time; deletes win.
+      summary: Apply local changes. All or nothing; last writer wins by skew-corrected time; deletes win unless explicitly restored later.
       operationId: pushChanges
       requestBody:
         required: true
@@ -155,8 +155,12 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [changes, cursor, hasMore]
+                required: [changes, cursor, hasMore, serverNow]
                 properties:
+                  serverNow:
+                    type: string
+                    format: date-time
+                    description: Server time, used by the device for the 90-day history cut-off (R16).
                   changes:
                     type: array
                     items: { $ref: "#/components/schemas/PulledChange" }
@@ -173,15 +177,17 @@ components:
   schemas:
     RecordType:
       type: string
-      enum: [entry, food, goal]
+      enum: [entry, food, goal, version]
 
     Change:
+      description: >
+        The server handles `version` changes before the others in a push (research R14).
       oneOf:
         - type: object
           additionalProperties: false
           required: [type, op, id, record]
           properties:
-            type: { $ref: "#/components/schemas/RecordType" }
+            type: { enum: [entry, food, goal] }
             op: { const: upsert }
             id: { type: string, format: uuid }
             record:
@@ -192,6 +198,24 @@ components:
                 - $ref: "#/components/schemas/LogEntry"
                 - $ref: "#/components/schemas/SavedFood"
                 - $ref: "#/components/schemas/ProteinGoal"
+        - type: object
+          description: An explicit restore, the only change that can revive a tombstone (R15).
+          additionalProperties: false
+          required: [type, op, id, record]
+          properties:
+            type: { const: entry }
+            op: { const: restore }
+            id: { type: string, format: uuid }
+            record: { $ref: "#/components/schemas/LogEntry" }
+        - type: object
+          description: A replaced state of an entry. Insert-only, and a repeated ID is ignored (R14).
+          additionalProperties: false
+          required: [type, op, id, record]
+          properties:
+            type: { const: version }
+            op: { const: insert }
+            id: { type: string, format: uuid }
+            record: { $ref: "#/components/schemas/EntryVersion" }
         - type: object
           additionalProperties: false
           required: [type, op, id, deletedAt]
@@ -211,14 +235,22 @@ components:
             revision: { type: integer }
             record:
               oneOf:
-                - $ref: "#/components/schemas/LogEntry"
+                - allOf:
+                    - $ref: "#/components/schemas/LogEntry"
+                    - type: object
+                      properties:
+                        restoredAt:
+                          type: [string, "null"]
+                          format: date-time
+                          description: Server-assigned and pull-only. Never sent in a push (R15).
                 - $ref: "#/components/schemas/SavedFood"
                 - $ref: "#/components/schemas/ProteinGoal"
+                - $ref: "#/components/schemas/EntryVersion"
         - type: object
           additionalProperties: false
           required: [type, revision, id, deleted]
           properties:
-            type: { $ref: "#/components/schemas/RecordType" }
+            type: { enum: [entry, food, goal] }
             revision: { type: integer }
             id: { type: string, format: uuid }
             deleted: { const: true }
@@ -260,8 +292,12 @@ components:
       allOf:
         - $ref: "#/components/schemas/Meta"
         - type: object
-          required: [dayKey, loggedAt, name, quantity, macros, source, savedFoodId]
+          required: [versionId, dayKey, loggedAt, name, quantity, macros, source, savedFoodId, mealCategory]
           properties:
+            versionId:
+              type: string
+              format: uuid
+              description: ID of this saved state. New on every change (R14).
             dayKey: { type: string, format: date }
             loggedAt: { type: string, format: date-time }
             name: { $ref: "#/components/schemas/Name" }
@@ -269,6 +305,37 @@ components:
             macros: { $ref: "#/components/schemas/Macros" }
             source: { enum: [ai, ai-edited, manual] }
             savedFoodId: { type: [string, "null"], format: uuid }
+            mealCategory: { $ref: "#/components/schemas/MealCategory" }
+
+    MealCategory:
+      description: Null means Uncategorized. An incoming null never replaces a category (R17).
+      enum: [breakfast, lunch, dinner, snacks, null]
+
+    EntryVersion:
+      description: >
+        A replaced state of an entry. `id` is that state's versionId. `createdAt` and `updatedAt` are the
+        entry's values in that state.
+      allOf:
+        - $ref: "#/components/schemas/Meta"
+        - type: object
+          required:
+            [entryId, changeType, replacedAt, dayKey, loggedAt, name, quantity, macros, source, savedFoodId, mealCategory]
+          properties:
+            entryId: { type: string, format: uuid }
+            changeType: { enum: [edit, delete, restore] }
+            replacedAt: { type: string, format: date-time }
+            dayKey: { type: string, format: date }
+            loggedAt: { type: string, format: date-time }
+            name: { $ref: "#/components/schemas/Name" }
+            quantity: { $ref: "#/components/schemas/Quantity" }
+            macros: { $ref: "#/components/schemas/Macros" }
+            source: { enum: [ai, ai-edited, manual] }
+            savedFoodId: { type: [string, "null"], format: uuid }
+            mealCategory: { $ref: "#/components/schemas/MealCategory" }
+            restoredAt:
+              type: [string, "null"]
+              format: date-time
+              description: Pull-only (R15).
 
     SavedFood:
       allOf:

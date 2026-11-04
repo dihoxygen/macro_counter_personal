@@ -216,7 +216,8 @@ view on another device shows matching per-day values and averages.
 ### Edge Cases
 
 - **Same record edited on two devices before either syncs**: the edit made most recently wins for
-  that record. The other edit is discarded, and nothing gets corrupted or duplicated.
+  that record. The other edit is kept as a version in history (see below), and nothing gets corrupted
+  or duplicated.
 - **Edited on one device, deleted on another**: the deletion wins. A deleted entry does not come back
   because of an older edit.
 - **Device offline for a long time** (for example, weeks): its changes still sync when it reconnects,
@@ -300,6 +301,7 @@ view on another device shows matching per-day values and averages.
   server and that the owner operates it.
 - **FR-018**: Sync endpoints MUST be rate limited and size limited per user, consistent with
   Principle VII abuse-resistance rules.
+
 **Meal categories**
 
 - **FR-020**: Every new log entry MUST have exactly one meal category from the fixed set Breakfast,
@@ -409,10 +411,9 @@ view on another device shows matching per-day values and averages.
 - Meal categories are a fixed set (FR-020). The time-of-day pre-fill uses these default windows, in
   device local time: Breakfast 04:00–10:59, Lunch 11:00–14:59, Dinner 17:00–21:59, Snacks at all
   other times.
-- Calories are derived from macros and are not stored separately.
+- Calories (kcal) are stored with each entry's macros, as they are today, and totals sum them.
 - Existing authentication, sessions, invites and the owner role (feature 003) are reused unchanged.
 - Server backups of food data are kept for no more than 30 days, after which data deleted under
   FR-016 is gone from backups too.
 - Users are on the small invite-only scale described in the constitution. Large-scale performance
   is out of scope.
-- The constitution will be amended (Principle III and the Storage constraint) before planning.

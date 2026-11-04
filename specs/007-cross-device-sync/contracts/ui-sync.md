@@ -12,6 +12,7 @@ match on roles and states, not exact copy.
   - that the log, saved foods and goals are now stored on the server so they appear on every device;
   - that the owner operates the server and can read the data;
   - that photos are never stored;
+  - that earlier versions and deleted entries are kept for 90 days;
   - that removing the account deletes the data.
 
   It has one primary button, **Turn on sync**. Until it is pressed, the app works local-only and the
@@ -41,7 +42,7 @@ A `401` hands over to the existing session-expired overlay. The outbox is kept.
 ## Live updates (FR-005)
 
 - Pulled changes notify subscribers. Today's totals, the entry list, the recent foods (quick picks),
-  the history day view and the goal settings refresh without a reload.
+  the history day view, the goal settings, an open entry history and trends refresh without a reload.
 - An entry open in the editor that is deleted remotely closes the editor, with an announcement
   ("This entry was deleted on another device").
 - An entry open in the editor that is changed remotely keeps the person's unsaved edits. Saving
@@ -54,3 +55,39 @@ A `401` hands over to the existing session-expired overlay. The outbox is kept.
   you sign in here." It offers **Sign out anyway** and **Cancel**.
 - It is never a browser `confirm()` dialog.
 - With an empty outbox, sign-out behaves as today.
+
+## Meal categories (FR-020 to FR-023, US5)
+
+- The manual form, the estimate review, the re-log form and the entry editor have a **Meal** field with
+  Breakfast, Lunch, Dinner and Snacks. It uses native controls, 44 px targets, and works at 360 px.
+- New entries are pre-filled from local time. Accepting the pre-fill needs no extra tap, so the Principle
+  IV interaction counts do not change. Each item in a multi-item estimate has its own field.
+- Today and the history day view group entries in the order Breakfast, Lunch, Dinner, Snacks,
+  Uncategorized. Each group shows a heading and subtotal, and empty groups are hidden. The day total
+  stays as it is.
+- Uncategorized entries can be given a category in the editor. The field offers no way back to
+  Uncategorized.
+
+## Entry history (FR-024 to FR-026, US6)
+
+- The entry editor has a **History** button. The list shows the current version, then earlier versions
+  newest first, each with when and how it changed (edited, deleted, restored) and its key values.
+- Each earlier version has **Restore**. It applies immediately with no confirmation, because the restore
+  can itself be undone from history. A status message confirms it.
+- Today and the history day view show a **Recently deleted** link when that day has deleted entries from
+  the last 90 days. It lists them, each with **Restore**, and the list is hidden when there are none.
+- Restoring works offline and syncs later, like any edit.
+
+## Quick picks (FR-029 to FR-031, US7)
+
+- The quick picks and the Recent foods list use the new order. Their labels and flows do not change.
+
+## Trends (FR-033 to FR-035, US8)
+
+- A **Trends** button joins the Today navigation and opens a new view. It offers 7, 30 and 90 days,
+  defaulting to 7.
+- The view shows calories, protein, carbs and fat per day, each with its average for the range. The
+  protein chart shows the goal that applied each day, as a step line.
+- A day with no entries shows as a gap and reads "no data" in the table. It never shows as zero.
+- A table holds the same values for screen readers, and nothing relies on colour alone.
+- Trends work offline and show a short empty message when the range has no entries.
