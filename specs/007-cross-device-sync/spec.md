@@ -10,8 +10,8 @@
 
 ## Constitution Impact *(feature-specific)*
 
-This feature knowingly conflicts with the current constitution (v2.0.0) and needs an amendment via
-`/speckit-constitution` before `/speckit-plan` can pass its Constitution Check:
+This feature conflicted with constitution v2.0.0. Amendment v3.0.0 resolves the conflicts below, and
+the plan's Constitution Check is made against v3.0.0:
 
 - **Principle III (Local-First, Sync-Ready Data)**: "The server MUST NOT store users' food logs,
   photos, or goals." This feature stores food logs, saved foods and goals on the server.
@@ -21,6 +21,16 @@ This feature knowingly conflicts with the current constitution (v2.0.0) and need
   that the plan's threat model must cover (cross-user access, breach exposure, backups).
 
 Photos are **not** affected: they remain unpersisted and are never synced.
+
+## Clarifications
+
+### Session 2026-11-03
+
+- Q: How should meal categories (breakfast, lunch, dinner, snacks) work for log entries? → A: Fixed set of four (Breakfast, Lunch, Dinner, Snacks); every new entry gets one, pre-filled from time of day and changeable; existing entries become "Uncategorized".
+- Q: When you ask for history of "changes", what should be kept when an entry is edited or deleted? → A: Keep every previous version of each log entry for 90 days; the user can view an entry's history and restore a deleted or earlier version.
+- Q: What should make a food count as "frequently used" in the quick-pick list? → A: Number of uses in the last 30 days, with last use breaking ties; the usage is synced so every device shows the same order.
+- Q: How should daily calorie and macro totals from past days be kept and shown? → A: Always calculated from the entries (no stored daily totals), plus a trends view of daily calories and macros over 7, 30 and 90 days against the protein goal.
+- Q: Should meal categories, entry history, frequently used foods and trends ship in 007 or a separate feature? → A: All in 007 with one data design, staged: sync stories (P1/P2) ship first, then the new capabilities as P3 stories.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -118,6 +128,91 @@ server.
 
 ---
 
+### User Story 5 - Sort my day into meals (Priority: P3)
+
+When I log a food it lands in Breakfast, Lunch, Dinner or Snacks based on the time, and I can switch
+it. My day is grouped by meal with a subtotal for each.
+
+**Why this priority**: Makes a day easier to read, but sync is useful without it. Staged after the
+sync stories; its data is designed in from the start (FR-001).
+
+**Independent Test**: Log foods at different times of day, change one entry's category, and confirm
+grouping, subtotals and the change appear the same on a second device.
+
+**Acceptance Scenarios**:
+
+1. **Given** it is 08:30 on my device, **When** I log a food, **Then** it is pre-filled as Breakfast and I
+   can change it without an extra step in the logging flow.
+2. **Given** a day with entries in several categories, **When** I view it, **Then** entries are grouped by
+   category with subtotals, and the daily total equals the sum of all entries.
+3. **Given** entries logged before this feature, **When** I view their day, **Then** they appear under
+   "Uncategorized" until I choose a category.
+
+---
+
+### User Story 6 - Undo a mistake (Priority: P3)
+
+I accidentally deleted yesterday's dinner, or overwrote a quantity. I open the entry's history (or the
+day's recently deleted list) and restore the version I want, and every device shows it.
+
+**Why this priority**: A safety net that matters more once data lives on several devices, but not
+needed for sync to work.
+
+**Independent Test**: Edit and then delete an entry, restore the earlier version on another device,
+and confirm both devices show the restored entry with its full history.
+
+**Acceptance Scenarios**:
+
+1. **Given** an entry I have edited twice, **When** I open its history, **Then** I see the current
+   version and both previous versions, newest first.
+2. **Given** an entry I deleted within the last 90 days, **When** I restore it, **Then** it reappears with
+   the same ID on every device and the restore is recorded in its history.
+3. **Given** a version replaced more than 90 days ago, **When** I open the history, **Then** that version
+   is no longer listed.
+
+---
+
+### User Story 7 - My usual foods are at the top (Priority: P3)
+
+The foods I log most this month are first in my quick picks, on every device.
+
+**Why this priority**: Speeds up repeat logging (Principle IV); the existing last-used order already
+works in the meantime.
+
+**Independent Test**: Log one food five times and another once over a few days, across two devices,
+and confirm both devices list them in the same frequency order.
+
+**Acceptance Scenarios**:
+
+1. **Given** food X logged 5 times and food Y 2 times in the last 30 days, **When** I open quick picks,
+   **Then** X is above Y on every device.
+2. **Given** a food last logged 40 days ago, **When** I open quick picks, **Then** it appears after all
+   foods used in the last 30 days.
+
+---
+
+### User Story 8 - See how I'm trending (Priority: P3)
+
+I open trends and see my daily calories and macros for the last 7, 30 or 90 days, alongside my
+protein goal, with the average for the period.
+
+**Why this priority**: Turns synced history into insight, but depends on sync and history being in
+place first.
+
+**Independent Test**: Seed known entries across 30 days on one device, sync, and confirm the trends
+view on another device shows matching per-day values and averages.
+
+**Acceptance Scenarios**:
+
+1. **Given** 30 days of entries, **When** I open trends for 30 days, **Then** each day's values match that
+   day's totals in the day view, and the protein goal shown is the one that applied that day.
+2. **Given** days with no entries in the range, **When** I view trends, **Then** those days show "no data"
+   and are excluded from the average.
+3. **Given** I edit an entry from last week, **When** I reopen trends, **Then** that day's values reflect
+   the edit.
+
+---
+
 ### Edge Cases
 
 - **Same record edited on two devices before either syncs**: the edit made most recently wins for
@@ -138,6 +233,21 @@ server.
   correct goal applies to each day on every device.
 - **Device-only preferences** (such as the remembered camera) are never synced.
 - **Data export**: export still works and includes the full synced history.
+- **Entries logged before categories existed**: they show as "Uncategorized" on every device. The user
+  can assign a category to them, but is never forced to.
+- **Restoring after a deletion on another device**: an explicit restore is the newest change, so it
+  wins over the earlier deletion and the entry reappears on every device. The deletion stays in the
+  entry's history.
+- **Two devices edit the same entry concurrently**: the losing edit (FR-007) is still kept as a
+  version in history, so it can be restored.
+- **Entry older than 90 days in history**: its earlier versions are gone; only its current version (or
+  nothing, if it was deleted more than 90 days ago) remains.
+- **Same food logged on two devices while offline**: both uses count once each after sync; the
+  quick-pick order is the same on both devices once they have synced.
+- **Editing a past day**: changing, deleting or restoring an entry on an earlier day updates that day's
+  totals and the trends view on every device after sync.
+- **Category changed on two devices**: the category is part of the entry, so the normal per-entry
+  conflict rule (FR-007) applies.
 
 ## Requirements *(mandatory)*
 
@@ -145,11 +255,13 @@ server.
 
 **Sync scope**
 
-- **FR-001**: System MUST sync a user's log entries, saved foods and protein-goal history across every
-  device where that user is signed in.
+- **FR-001**: System MUST sync a user's log entries (including meal category and entry history), saved
+  foods and protein-goal history across every device where that user is signed in. The stored data
+  design MUST cover the P3 capabilities (User Stories 5–8) from the start, so delivering them later
+  needs no breaking change to data already synced.
 - **FR-002**: System MUST NOT sync or store photos, and MUST NOT sync device-only preferences.
 - **FR-003**: System MUST sync creates, edits and deletions. Deleted records MUST stay deleted on
-  every device.
+  every device unless the user explicitly restores them (FR-026).
 - **FR-004**: Each synced record MUST keep its stable ID and created/updated timestamps on every
   device.
 
@@ -188,16 +300,77 @@ server.
   server and that the owner operates it.
 - **FR-018**: Sync endpoints MUST be rate limited and size limited per user, consistent with
   Principle VII abuse-resistance rules.
+**Meal categories**
+
+- **FR-020**: Every new log entry MUST have exactly one meal category from the fixed set Breakfast,
+  Lunch, Dinner, Snacks. Users cannot add, rename or remove categories.
+- **FR-021**: When logging, the category MUST be pre-filled from the device's local time of day, and the
+  user MUST be able to change it without adding an interaction to the Principle IV logging flow.
+- **FR-022**: Entries that existed before this feature MUST be shown as "Uncategorized" and MUST NOT be
+  given a category automatically. The user MAY change an existing entry's category at any time,
+  including from "Uncategorized"; a categorized entry cannot be set back to "Uncategorized".
+- **FR-023**: The day view MUST group entries by category (in the order Breakfast, Lunch, Dinner,
+  Snacks, then Uncategorized) and show each category's subtotal; the daily total stays the sum of all
+  entries. Category changes MUST sync like any other entry edit.
+
+**Entry history**
+
+- **FR-024**: Every time a log entry is edited or deleted, System MUST keep the version it replaced,
+  including all entry fields, the change type (edit or delete) and when the
+  change was made. Versions MUST sync so the same history is visible on every device.
+- **FR-025**: The user MUST be able to view an entry's history (current version plus previous versions,
+  newest first), and to see recently deleted entries for any day.
+- **FR-026**: The user MUST be able to restore an earlier version of an entry, or a deleted entry. A
+  restore is a new change: it becomes the current version, keeps the entry's ID, is itself recorded in
+  history, and syncs to every device like any other edit.
+- **FR-027**: Previous versions MUST be kept for 90 days after they were replaced, then permanently
+  removed. Versions are owned by the entry's user, covered by FR-013 to FR-016, and deleted with that
+  user's other food data.
+- **FR-028**: Entry history covers log entries only. Saved foods keep only their latest version;
+  protein goals keep their existing effective-from history.
+
+**Frequently used foods**
+
+- **FR-029**: The quick-pick list MUST order saved foods by how many times each was logged in the last
+  30 days (most first), with the most recent use breaking ties. Foods not used in the last 30 days
+  follow, ordered by last use.
+- **FR-030**: A food's use count MUST come from the user's synced log entries that are linked to it
+  (by entry day), so it combines uses from every device, drops when a linked entry is deleted and
+  rises again if that entry is restored.
+- **FR-031**: For the same synced data, every device MUST show the quick-pick list in the same order.
+
+**History & trends**
+
+- **FR-032**: Daily calorie and macro totals MUST always be calculated from that day's current log
+  entries. System MUST NOT store separate daily total records, so an edit, deletion or restore on any
+  past day is reflected immediately in that day's totals and in trends.
+- **FR-033**: System MUST provide a trends view showing, per day, calories, protein, carbs and fat over
+  a selectable range of the last 7, 30 or 90 days, with the protein goal that applied on each day and
+  the average for the range.
+- **FR-034**: Days with no entries MUST be shown as "no data" in trends, not as zero, and MUST be left
+  out of range averages.
+- **FR-035**: Trends MUST work offline from the data on the device, and MUST show identical values on
+  every device for the same synced data.
+
+**Audit**
+
 - **FR-019**: Security-relevant sync events (refused cross-user attempts, rejected payloads, rate-limit
   hits, user data deletion) MUST be recorded in the audit log, without food contents.
 
 ### Key Entities
 
 - **Log Entry**: one logged food on a given day. Has a name, quantity with unit, macros, source
-  (manual or AI), an optional link to a saved food, the day it belongs to, and when it was logged.
-  Owned by exactly one user.
-- **Saved Food**: a reusable food with reference quantity and macros, used for quick picks. Ordered
-  by last use. Owned by exactly one user.
+  (manual or AI), an optional link to a saved food, the day it belongs to, its meal category
+  (Breakfast, Lunch, Dinner, Snacks, or Uncategorized for pre-existing entries), and when it was
+  logged. Owned by exactly one user.
+- **Entry Version**: a previous state of a log entry, kept for 90 days. Holds a copy of the entry's
+  fields, the change type (edit, delete or restore) and when it was replaced. Belongs to one log entry
+  and one user.
+- **Meal Category**: a fixed, app-defined set of four values (Breakfast, Lunch, Dinner, Snacks) plus
+  "Uncategorized" for legacy entries. Not user-editable and not stored per user.
+- **Saved Food**: a reusable food with reference quantity and macros, used for quick picks. Has a last
+  use and a 30-day use count derived from the log entries linked to it; ordered by that count, then
+  by last use (FR-029). Owned by exactly one user.
 - **Protein Goal**: a goal value (or cleared goal) effective from a given day onward. The history of
   these decides the goal for any day. Owned by exactly one user.
 - **Deletion Marker**: a record that something was deleted, so that deletions reach every device and
@@ -221,7 +394,9 @@ server.
 - **SC-006**: Daily totals for any given day are identical on every device after sync, checked
   against hand-verified reference days.
 - **SC-007**: No synced change is lost in conflict tests covering concurrent edits, edit-versus-delete,
-  and long offline periods, apart from the losing side of a same-record conflict as defined in FR-007.
+  and long offline periods, and the losing side of a same-record conflict (FR-007) is still recoverable from entry history.
+- **SC-008**: The trends view for a 90-day range opens within 2 seconds on a device holding at least one
+  year of history, and its daily values match the day view for every day in the range.
 
 ## Assumptions
 
@@ -231,8 +406,9 @@ server.
   operator. Users are told this (FR-017). End-to-end encryption is out of scope for this feature.
 - The resolution unit for conflicts is the whole record (last change wins per record), not individual
   fields. This is simpler and enough for a small personal tool.
-- "Meals" in the request refers to how entries are grouped today (entries logged on a day). No new
-  meal entity (breakfast/lunch/dinner) is added by this feature.
+- Meal categories are a fixed set (FR-020). The time-of-day pre-fill uses these default windows, in
+  device local time: Breakfast 04:00–10:59, Lunch 11:00–14:59, Dinner 17:00–21:59, Snacks at all
+  other times.
 - Calories are derived from macros and are not stored separately.
 - Existing authentication, sessions, invites and the owner role (feature 003) are reused unchanged.
 - Server backups of food data are kept for no more than 30 days, after which data deleted under

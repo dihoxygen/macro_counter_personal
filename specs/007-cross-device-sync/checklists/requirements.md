@@ -35,8 +35,7 @@
   resolved with documented defaults in the Assumptions section (sync on for everyone, server-readable
   data with no end-to-end encryption, whole-record last-change-wins, no new "meal" entity, 30-day
   backup retention).
-- The spec intentionally conflicts with constitution v2.0.0 Principle III and the Storage technical
-  constraint (see "Constitution Impact"). Amend with `/speckit-constitution` before `/speckit-plan`,
-  or the Constitution Check will block.
+- The spec conflicted with constitution v2.0.0 Principle III and the Storage technical constraint
+  (see "Constitution Impact"). Amendment v3.0.0 resolves this.
 - FR-015 ("encrypted at rest and in transit") and FR-018 ("sync endpoints") name security properties,
   not technologies. They were kept on purpose because Principle VII requires them.

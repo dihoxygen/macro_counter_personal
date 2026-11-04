@@ -1,3 +1,21 @@
+<!--
+Sync Impact Report
+- Version change: 2.0.0 → 3.0.0 (MAJOR: Principle III redefined incompatibly; the server may
+  now store users' activity data)
+- Modified principles:
+  - III. Local-First, Sync-Ready Data → III. Synced, Offline-Capable Data
+  - VII. Security & Authentication: Accountability now also requires disclosing that activity
+    data is stored on the server
+- Modified sections:
+  - Technical Constraints → Storage: activity data lives in the application database inside the
+    existing PostgreSQL database
+- Added sections:
+  - Technical Constraints → Cross-device
+- Removed sections: none
+- Deferred TODOs: none
+- Affected in-flight work: specs/007-cross-device-sync ("Constitution Impact" section now
+  resolved by this amendment)
+-->
 # Macro Counter Constitution
 
 ## Core Principles
@@ -34,25 +52,46 @@ Macro and calorie calculations are the core of the product and MUST be trustwort
 
 Rationale: A macro counter that gives wrong totals is worse than no tool at all.
 
-### III. Local-First, Sync-Ready Data
+### III. Synced, Offline-Capable Data
 
-User data MUST be stored on the device, and the app MUST remain usable offline for logging,
-viewing history and manual entry once a user has signed in on that device.
+A user's activity data (food log entries, saved foods, goals and their history) MUST be available
+on every device where that user signs in. The server keeps the account's copy in the application
+database, and each device keeps a local copy so the app stays usable offline for logging, viewing
+history and manual entry once the user has signed in on that device.
 
-- The server MUST NOT store users' food logs, photos, or goals. It stores only what Principle VII
-  requires (identity, credentials, sessions, quotas, security audit events).
+- The server MAY store users' activity data in the application database (see Technical
+  Constraints → Storage). It MUST NOT store photos. Device-only preferences (e.g. a camera ID)
+  MUST stay on the device and MUST NOT be synced.
+- Every server-side activity record MUST be owned by exactly one user ID. Every read and write
+  MUST be scoped to the authenticated caller's ID on the server (Principle VII). A user MUST never
+  be able to read or change another user's activity data.
 - Local data MUST be scoped to the signed-in user's ID (separate database or key prefix), so two
   people using one browser never see each other's data. Signing out MUST NOT silently delete
-  local data, but MUST make it inaccessible to other users on that browser.
-- All persistence MUST go through a single storage abstraction (repository interface); UI and
-  domain code MUST NOT call browser storage APIs directly.
-- Every record MUST have a stable unique ID (e.g. UUID) and `createdAt`/`updatedAt` timestamps
-  so a future sync layer can reconcile changes.
-- Stored data schemas MUST be versioned, and schema changes MUST include a tested migration.
+  local data, including changes that have not synced yet, but MUST make it inaccessible to other
+  users on that browser.
+- All persistence MUST go through a single storage abstraction (repository interface) on each
+  side. UI and domain code MUST NOT call browser storage APIs, the sync transport, or the
+  database directly.
+- Every record MUST have a stable unique ID (e.g. UUID) and `createdAt`/`updatedAt` timestamps.
+  Deletions MUST be recorded so they reach every device, and a deleted record MUST NOT come back
+  from a stale copy.
+- Conflict resolution rules MUST be deterministic, documented in the feature plan, and covered by
+  tests (concurrent edits, edit versus delete, long offline periods). They MUST NOT rely on device
+  clocks being accurate.
+- Changes made offline MUST be kept and synced automatically when the device reconnects. The UI
+  MUST show when changes have not synced or when sync is failing.
+- Stored data schemas, both local and server-side, MUST be versioned, and schema changes MUST
+  include a tested migration.
+- The server MUST validate every incoming record (shape, explicit units, value ranges, size) and
+  MUST reject an invalid request as a whole, never applying partial data.
+- Removing a user MUST delete their activity data from the application database. Backup
+  retention for that data MUST be stated in the feature plan.
 - Users MUST be able to export their data in a portable format (JSON or CSV).
 
-Rationale: Keeping health data on each person's device means a server breach cannot expose
-anyone's food log, and these rules let cloud sync be added later without rewriting the data layer.
+Rationale: People log from more than one device, and a log that exists only on one phone keeps
+them from switching devices. Keeping a local copy keeps logging fast and offline-capable
+(Principle IV). Server-side ownership checks and validation take the place of the protection that
+device-only storage used to give.
 
 ### IV. Fast Logging on Desktop & Mobile
 
@@ -178,7 +217,9 @@ It MUST be built as if it were exposed to the public internet, because it will b
   or external calls MUST include a short threat model in its plan (assets, trust boundaries,
   top threats, mitigations), using OWASP ASVS Level 2 and the OWASP Top 10 as the baseline.
 - **Accountability**: Friends MUST be told what is sent to Claude (food text and photos) and
-  that the owner operates the server, before they first use AI lookup. The owner MUST be able
+  that the owner operates the server, before they first use AI lookup. They MUST also be told,
+  before their activity data is first synced, that it is stored on the owner's server and can be
+  read by the owner as its operator. The owner MUST be able
   to remove a user and revoke all of their sessions immediately.
 
 Rationale: One leaked session or an exposed endpoint would let strangers spend the owner's Claude
@@ -192,11 +233,17 @@ in and automatically tested rather than depending on vigilance.
   home LAN), over HTTPS.
 - **Audience**: The owner first; a small invite-only group of friends second. This is not a public
   product. Features for open sign-up, billing, or large scale are out of scope (Principle V).
-- **Storage**: User food data is client-side only (e.g. IndexedDB) behind the storage abstraction
-  in Principle III. The server stores only identity and security data (users, credentials,
-  invites, sessions, quotas, audit events) in a server-side store chosen in the auth feature's
-  plan. It MUST NOT store food logs, photos, or goals. A server-side proxy for Claude API calls
-  is permitted (see AI Integration).
+- **Storage**: The server stores identity and security data (users, credentials, invites,
+  sessions, quotas, audit events) and users' activity data (food log entries, saved foods, goals)
+  in the existing PostgreSQL database. Activity data lives in the application database, kept in
+  tables separate from the identity and security tables, and is managed through versioned
+  migrations. Each device keeps a per-user local copy (e.g. IndexedDB) behind the storage
+  abstraction in Principle III. Photos MUST NOT be stored on the server (see Principle VI for photo handling). Activity
+  data MUST be encrypted in transit and at rest, and MUST NOT appear in logs. A server-side proxy
+  for Claude API calls is permitted (see AI Integration).
+- **Cross-device**: Every feature that reads or writes activity data MUST work the same on every
+  device a user signs in on. Its plan MUST describe how the change syncs, including offline
+  behavior and conflicts (Principle III).
 - **Authentication & Access**: Invite-only accounts with strong authentication, as required by
   Principle VII.
 - **Privacy**: Food logs and personal data MUST NOT be sent to third-party services. External
@@ -239,4 +286,4 @@ in and automatically tested rather than depending on vigilance.
   Principle VII (for example `/security-review` plus a manual ASVS L2 checklist pass) MUST be
   completed and its findings resolved or risk-accepted in writing.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-13
+**Version**: 3.0.0 | **Ratified**: 2026-10-07 | **Last Amended**: 2026-10-30
