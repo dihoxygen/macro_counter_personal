@@ -114,14 +114,15 @@ server-side data is deleted.
 it before they rely on it.
 
 **Independent Test**: As user X, attempt to read or change user Y's records through every sync path
-and confirm each attempt is refused. Delete user Y and confirm none of Y's food data remains on the
-server.
+and confirm Y's records are never read or changed. Delete user Y and confirm none of Y's food data
+remains on the server.
 
 **Acceptance Scenarios**:
 
 1. **Given** two users exist, **When** user X syncs, **Then** X receives only X's own records.
-2. **Given** user X sends a change that targets one of user Y's records, **When** the server processes
-   it, **Then** the change is refused and Y's data is unchanged.
+2. **Given** user X sends a change using an ID that also exists for user Y, **When** the server processes
+   it, **Then** it applies only to X's own records and Y's data is unchanged. No request can name
+   another user.
 3. **Given** a user is removed, **When** the removal completes, **Then** their synced food data is
    deleted from the server.
 4. **Given** I am signed in, online or offline, **When** I choose Export my data, **Then** a JSON file
@@ -323,7 +324,7 @@ view on another device shows matching per-day values and averages.
 **Entry history**
 
 - **FR-024**: Every time a log entry is edited or deleted, System MUST keep the version it replaced,
-  including all entry fields, the change type (edit or delete) and when the
+  including all entry fields, the change type (edit, delete or restore) and when the
   change was made. Versions MUST sync so the same history is visible on every device.
 - **FR-025**: The user MUST be able to view an entry's history (current version plus previous versions,
   newest first), and to see recently deleted entries for any day.
@@ -370,8 +371,9 @@ view on another device shows matching per-day values and averages.
 
 **Audit**
 
-- **FR-019**: Security-relevant sync events (refused cross-user attempts, rejected payloads, rate-limit
-  hits, user data deletion) MUST be recorded in the audit log, without food contents.
+- **FR-019**: Security-relevant sync events (rejected payloads, rate-limit hits, user data deletion) MUST
+  be recorded in the audit log, without food contents. A cross-user attempt cannot be expressed in a
+  sync request, so there is no such event to record.
 
 ### Key Entities
 

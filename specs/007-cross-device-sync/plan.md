@@ -22,7 +22,9 @@ after the sync stories
   pull**.
   - `POST /api/sync/push` applies up to 200 changes all or nothing.
   - `GET /api/sync/changes?since=` returns everything after the device's cursor.
-  - Per-user revisions are dense, and a row lock serializes them, so a pull never misses a change
+  - Per-user revisions are ordered, and a row lock serializes them, so a pull never misses a change.
+    A stored row that beats an incoming change takes a new revision, so a device that skipped it still
+    receives it
     ([R2](./research.md#r2-sync-protocol-outbox-push-then-cursor-pull)).
 - **Conflicts.** Last writer wins per record, using the device's edit time **corrected for that
   device's clock skew** at push time. A delete wins over edits through tombstones, and only an explicit
@@ -83,7 +85,7 @@ the new tables; the data path is raw SQL like `AuditLog`), the built-in rate lim
 **Testing**:
 - Backend: xUnit + `WebApplicationFactory` against the local PostgreSQL 17 test database as the
   least-privilege role (003 R14). `FakeTimeProvider` drives the skew and ordering tests. A
-  concurrent-push test runs two pushes for one user in parallel and asserts dense, gap-free pulls.
+  concurrent-push test runs two pushes for one user in parallel and asserts that no pull skips a change.
 - Frontend: Vitest + fake-indexeddb for the migration, repositories, outbox, scheduler (fake timers)
   and status. React Testing Library for the indicator, notice, sign-out warning and live refresh.
 - Playwright e2e with **two browser contexts on one account** for cross-device behavior, plus

@@ -49,7 +49,8 @@ server revision it has seen). A sync round always does **push, then pull**:
    is greater than the cursor, oldest first, in pages of 500. Deleted records come back as delete
    markers. The device applies them and advances the cursor.
 
-- Revisions are **per user and dense**. `macro_data.sync_state.revision` is incremented inside the push
+- Revisions are **per user, ordered, and never skipped by a pull**. The 90-day purge can leave gaps,
+  which pulls do not depend on. `macro_data.sync_state.revision` is incremented inside the push
   transaction with `update … returning`. That row lock serializes a user's pushes, so revisions commit
   in order and a pull can never skip a revision that commits later. The usual global-sequence gap
   problem does not occur.
@@ -63,6 +64,11 @@ server revision it has seen). A sync round always does **push, then pull**:
 - While a record has a pending outbox item, an incoming pulled version of it is **not applied
   locally**. The push goes first, the server decides (R3), and the following pull brings the winner.
   This is why the order is always push, then pull.
+- **Whenever the stored row beats an incoming change, it takes a new revision.** A pull may already have
+  skipped that row and moved the cursor past it, for example after an edit made during a push, or with
+  more than 200 changes queued. Without a new revision the device would never receive the winner, and a
+  deleted entry could stay on that device. This covers `superseded` results and `merged` results where
+  the canonical row wins.
 - Pushes are idempotent. Re-sending a change after a lost response yields the same result (R3's
   comparison is `>`, so an equal version is a no-op).
 
@@ -336,6 +342,10 @@ it becomes an immutable, insert-only row in `entry_versions`, whose primary key 
   first arrival's `changeType` and `replacedAt` stand, and every device converges on them through pull.
 - In a push, the server handles version changes before entry changes, so a device's own change type
   beats the backstop's default of `edit`.
+- If a pushed version's ID matches the current row's `version_id`, the server takes the state's fields
+  from that row and only `changeType` and `replacedAt` from the push. A pulled state's times are already
+  corrected, and `restoredAt` is never pushed, so the device's copy would lose the restore marker and be
+  skew-corrected twice.
 - Versions sync as a fourth record type with their own revisions, using the same push, pull and
   validation. There is no separate history API.
 - A save that changes nothing writes nothing, so history has no empty versions.
@@ -359,6 +369,8 @@ the stale-copy rule and restore stay separate.
 
 | Stored | Incoming | Result |
 |---|---|---|
+| absent | upsert or restore | Inserted |
+| absent | delete | A tombstone is inserted, with `created_at` set to the delete's corrected time. This is an entry created and deleted before it ever synced |
 | live | upsert | R3 last writer wins. The loser becomes a version |
 | live | restore | Same as upsert, and `restored_at` is set to the corrected time |
 | live | delete | Tombstone, unless `restored_at` is later than the delete's corrected time. Then the delete is `superseded`: it was made before the restore |

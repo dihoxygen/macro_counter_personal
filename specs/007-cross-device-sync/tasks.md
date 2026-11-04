@@ -135,6 +135,7 @@ that is not captured from the first sync can never be recovered, so none of this
   - Records are stamped `schemaVersion: 1` (the record schema), not the DB `SCHEMA_VERSION`.
   - `EntryPatch` accepts a non-null `mealCategory` and leaves `dayKey` fixed.
   - An aborted transaction leaves no write.
+  - `frontend/src/data/entryVersionRepository.test.ts`: `listAll` returns every stored version.
 - [ ] T016 [P] Link and pre-fill tests:
   - `frontend/src/data/logService.test.ts`: `confirmEntries` saves the food first and creates the entry with that food's ID, for both new and existing foods (R18).
   - `frontend/src/domain/review.test.ts` and `frontend/src/features/add-food/ManualEntryForm.test.tsx`, `frontend/src/features/recent/RelogForm.test.tsx`: new entries carry `categoryForTime(now())` and never a null category (FR-020, R20).
@@ -214,6 +215,7 @@ that is not captured from the first sync can never be recovered, so none of this
   - Files: `frontend/src/data/entryRepository.ts`, `savedFoodRepository.ts`, `proteinGoalRepository.ts`.
   - Widen each transaction to the record store plus `outbox` and `meta`, and `entryVersions` for entries.
   - Follow data-model.md "Write rules".
+  - Create `frontend/src/data/entryVersionRepository.ts` with `listAll`. US4's export needs it, and US6 extends it.
   - Makes T015 pass. Depends on T031.
 - [ ] T034 Link and pre-fill new entries:
   - In `frontend/src/data/logService.ts`, call `upsertFromEntry` first and create the entry with `savedFoodId: food.id`.
@@ -246,7 +248,7 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
 - [ ] T039 [P] [US1] Push contract tests in `backend/MacroCounter.Api.Tests/Sync/SyncPushTests.cs`:
   - Upsert of an entry, a food and a goal: `200 {revision, results:[{status:'applied'}]}`.
   - Revision increases once per row written.
-  - Re-sending the same push is idempotent (`superseded`, no revision change for equal `effective_at`).
+  - Re-sending the same push is idempotent: the result is `superseded` and the stored data does not change. The stored row takes a new revision (R2).
   - Changing `dayKey` of an existing entry gives `400 invalid_request` with reason `day_key_changed`.
   - **All or nothing**: one invalid change in a batch of 5 applies none (FR-014), and audit records `sync_rejected` with a reason code only.
 - [ ] T040 [P] [US1] Conflict-matrix tests in `backend/MacroCounter.Api.Tests/Sync/SyncConflictTests.cs` (R3, R15, FR-007, SC-007). Use `FakeTimeProvider`:
@@ -254,7 +256,10 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - Device A's clock 2 h fast, edit pushed later, is ordered correctly against device B.
   - Delete versus older edit and delete versus newer edit: **delete wins both**.
   - Every row of the R15 table: live + upsert, live + restore (sets `restored_at`), live + delete (tombstone, or `superseded` when `restored_at` is later than the delete), tombstone + upsert (`superseded`), tombstone + restore (revived when later, otherwise `superseded`), tombstone + delete (no-op).
+  - The two `absent` rows of the R15 table. A delete of an unknown ID inserts a tombstone with `created_at` set to the delete's corrected time.
   - A device's clock 2 h fast does not let a stale upsert revive a tombstone.
+  - **Stale pull (R2, constitution III)**: a stored row or tombstone that beats an incoming change takes a new revision, and a pull from a cursor already past its old revision returns it. The same holds for a `merged` result where the canonical row wins.
+  - **Long offline (constitution III)**: a device offline for weeks, with its clock drifting, reconnects after edits on both sides and a delete on the other device. Every record converges, and the delete holds.
 - [ ] T041 [P] [US1] History capture tests in `backend/MacroCounter.Api.Tests/Sync/SyncHistoryTests.cs` (R14, R16, R17, SC-007):
   - An applied upsert inserts the displaced state with `change_type = 'edit'`. A delete inserts it with `delete`, and a restore with `restore`.
   - A superseded upsert inserts the incoming state, including one lost to a tombstone.
@@ -263,6 +268,7 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - `replaced_at` is skew-corrected and clamped to `serverNow`.
   - A tombstone row has null data columns while its delete version holds the data.
   - An upsert or restore with a null `meal_category` keeps a stored category (FR-022).
+  - A pushed version whose ID matches the current row's `version_id` takes its fields from that row, so `restored_at` is kept and `effective_at` is not corrected twice. Only `change_type` and `replaced_at` come from the push (R14, FR-026).
 - [ ] T042 [P] [US1] Pull tests in `backend/MacroCounter.Api.Tests/Sync/SyncPullTests.cs`:
   - `since=0` returns all records oldest revision first, across all four record types.
   - Pages of `limit` with `cursor`/`hasMore`, and every response has `serverNow`.
@@ -277,6 +283,9 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - Pull loops while `hasMore` and saves `sync.cursor` after each page.
   - A `401` stops the round and keeps the outbox.
   - Nutrition totals for a reference day are identical before and after a round trip (Principle II, SC-006).
+  - A key skipped by a pull because it was pending ends up matching the server after its push is `superseded`, including a deleted entry (R2).
+  - `isComplete()` is false until the first pull has finished, while a pull has more pages, or while the outbox or quarantine is non-empty (R21).
+  - Pushed records never contain a photo or device-preference field, and `devicePreferences` is never read (FR-002).
 - [ ] T045 [P] [US1] Remote-apply tests in `frontend/src/data/remoteApply.test.ts`:
   - Pulled upserts are written **without** creating outbox items.
   - A tombstone removes the local entry.
@@ -301,6 +310,7 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - Edit on B → A updates.
   - Delete on A → gone on B and stays gone after reload.
   - A third fresh context gets the full history.
+  - Totals for a hand-verified reference day are identical on both devices (SC-006).
   - Add the spec to the signed-in Playwright project in `frontend/playwright.config.ts`, and make `scripts/e2e-db.ps1` pre-acknowledge or reset the sync notice as each test needs.
 
 ### Implementation for User Story 1
@@ -312,7 +322,9 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - Whenever the current row changes, insert the displaced state as a version. Insert a superseded incoming state as a version. Both use `on conflict do nothing`.
   - Reject a changed `day_key` on live rows and on restores of them.
   - Compute `normalized_name = lower(btrim(name))` server-side. `last_used_at` keeps the later value, even when the rest of the upsert is superseded (R4).
-  - Each row written takes one revision.
+  - Implement the `absent` rows of the R15 table.
+  - A pushed version whose ID matches the current row's `version_id` takes its fields from that row (R14).
+  - Each row written takes one revision. Whenever the stored row beats an incoming change, including a `merged` result where the canonical row wins, give it a new revision so the next pull brings it (R2).
   - Makes T039, T040, T041 and T043 pass.
 - [ ] T051 [US1] Implement pull in `backend/MacroCounter.Api/Sync/SyncStore.cs`:
   - A `union all` across the four tables `where revision > $since order by revision limit $limit`.
@@ -320,7 +332,7 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - Makes T042 pass. Depends on T050.
 - [ ] T052 [US1] Replace the push and changes stubs in `backend/MacroCounter.Api/Sync/SyncEndpoints.cs` with calls to T050/T051. Return `400 invalid_request` with `invalid[]` or `too_many_changes` from the validator, and audit `sync_rejected` (reason code only).
 - [ ] T053 [P] [US1] Implement `frontend/src/data/remoteApply.ts`: write pulled records in one transaction per page (`entries`, `entryVersions`, `savedFoods`, `proteinGoals`, `outbox`, `meta`), skip pending keys, delete on tombstone, save `sync.cursor` and `sync.serverNow`, remove expired versions, and emit changes. Makes T045 pass.
-- [ ] T054 [US1] Implement `frontend/src/sync/syncEngine.ts`: `runRound()` = push (peek ≤ 200 → read current records and versions, leaving out `restoredAt` → `api.push` → ack by `seq`) then pull (loop pages via T053). It exposes `pendingCount()` and the last outcome. Makes T044 pass. Depends on T053.
+- [ ] T054 [US1] Implement `frontend/src/sync/syncEngine.ts`: `runRound()` = push (peek ≤ 200 → read current records and versions, leaving out `restoredAt` → `api.push` → ack by `seq`) then pull (loop pages via T053). It exposes `pendingCount()`, `isComplete()` and the last outcome. Makes T044 pass. Depends on T053.
 - [ ] T055 [US1] Implement `frontend/src/sync/scheduler.ts` and `frontend/src/sync/useSyncStatus.ts`:
   - The scheduler owns the timers and triggers (T046) and starts once the notice is acknowledged.
   - `useSyncStatus` derives the ui-sync.md states from engine outcomes.
@@ -408,6 +420,7 @@ receives the changes. Signing out offline shows the warning (quickstart V3, V6).
 - [ ] T071 [US3] E2E offline in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend):
   - `contextA.setOffline(true)` → log 2 foods and edit 1 → the status shows offline → `setOffline(false)` → B receives them within 10 s.
   - Offline sign-out shows the warning. Signing in as `e2e-friend` on A does not show the entry. Signing back in as `e2e-owner` online syncs it.
+  - Re-logging a previously used food takes the same number of interactions offline as online, and no more than 3 (SC-004, Principle IV).
 
 ### Implementation for User Story 3
 
@@ -434,6 +447,7 @@ V11, SC-005, SC-009).
   - User X pushes upserts, deletes, restores and versions using IDs that exist for user Y. Y's rows are unchanged, and X gets its own rows.
   - X's pull never contains Y's records or versions.
   - No sync request body or query accepts a user ID (contract has none; StrictJson rejects `userId`).
+  - A push with a photo or device-preference field is rejected by StrictJson, and no `macro_data` table has a column for either (FR-002).
   - Every sync endpoint returns 401 when unauthenticated (SC-005: 0 successful cross-user reads or writes).
 - [ ] T076 [P] [US4] `delete_user` tests in `backend/MacroCounter.Api.Tests/Database/DeleteUserTests.cs`:
   - After `select macro_admin.delete_user('<y>')`, every `macro_data` table and every `macro` user table has 0 rows for Y.
@@ -462,8 +476,8 @@ V11, SC-005, SC-009).
   - Makes T076 pass.
 - [ ] T082 [US4] Fix any isolation or logging gaps found by T075/T077 in `backend/MacroCounter.Api/Sync/SyncStore.cs`, `SyncEndpoints.cs` and `Security/RefusedRequestLogging.cs`, until both pass
 - [ ] T083 [P] [US4] Document `delete_user` in `specs/003-auth-security-foundations/contracts/owner-procedures.md` (new section, with a link back to 007 research R8)
-- [ ] T084 [US4] Implement `frontend/src/data/exportData.ts`: pure `buildExport(records, exportedAt)`, plus `UserData.exportData()` reading through the repositories (add `listAll` to the entry and saved-food repositories and a version-listing method). Wire it in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T078 pass.
-- [ ] T085 [US4] Implement `frontend/src/data/downloadFile.ts` (`Blob` and a temporary `download` link, injected through services) and add **Export my data**, its note about the file's contents, and the incomplete-export note to `frontend/src/auth/AccountMenu.tsx`. Makes T079 and T080 pass. Depends on T084.
+- [ ] T084 [US4] Implement `frontend/src/data/exportData.ts`: pure `buildExport(records, exportedAt)`, plus `UserData.exportData()` reading through the repositories (add `listAll` to the entry and saved-food repositories, and use `entryVersionRepository.listAll` from T033). Wire it in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T078 pass.
+- [ ] T085 [US4] Implement `frontend/src/data/downloadFile.ts` (`Blob` and a temporary `download` link, injected through services) and add **Export my data**, its note about the file's contents, and the incomplete-export note (from `services.sync.isComplete()`) to `frontend/src/auth/AccountMenu.tsx`. Makes T079 and T080 pass. Depends on T084.
 
 **Checkpoint**: All sync stories work, and the data can be exported. The sync core is releasable once
 the Polish phase passes.
@@ -485,7 +499,7 @@ subtotals and the change match on a second device (quickstart V7).
   - Each item in a multi-item estimate has its own field.
   - A null entry shows Uncategorized in the editor, can take a category, and the field has no Uncategorized option (FR-022).
   - 44 px targets at 360 px.
-- [ ] T088 [P] [US5] Grouped list tests in `frontend/src/features/today/EntryList.test.tsx` (extend), and `DayLog.test.tsx` and `TodayScreen.test.tsx`: Today and the day view show headed groups with subtotals, and the day total is unchanged
+- [ ] T088 [P] [US5] Grouped list tests in `frontend/src/features/today/EntryList.test.tsx` (new), extending `DayLog.test.tsx` (new in T047) and `TodayScreen.test.tsx`: Today and the day view show headed groups with subtotals, and the day total is unchanged
 - [ ] T089 [US5] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): log and change a category on A, then confirm that groups and subtotals match on B within 10 s
 
 ### Implementation for User Story 5
@@ -522,7 +536,7 @@ confirm both devices show it with full history (quickstart V8).
 
 ### Implementation for User Story 6
 
-- [ ] T097 [US6] Implement `frontend/src/data/entryVersionRepository.ts` and add it to `UserData` in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T093 pass.
+- [ ] T097 [US6] Extend `frontend/src/data/entryVersionRepository.ts` (created in T033) with history, recently deleted and restore, and add it to `UserData` in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T093 pass.
 - [ ] T098 [US6] Implement `frontend/src/features/today/EntryHistory.tsx` and open it from `EntryEditor.tsx`. Makes T094 pass.
 - [ ] T099 [US6] Implement `frontend/src/features/today/RecentlyDeleted.tsx` and add it to `TodayScreen.tsx` and `DayLog.tsx`. Makes T095 and T096 pass.
 
@@ -588,7 +602,7 @@ per day and on average (quickstart V10).
   - `delete_user` usage, and that users ask the owner for removal (FR-016).
   - Rollout order: migrate, then deploy (quickstart "Production rollout").
 - [ ] T115 [P] Update `scripts/dev-db.ps1` and `scripts/e2e-db.ps1` so they re-run `macro_admin.grant_app_role` after migrations, and the e2e setup can reset `macro_data` between runs
-- [ ] T116 Performance checks with one seeded year of data (about 2,500 records), in `frontend/tests/e2e/auth/sync-two-devices.spec.ts`: a fresh context is ready in < 15 s (SC-003), the 90-day trends view opens in < 2 s (SC-008), and an export finishes in < 5 s (SC-009). Also measure that an empty pull is < 30 ms p95 in a backend test (`Sync/SyncPullTests.cs`, a loose bound to avoid flakiness)
+- [ ] T116 Performance checks with one seeded year of data (about 2,500 records), in `frontend/tests/e2e/auth/sync-two-devices.spec.ts`: a fresh context is ready in < 15 s (SC-003), the 90-day trends view opens in < 2 s (SC-008), and an export finishes in < 5 s (SC-009). Repeat a change between two contexts 20 times and assert that at least 19 arrive within 10 s (SC-001). Also measure that an empty pull is < 30 ms p95 in a backend test (`Sync/SyncPullTests.cs`, a loose bound to avoid flakiness)
 - [ ] T117 Run `scripts/check.ps1` (full gate: backend, frontend unit with 100% nutrition coverage, e2e, `npm audit`, `dotnet list package --vulnerable`, secret scan) and fix any failures
 - [ ] T118 Run the manual scenarios V1–V11 in `specs/007-cross-device-sync/quickstart.md` and record the results in the PR description
 - [ ] T119 Governance gate: run `/security-review` plus an ASVS L2 pass over `/api/sync/*`, `SyncStore`, the `macro_data` grants and RLS, and the purge. Resolve or risk-accept the findings in writing in the PR (constitution Governance, plan threat model S1–S15)

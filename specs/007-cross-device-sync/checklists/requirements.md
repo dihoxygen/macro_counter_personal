@@ -31,6 +31,10 @@
 
 ## Notes
 
+- This checklist was completed before the 2026-11-03 clarifications and the 2026-11-04 export and
+  FR-016 changes. `/speckit-analyze` reviewed those additions against the plan and tasks on 2026-11-04,
+  but the items above were not re-validated. Categories are a field on each entry, so "no new meal
+  entity" still holds.
 - Passed on the first validation pass. No clarification markers were needed: open choices were
   resolved with documented defaults in the Assumptions section (sync on for everyone, server-readable
   data with no end-to-end encryption, whole-record last-change-wins, no new "meal" entity, 30-day

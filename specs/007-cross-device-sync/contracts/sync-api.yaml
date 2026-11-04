@@ -113,8 +113,9 @@ paths:
                           enum: [applied, superseded, merged]
                           description: >
                             applied: the server now holds this version. superseded: the server kept a
-                            newer version or a tombstone (the next pull brings it). merged: matched an
-                            existing saved food or goal by natural key (see canonicalId).
+                            newer version or a tombstone, and gave it a new revision so the next pull
+                            brings it (research R2). merged: matched an existing saved food or goal by
+                            natural key (see canonicalId).
                         canonicalId:
                           type: string
                           format: uuid

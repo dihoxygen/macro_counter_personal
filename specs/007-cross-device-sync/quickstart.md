@@ -97,8 +97,8 @@ Expected results are in **bold**.
 3. Repeat V4 step 1. **X shows 300 g on both devices, and the 200 g edit is listed in history.**
 4. Delete an entry on A. On B, open Recently deleted and restore it. **It returns on both devices with
    the same ID, and history shows the deletion and the restore.**
-5. Take A offline before step 4's delete has reached it, then edit the entry on A and reconnect. **It
-   stays deleted until it is explicitly restored.**
+5. Take A offline and edit entry Y. On B, delete Y. Bring A back. **Y stays deleted on both, and A's edit
+   is listed in Y's history until Y is explicitly restored.**
 6. In `psql`, set a version's `replaced_at` to 91 days ago and run
    `select macro_admin.purge_expired();`. **The version is gone from the server, and from the device
    after its next sync.**
