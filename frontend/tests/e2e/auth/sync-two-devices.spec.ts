@@ -106,7 +106,8 @@ test.describe('offline (US3)', () => {
     await logManually(a.page, 'Offline toast', 4);
     await changeAmount(a.page, /offline toast/i, '50');
     await expect(entryList(a.page)).toContainText('Offline soup');
-    await expect(totals(a.page)).toContainText('600 kcal');
+    // 200 + 200, and the toast halved to 100.
+    await expect(totals(a.page)).toContainText('500 kcal');
 
     await a.context.setOffline(false);
 
@@ -193,8 +194,8 @@ test.describe('your own data (US4)', () => {
 });
 
 test('a tab left open never takes in the data of the next person on that browser (threat S16)', async ({ browser }, testInfo) => {
-  const { account: first, first: browserProfile } = await newAccount(browser, testInfo, 'tabA');
-  const { account: second, first: secondDevice } = await newAccount(browser, testInfo, 'tabB');
+  const { account: first, first: browserProfile } = await newAccount(browser, testInfo, 'taba');
+  const { account: second, first: secondDevice } = await newAccount(browser, testInfo, 'tabb');
   await logManually(secondDevice.page, 'Private dinner', 40);
   await waitForSynced(secondDevice.page);
 
