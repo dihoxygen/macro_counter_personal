@@ -98,7 +98,7 @@ Checking V5 against the code found two ways to get a 500 from input the validato
 | 8.3.2 | Users can export or delete their data | Met (closes 003 G10) | Export my data (`frontend/src/auth/AccountMenu.tsx`, FR-036). Deletion by the owner on request (`macro_admin.delete_user`, FR-016), `DeleteUserTests`. Self-service deletion is out of scope |
 | 8.3.3 | Clear notice and opt-in before use | Met | A server-enforced sync notice before any upload (`SyncNoticeTests`, FR-017), stating who can read the data and the 90-day retention |
 | 8.3.4 | Sensitive data identified, with a policy | Met | plan.md threat model (S1–S16), data-model.md |
-| 8.3.5 | Access to sensitive data audited | **Needs a decision** | Was N/A in 003 because the server held no health data. Now it does. See [G15](#g15-reads-of-activity-data-are-not-audited-835) |
+| 8.3.5 | Access to sensitive data audited | Risk-accepted | Was N/A in 003 because the server held no health data. Now it does. See [G15](#g15-reads-of-activity-data-are-not-audited-835) |
 | 8.3.7 | Encryption with approved algorithms | Met | Unchanged, plus V6 above |
 | 8.3.8 | Retention and automatic deletion | Met, Deploy | `purge_expired` removes versions after 90 days, and tombstones hold no food data (research R16, `ActivityDataMigrationTests`). Needs `pg_cron` on the host (deploy.md step 1.3) |
 
@@ -130,7 +130,7 @@ Checking V5 against the code found two ways to get a 500 from input the validato
 
 **Recommendation: accept.** Each person only ever reads their own data, and that happens every 5 seconds, so auditing it would add noise and no insight. Owner access is disclosed in the sync notice (constitution VII, threat S7). To be looked at again before the app opens beyond a small group of known people.
 
-**Owner's decision:** pending.
+**Owner's decision (2026-11-05): accepted.** Recorded in [plan.md](../plan.md#accepted-risks-t119-asvs-level-2).
 
 ## Not covered here
 

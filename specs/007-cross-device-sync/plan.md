@@ -215,6 +215,14 @@ What is new is that boundary 2 now carries health data.
 | S16 | A tab left open after someone else signs in on that browser syncs their data into its own account's database, or its changes into theirs (A01) | Every sync request names the tab's account, and the server refuses a mismatch in the same request (R22). Tests at API level, and an e2e with two tabs | Low |
 | S15 | An exported file is left somewhere others can read it (privacy) | The Account screen says the file holds the food log. Export is built only from the signed-in user's database, and a test signs in as a second user to confirm it | Accepted: the file is the user's own copy once saved |
 
+### Accepted risks (T119, ASVS Level 2)
+
+The ASVS L2 pass ([checklists/asvs-l2.md](checklists/asvs-l2.md)) left one open gap. The owner accepted it on 2026-11-05. It should be looked at again before the app is opened beyond a small group of known people.
+
+| Gap | ASVS | Accepted because |
+|---|---|---|
+| G15 | 8.3.5 | Reads of activity data are not audited, including the owner's direct reads through Supabase. Each person only reads their own data, every few seconds, so auditing would add noise and no insight. Owner access is disclosed in the sync notice (threat S7). |
+
 ## Project Structure
 
 ### Documentation (this feature)
