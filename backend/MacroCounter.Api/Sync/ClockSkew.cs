@@ -8,12 +8,13 @@ public static class ClockSkew
 {
     /// <summary>
     /// The server-time equivalent of a device timestamp, never later than <paramref name="serverNow"/>, so a
-    /// future-dated edit cannot win forever. Milliseconds only, the precision device timestamps have.
+    /// future-dated edit cannot win forever. Milliseconds only, the precision device timestamps have. Worked out in
+    /// wider numbers: a device can send any date, and the sum must not run off the end of the calendar.
     /// </summary>
     public static DateTimeOffset Correct(DateTimeOffset deviceTime, DateTimeOffset clientNow, DateTimeOffset serverNow)
     {
-        var corrected = deviceTime + (serverNow - clientNow);
-        var clamped = corrected < serverNow ? corrected : serverNow;
-        return new DateTimeOffset(clamped.Ticks - (clamped.Ticks % TimeSpan.TicksPerMillisecond), clamped.Offset);
+        var corrected = (Int128)deviceTime.UtcTicks + serverNow.UtcTicks - clientNow.UtcTicks;
+        var clamped = (long)Int128.Clamp(corrected, DateTimeOffset.MinValue.UtcTicks, serverNow.UtcTicks);
+        return new DateTimeOffset(clamped - (clamped % TimeSpan.TicksPerMillisecond), TimeSpan.Zero);
     }
 }

@@ -133,6 +133,27 @@ public class SyncPullTests(PostgresFixture db) : IAsyncLifetime
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await _client.Http.GetAsync("/api/sync/changes")).StatusCode);
     }
 
+    [Theory]
+    [InlineData("since=-1")]
+    [InlineData("since=abc")]
+    [InlineData("since=1&since=2")]
+    [InlineData("since=99999999999999999999")]
+    [InlineData("since=0&limit=0")]
+    [InlineData("since=0&limit=-5")]
+    [InlineData("since=0&limit=99999999999")]
+    public async Task A_bad_query_is_refused_as_bad(string query)
+    {
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await _client.Http.GetAsync($"/api/sync/changes?{query}")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("since=9223372036854775807")]
+    [InlineData("since=0&limit=2147483647")]
+    public async Task The_largest_values_are_handled(string query)
+    {
+        Assert.Equal(System.Net.HttpStatusCode.OK, (await _client.Http.GetAsync($"/api/sync/changes?{query}")).StatusCode);
+    }
+
     [Fact]
     public async Task An_empty_pull_is_cheap()
     {

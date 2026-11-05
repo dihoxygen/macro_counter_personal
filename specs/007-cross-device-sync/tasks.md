@@ -603,7 +603,7 @@ per day and on average (quickstart V10).
   - Rollout order: migrate, then deploy (quickstart "Production rollout").
 - [X] T115 [P] Update `scripts/dev-db.ps1` and `scripts/e2e-db.ps1` so they re-run `macro_admin.grant_app_role` after migrations, and the e2e setup can reset `macro_data` between runs
 - [X] T116 Performance checks with one seeded year of data (about 2,500 records), in `frontend/tests/e2e/auth/sync-two-devices.spec.ts`: a fresh context is ready in < 15 s (SC-003), the 90-day trends view opens in < 2 s (SC-008), and an export finishes in < 5 s (SC-009). Repeat a change between two contexts 20 times and assert that at least 19 arrive within 10 s (SC-001). Also measure that an empty pull is < 30 ms p95 in a backend test (`Sync/SyncPullTests.cs`, a loose bound to avoid flakiness)
-- [ ] T117 Run `scripts/check.ps1` (full gate: backend, frontend unit with 100% nutrition coverage, e2e, `npm audit`, `dotnet list package --vulnerable`, secret scan) and fix any failures
+- [X] T117 Run `scripts/check.ps1` (full gate: backend, frontend unit with 100% nutrition coverage, e2e, `npm audit`, `dotnet list package --vulnerable`, secret scan) and fix any failures
 - [ ] T118 Run the manual scenarios V1–V11 in `specs/007-cross-device-sync/quickstart.md` and record the results in the PR description
 - [ ] T119 Governance gate: run `/security-review` plus an ASVS L2 pass over `/api/sync/*`, `SyncStore`, the `macro_data` grants and RLS, and the purge. Resolve or risk-accept the findings in writing in the PR (constitution Governance, plan threat model S1–S15)
 

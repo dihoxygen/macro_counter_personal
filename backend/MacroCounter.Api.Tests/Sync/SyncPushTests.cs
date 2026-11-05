@@ -141,6 +141,36 @@ public class SyncPushTests(PostgresFixture db) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_timestamp_in_any_offset_is_stored_as_the_same_moment()
+    {
+        var id = Guid.NewGuid();
+        var record = (Dictionary<string, object?>)Entry(id, Now);
+        record["loggedAt"] = "2026-11-04T09:00:00.000+01:00";
+
+        var result = await _client.PushAsync(Now, Upsert("entry", id, record));
+
+        Assert.Equal(["applied"], result.Statuses());
+        Assert.Equal(new DateTime(2026, 11, 4, 8, 0, 0, DateTimeKind.Utc), await Sql.Scalar<DateTime>(db.AdminConnectionString,
+            "select logged_at from macro_data.log_entries where id = @i", ("i", id)));
+        var pulled = (await _client.PullAllAsync()).Find("entry", id)!.Value.GetProperty("record");
+        Assert.Equal("2026-11-04T08:00:00.000Z", pulled.GetProperty("loggedAt").GetString());
+    }
+
+    [Theory]
+    [InlineData("0001-01-01T00:00:00.000Z", "9999-12-31T23:59:59.000Z")]
+    [InlineData("9999-12-31T23:59:59.000Z", "0001-01-01T00:00:00.000Z")]
+    public async Task Extreme_times_are_handled_and_never_a_server_error(string clientNow, string updatedAt)
+    {
+        var id = Guid.NewGuid();
+        var record = (Dictionary<string, object?>)Entry(id, Now);
+        record["updatedAt"] = updatedAt;
+
+        var response = await _client.PostAsync("/api/sync/push", new { clientNow, changes = new[] { Upsert("entry", id, record) } });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task A_body_without_the_device_time_is_invalid()
     {
         var response = await _client.PostAsync("/api/sync/push", new { changes = Array.Empty<object>() });

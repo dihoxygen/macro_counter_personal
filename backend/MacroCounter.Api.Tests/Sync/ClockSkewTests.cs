@@ -57,6 +57,21 @@ public class ClockSkewTests
     }
 
     [Fact]
+    public void Times_at_the_ends_of_the_calendar_do_not_overflow()
+    {
+        Assert.Equal(ServerNow, ClockSkew.Correct(DateTimeOffset.MaxValue, DateTimeOffset.MinValue, ServerNow));
+        Assert.Equal(DateTimeOffset.MinValue, ClockSkew.Correct(DateTimeOffset.MinValue, DateTimeOffset.MaxValue, ServerNow));
+    }
+
+    [Fact]
+    public void The_result_is_in_utc()
+    {
+        var edit = new DateTimeOffset(2026, 11, 4, 11, 0, 0, TimeSpan.FromHours(1));
+
+        Assert.Equal(TimeSpan.Zero, ClockSkew.Correct(edit, ServerNow, ServerNow).Offset);
+    }
+
+    [Fact]
     public void The_result_has_millisecond_precision_like_the_device()
     {
         var edit = ServerNow.AddMinutes(-1);

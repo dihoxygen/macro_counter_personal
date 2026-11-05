@@ -132,8 +132,8 @@ public static class SyncJson
     };
 
     /// <summary>
-    /// Reads ISO 8601 only with an explicit offset, and writes what the device's toISOString() writes. The device
-    /// compares these strings, so one format must hold everywhere.
+    /// Reads ISO 8601 only with an explicit offset, always as UTC, which is all the database driver accepts. Writes what
+    /// the device's toISOString() writes: the device compares these strings, so one format must hold everywhere.
     /// </summary>
     private sealed class OffsetTimestampConverter : JsonConverter<DateTimeOffset>
     {
@@ -143,7 +143,7 @@ public static class SyncJson
             var hasOffset = text is not null && text.Length > 10 && text.IndexOf('T') > 0
                 && (text.EndsWith('Z') || text.LastIndexOfAny(['+', '-']) > text.IndexOf('T'));
             return hasOffset && DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var value)
-                ? value
+                ? value.ToUniversalTime()
                 : throw new JsonException("A timestamp needs ISO 8601 with an offset.");
         }
 
