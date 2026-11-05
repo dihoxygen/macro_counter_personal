@@ -215,9 +215,15 @@ function NoticeStep({ onSession }: { onSession: (session: SessionState) => void 
         model made by Anthropic, to estimate the nutrition. Nothing else is sent: not your name,
         your food log, your goals or your history.
       </p>
+      <h2>What is stored on the server</h2>
       <p>
-        Your food log stays on this device. The owner runs the server, which keeps only your
-        account, sign-in sessions, AI usage counts and a security log.
+        Your log, saved foods and goals are stored on the server, so they appear on every device you
+        sign in on. The owner runs the server and can read this data, along with your account,
+        sign-in sessions, AI usage counts and a security log.
+      </p>
+      <p>
+        Photos are never stored. Earlier versions of entries, and deleted entries, are kept for 90
+        days. Removing your account deletes all of this. Ask the owner to remove it.
       </p>
       <FieldError message={error} />
       <button type="button" className="primary" onClick={acknowledge} disabled={busy}>

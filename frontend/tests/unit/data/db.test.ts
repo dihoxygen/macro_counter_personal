@@ -15,8 +15,11 @@ describe('openDb', () => {
     const db = await openDb(uniqueName());
     expect([...db.objectStoreNames].sort()).toEqual([
       'entries',
+      'entryVersions',
       'meta',
+      'outbox',
       'proteinGoals',
+      'quarantine',
       'savedFoods',
     ]);
 
@@ -29,9 +32,9 @@ describe('openDb', () => {
     db.close();
   });
 
-  it('writes meta.schemaVersion = 1', async () => {
+  it('writes meta.schemaVersion = 2', async () => {
     const db = await openDb(uniqueName());
-    expect(await db.get('meta', 'schemaVersion')).toBe(1);
+    expect(await db.get('meta', 'schemaVersion')).toBe(2);
     db.close();
   });
 
@@ -42,7 +45,7 @@ describe('openDb', () => {
     first.close();
     const second = await openDb(name);
     expect(await second.get('meta', 'marker')).toBe(99);
-    expect(await second.get('meta', 'schemaVersion')).toBe(1);
+    expect(await second.get('meta', 'schemaVersion')).toBe(2);
     second.close();
   });
 });
@@ -111,11 +114,14 @@ describe('per-account databases (FR-016)', () => {
     const b = await openUserDb(bob);
     expect([...b.objectStoreNames].sort()).toEqual([
       'entries',
+      'entryVersions',
       'meta',
+      'outbox',
       'proteinGoals',
+      'quarantine',
       'savedFoods',
     ]);
-    expect(await b.get('meta', 'schemaVersion')).toBe(1);
+    expect(await b.get('meta', 'schemaVersion')).toBe(2);
 
     await new IdbEntryRepository(a).create({
       dayKey: '2026-10-14',
@@ -125,6 +131,7 @@ describe('per-account databases (FR-016)', () => {
       macros: { kcal: 105, proteinG: 1.3, carbsG: 27, fatG: 0.4 },
       source: 'manual',
       savedFoodId: null,
+      mealCategory: 'lunch',
     });
 
     expect(await new IdbEntryRepository(a).listByDay('2026-10-14')).toHaveLength(1);

@@ -24,6 +24,9 @@ export const API_ERROR_CODES = [
   'wrong_setup_step',
   'service_unavailable',
   'invalid_credentials',
+  // 007
+  'sync_notice_required',
+  'too_many_changes',
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number] | 'network' | 'unknown';

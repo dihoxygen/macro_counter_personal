@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useServices } from '../../app/services';
 import type { View } from '../../App';
 import { Composer } from '../add-food/Composer';
+import { SyncStatus } from '../sync/SyncStatus';
 import { EntryEditor } from './EntryEditor';
 import { EntryList } from './EntryList';
 import { TotalsPanel } from './TotalsPanel';
@@ -34,6 +35,7 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
       <header className="screen-header today-header">
         <h1>Today</h1>
         <span className="muted today-date">{formatToday(now())}</span>
+        <SyncStatus />
         <nav className="today-nav" aria-label="Other views">
           <button type="button" className="icon-button" aria-label="Previous days" onClick={() => onNavigate('history')}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -65,6 +67,7 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
         />
       </div>
       <div className="today-entries stack">
+        {day.notice && <p role="status">{day.notice}</p>}
         {day.editing && (
           <EntryEditor key={day.editing.id} entry={day.editing} onClose={day.closeEditor} onChanged={day.changed} />
         )}

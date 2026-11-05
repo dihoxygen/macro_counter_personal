@@ -7,7 +7,8 @@ import { authEvents } from '../../src/api/http';
 import App from '../../src/App';
 import { AuthGate } from '../../src/auth/AuthGate';
 import { useServices } from '../../src/app/services';
-import { fakeDevice } from './testServices';
+import { fakeDevice, fakeSync } from './testServices';
+import { createChanges } from '../../src/data/changes';
 import { fakeAuth, renderWithServices } from './testServices';
 import { bananaItem, estimateOf } from './fixtures';
 
@@ -382,6 +383,8 @@ describe('AuthGate', () => {
         goals: {},
         log: {},
         devicePreferences: {},
+        sync: fakeSync(),
+        changes: createChanges(),
         close: vi.fn(),
       } as never;
     }

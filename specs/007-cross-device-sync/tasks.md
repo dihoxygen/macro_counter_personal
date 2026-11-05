@@ -113,20 +113,20 @@ that is not captured from the first sync can never be recovered, so none of this
   - `limit` > 500 is capped at 500.
   - One user hitting the limit does not limit another user.
   - Audit records `rate_limited` with reason `sync`.
-- [ ] T012 [P] Device schema v2 migration tests in `frontend/src/data/db.test.ts` (extend):
+- [X] T012 [P] Device schema v2 migration tests in `frontend/src/data/db.test.ts` (extend):
   - Opening a v1 database upgrades it to v2 with new stores `outbox` (keyPath `key`), `quarantine` (keyPath `key`) and `entryVersions` (keyPath `id`, indexes `entryId`, `dayKey`, `replacedAt`).
   - Every existing entry gains `mealCategory: null` and a new `versionId`. `updatedAt` and all other fields are unchanged.
   - `meta.sync.cursor = 0`, `meta.outboxSeq` initialised, and `meta.schemaVersion = 2`.
   - `runMigrations` gap checks still pass.
-- [ ] T013 [P] Outbox tests in `frontend/src/data/outbox.test.ts`:
+- [X] T013 [P] Outbox tests in `frontend/src/data/outbox.test.ts`:
   - `enqueue(tx, key, op)` assigns an increasing `seq` from `meta.outboxSeq`.
   - Re-enqueueing a key replaces its op and `seq`, except that a pending `restore` stays `restore` when an `upsert` follows it (R15).
   - `peek(limit)` returns items oldest `seq` first.
   - `ack(items)` removes only items whose `seq` is unchanged (an edit made in flight survives).
   - `quarantine(key, reason)` moves the item out of the outbox.
   - `pendingCount()` and `quarantineCount()` work.
-- [ ] T014 [P] `categoryForTime` tests in `frontend/src/domain/meals.test.ts`, covering each boundary of the spec's windows in local time: Breakfast 04:00–10:59, Lunch 11:00–14:59, Dinner 17:00–21:59, Snacks at all other times (including 15:00–16:59 and 22:00–03:59). 100% coverage
-- [ ] T015 [P] Repository-writes tests in `frontend/src/data/entryRepository.test.ts`, `savedFoodRepository.test.ts` and `proteinGoalRepository.test.ts` (extend):
+- [X] T014 [P] `categoryForTime` tests in `frontend/src/domain/meals.test.ts`, covering each boundary of the spec's windows in local time: Breakfast 04:00–10:59, Lunch 11:00–14:59, Dinner 17:00–21:59, Snacks at all other times (including 15:00–16:59 and 22:00–03:59). 100% coverage
+- [X] T015 [P] Repository-writes tests in `frontend/src/data/entryRepository.test.ts`, `savedFoodRepository.test.ts` and `proteinGoalRepository.test.ts` (extend):
   - create/update/upsert/setGoal write the record **and** `outbox['entry:<id>'|'food:<id>'|'goal:<id>'] = {op:'upsert'}` in one transaction.
   - Entry create assigns a `versionId`. Update assigns a new one.
   - Entry update adds the old state to `entryVersions` with `changeType: 'edit'`, `entryId`, `replacedAt`, and `id` equal to the old `versionId`, and queues `version:<id>` with `{op:'insert'}`.
@@ -136,14 +136,14 @@ that is not captured from the first sync can never be recovered, so none of this
   - `EntryPatch` accepts a non-null `mealCategory` and leaves `dayKey` fixed.
   - An aborted transaction leaves no write.
   - `frontend/src/data/entryVersionRepository.test.ts`: `listAll` returns every stored version.
-- [ ] T016 [P] Link and pre-fill tests:
+- [X] T016 [P] Link and pre-fill tests:
   - `frontend/src/data/logService.test.ts`: `confirmEntries` saves the food first and creates the entry with that food's ID, for both new and existing foods (R18).
   - `frontend/src/domain/review.test.ts` and `frontend/src/features/add-food/ManualEntryForm.test.tsx`, `frontend/src/features/recent/RelogForm.test.tsx`: new entries carry `categoryForTime(now())` and never a null category (FR-020, R20).
-- [ ] T017 [P] HTTP client tests in `frontend/src/api/sync.test.ts`:
+- [X] T017 [P] HTTP client tests in `frontend/src/api/sync.test.ts`:
   - `getState`, `acknowledgeNotice`, `push` and `pull` call the contract paths, send `X-CSRF-Token` on `POST`, and validate responses with zod, including `serverNow` and the `version` record type.
   - They map `409 sync_notice_required`, `400 invalid_request` with `invalid[]`, `too_many_changes`, `429` with Retry-After, `503 service_unavailable`, `401` and network failure to `ApiError` codes.
   - Add the new codes to `API_ERROR_CODES` in `frontend/src/api/http.ts`.
-- [ ] T018 [P] Sync notice UI tests in `frontend/src/features/sync/SyncNotice.test.tsx`, per contracts/ui-sync.md "Sync notice":
+- [X] T018 [P] Sync notice UI tests in `frontend/src/features/sync/SyncNotice.test.tsx`, per contracts/ui-sync.md "Sync notice":
   - Shown before Today when `noticeAcknowledged` is false.
   - The text mentions the server storage, that the owner can read the data, that photos are never stored, that earlier versions and deleted entries are kept for 90 days, and that account removal deletes the data.
   - **Turn on sync** calls `acknowledgeNotice` and hides the notice.
@@ -194,37 +194,37 @@ that is not captured from the first sync can never be recovered, so none of this
   - Stubs for `POST /api/sync/push` and `GET /api/sync/changes`, which enforce the notice gate (`409 sync_notice_required`), the 256 KiB request size limit and the `SyncPerUser` limiter.
   - The user ID comes only from the session claims (`Auth/AuthClaims.cs`).
   - Makes T009, T010 and T011 pass. Depends on T026 and T027.
-- [ ] T029 [P] Update the device types in `frontend/src/data/records.ts` and `frontend/src/data/repositories.ts`:
+- [X] T029 [P] Update the device types in `frontend/src/data/records.ts` and `frontend/src/data/repositories.ts`:
   - `MealCategorySchema`: `breakfast | lunch | dinner | snacks`.
   - `LogEntry` gains `versionId: string`, `mealCategory: MealCategory | null`, and optional `restoredAt: string | null`.
   - New `EntryVersion`: the entry's fields plus `entryId`, `changeType` (`edit | delete | restore`) and `replacedAt`.
   - `NewEntry` requires a non-null `mealCategory`. `EntryPatch` accepts a non-null `mealCategory` (FR-020, FR-022).
   - Update test fixtures that build entries.
-- [ ] T030 Bump the device schema in `frontend/src/data/db.ts`:
+- [X] T030 Bump the device schema in `frontend/src/data/db.ts`:
   - `SCHEMA_VERSION = 2`, and a separate `RECORD_SCHEMA_VERSION = 1`.
   - Add `outbox`, `quarantine` and `entryVersions` to `MacroDb`.
   - Migration `version: 2` creates the three stores and indexes, sets `mealCategory: null` and a new `versionId` on every entry, and puts `sync.cursor = 0` and `outboxSeq = 0` in `meta`.
   - The enqueueing of existing records and the food links are added in US2.
   - Makes T012 pass. Depends on T029.
-- [ ] T031 Implement `frontend/src/data/outbox.ts`:
+- [X] T031 Implement `frontend/src/data/outbox.ts`:
   - `OutboxItem = { key: 'entry:<id>'|'food:<id>'|'goal:<id>'|'version:<id>', op: 'upsert'|'restore'|'delete'|'insert', seq: number }`, `QuarantineItem = { key, reason, at }`.
   - Functions take an open transaction so callers stay atomic.
   - Makes T013 pass. Depends on T030.
-- [ ] T032 [P] Implement `MEAL_CATEGORIES` and `categoryForTime(date)` in `frontend/src/domain/meals.ts` as pure code. Makes T014 pass.
-- [ ] T033 Make the repositories write versions and the outbox in the same transaction:
+- [X] T032 [P] Implement `MEAL_CATEGORIES` and `categoryForTime(date)` in `frontend/src/domain/meals.ts` as pure code. Makes T014 pass.
+- [X] T033 Make the repositories write versions and the outbox in the same transaction:
   - Files: `frontend/src/data/entryRepository.ts`, `savedFoodRepository.ts`, `proteinGoalRepository.ts`.
   - Widen each transaction to the record store plus `outbox` and `meta`, and `entryVersions` for entries.
   - Follow data-model.md "Write rules".
   - Create `frontend/src/data/entryVersionRepository.ts` with `listAll`. US4's export needs it, and US6 extends it.
   - Makes T015 pass. Depends on T031.
-- [ ] T034 Link and pre-fill new entries:
+- [X] T034 Link and pre-fill new entries:
   - In `frontend/src/data/logService.ts`, call `upsertFromEntry` first and create the entry with `savedFoodId: food.id`.
   - In `frontend/src/domain/review.ts`, `frontend/src/features/add-food/ManualEntryForm.tsx` and `frontend/src/features/recent/RelogForm.tsx`, set `mealCategory` from `categoryForTime(services.now())`. The visible field comes in US5.
   - Makes T016 pass. Depends on T032 and T033.
-- [ ] T035 [P] Implement `frontend/src/api/sync.ts` through the existing `frontend/src/api/http.ts`. zod schemas mirror contracts/sync-api.yaml, and record schemas reuse `frontend/src/data/records.ts`. Makes T017 pass.
-- [ ] T036 [P] Implement the change emitter in `frontend/src/data/changes.ts`: `createChanges()` returns `{ subscribe(listener): () => void, emit(types: Set<'entry'|'food'|'goal'|'version'>) }`
-- [ ] T037 Extend `UserData` in `frontend/src/app/services.tsx` with `changes` (T036) and `sync` (filled in by US1). Wire them in the `openUserData` implementation and in `frontend/src/data/lockedData.ts` (locked stand-ins reject). Depends on T035 and T036.
-- [ ] T038 Implement `frontend/src/features/sync/SyncNotice.tsx` and gate it in the authenticated shell (where Today is rendered behind `frontend/src/auth/AuthGate.tsx`):
+- [X] T035 [P] Implement `frontend/src/api/sync.ts` through the existing `frontend/src/api/http.ts`. zod schemas mirror contracts/sync-api.yaml, and record schemas reuse `frontend/src/data/records.ts`. Makes T017 pass.
+- [X] T036 [P] Implement the change emitter in `frontend/src/data/changes.ts`: `createChanges()` returns `{ subscribe(listener): () => void, emit(types: Set<'entry'|'food'|'goal'|'version'>) }`
+- [X] T037 Extend `UserData` in `frontend/src/app/services.tsx` with `changes` (T036) and `sync` (filled in by US1). Wire them in the `openUserData` implementation and in `frontend/src/data/lockedData.ts` (locked stand-ins reject). Depends on T035 and T036.
+- [X] T038 Implement `frontend/src/features/sync/SyncNotice.tsx` and gate it in the authenticated shell (where Today is rendered behind `frontend/src/auth/AuthGate.tsx`):
   - Fetch `getState` after sign-in, show the notice when unacknowledged, and never block logging.
   - Extend the setup notice text in `frontend/src/auth/SetupFlow.tsx` so it acknowledges both.
   - Makes T018 pass.
@@ -276,7 +276,7 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - The record shape equals the device record (camelCase, `updatedAt` = `effective_at`, full precision such as `kcal: 123.456789`, `restoredAt` server-assigned).
   - An empty result returns `cursor = since`.
 - [X] T043 [P] [US1] Concurrency test in `backend/MacroCounter.Api.Tests/Sync/SyncConcurrencyTests.cs`: 2 parallel pushes of 50 changes each for one user. Then a pull from 0 returns every change with no duplicates, and a pull started between commits never skips a revision (R2).
-- [ ] T044 [P] [US1] Sync engine tests in `frontend/src/sync/syncEngine.test.ts` (fake API + fake-indexeddb):
+- [X] T044 [P] [US1] Sync engine tests in `frontend/src/sync/syncEngine.test.ts` (fake API + fake-indexeddb):
   - A round is push then pull.
   - Push sends the current record for each outbox key (coalesced), and each queued version, in batches of ≤ 200, with `clientNow`, oldest `seq` first. `restoredAt` is never sent.
   - `applied`/`superseded` results ack the items by `seq`.
@@ -286,23 +286,23 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - A key skipped by a pull because it was pending ends up matching the server after its push is `superseded`, including a deleted entry (R2).
   - `isComplete()` is false until the first pull has finished, while a pull has more pages, or while the outbox or quarantine is non-empty (R21).
   - Pushed records never contain a photo or device-preference field, and `devicePreferences` is never read (FR-002).
-- [ ] T045 [P] [US1] Remote-apply tests in `frontend/src/data/remoteApply.test.ts`:
+- [X] T045 [P] [US1] Remote-apply tests in `frontend/src/data/remoteApply.test.ts`:
   - Pulled upserts are written **without** creating outbox items.
   - A tombstone removes the local entry.
   - A key with a pending outbox item is skipped (R2).
   - Pulled versions are always written, replacing a local copy of the same ID.
   - `meta.sync.serverNow` is saved, and versions older than 90 days before it are removed (R16).
   - `changes.emit` fires once per page with the affected types.
-- [ ] T046 [P] [US1] Scheduler tests in `frontend/src/sync/scheduler.test.ts` (vitest fake timers):
+- [X] T046 [P] [US1] Scheduler tests in `frontend/src/sync/scheduler.test.ts` (vitest fake timers):
   - Polls every 5 s while `document.visibilityState === 'visible'` and online.
   - No polling while hidden.
   - A round runs 500 ms (debounced) after a local change, on `visibilitychange` to visible, and on start-up.
   - Never runs two rounds at once.
   - Does nothing until the notice is acknowledged.
-- [ ] T047 [P] [US1] Live refresh tests:
+- [X] T047 [P] [US1] Live refresh tests:
   - `frontend/src/features/today/DayLog.test.tsx`, `frontend/src/features/recent/RecentFoods.test.tsx`, `frontend/src/features/add-food/QuickPicks.test.tsx`, `frontend/src/features/goal/GoalSettings.test.tsx`: emitting the relevant change type reloads the data with no remount.
   - `frontend/src/features/today/EntryEditor.test.tsx`: an entry deleted remotely while open closes the editor with the announcement "This entry was deleted on another device"; unsaved edits survive a remote change (contracts/ui-sync.md "Live updates").
-- [ ] T048 [P] [US1] Status indicator tests in `frontend/src/features/sync/SyncStatus.test.tsx`:
+- [X] T048 [P] [US1] Status indicator tests in `frontend/src/features/sync/SyncStatus.test.tsx`:
   - States synced / syncing (only after more than 1 s) / failing / off, with text labels.
   - 44×44 px target, and tapping shows the explanation (contracts/ui-sync.md "Sync status").
 - [ ] T049 [US1] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts`, using two browser contexts signed in as `e2e-owner`:
@@ -331,9 +331,9 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - Map rows to the wire shape, tombstones as `deleted:true`, and include `serverNow`.
   - Makes T042 pass. Depends on T050.
 - [X] T052 [US1] Replace the push and changes stubs in `backend/MacroCounter.Api/Sync/SyncEndpoints.cs` with calls to T050/T051. Return `400 invalid_request` with `invalid[]` or `too_many_changes` from the validator, and audit `sync_rejected` (reason code only).
-- [ ] T053 [P] [US1] Implement `frontend/src/data/remoteApply.ts`: write pulled records in one transaction per page (`entries`, `entryVersions`, `savedFoods`, `proteinGoals`, `outbox`, `meta`), skip pending keys, delete on tombstone, save `sync.cursor` and `sync.serverNow`, remove expired versions, and emit changes. Makes T045 pass.
-- [ ] T054 [US1] Implement `frontend/src/sync/syncEngine.ts`: `runRound()` = push (peek ≤ 200 → read current records and versions, leaving out `restoredAt` → `api.push` → ack by `seq`) then pull (loop pages via T053). It exposes `pendingCount()`, `isComplete()` and the last outcome. Makes T044 pass. Depends on T053.
-- [ ] T055 [US1] Implement `frontend/src/sync/scheduler.ts` and `frontend/src/sync/useSyncStatus.ts`:
+- [X] T053 [P] [US1] Implement `frontend/src/data/remoteApply.ts`: write pulled records in one transaction per page (`entries`, `entryVersions`, `savedFoods`, `proteinGoals`, `outbox`, `meta`), skip pending keys, delete on tombstone, save `sync.cursor` and `sync.serverNow`, remove expired versions, and emit changes. Makes T045 pass.
+- [X] T054 [US1] Implement `frontend/src/sync/syncEngine.ts`: `runRound()` = push (peek ≤ 200 → read current records and versions, leaving out `restoredAt` → `api.push` → ack by `seq`) then pull (loop pages via T053). It exposes `pendingCount()`, `isComplete()` and the last outcome. Makes T044 pass. Depends on T053.
+- [X] T055 [US1] Implement `frontend/src/sync/scheduler.ts` and `frontend/src/sync/useSyncStatus.ts`:
   - The scheduler owns the timers and triggers (T046) and starts once the notice is acknowledged.
   - `useSyncStatus` derives the ui-sync.md states from engine outcomes.
   - Implement `frontend/src/features/sync/SyncStatus.tsx` and place it in the Today header beside the account menu (`frontend/src/features/today/TodayScreen.tsx`).
@@ -355,11 +355,11 @@ both sync, each shows the union exactly once, with a single saved food (quicksta
 
 ### Tests for User Story 2 (write first, see them fail)
 
-- [ ] T056 [P] [US2] Migration tests in `frontend/src/data/db.test.ts` (extend) (R6, R18):
+- [X] T056 [P] [US2] Migration tests in `frontend/src/data/db.test.ts` (extend) (R6, R18):
   - Upgrading a v1 database with 3 entries, 2 foods and 1 goal leaves 6 `upsert` outbox items with increasing `seq`, and `sync.cursor = 0`.
   - An entry with `savedFoodId: null` is linked to a saved food with the same normalized name and unit.
   - An entry with no match stays `null`, and an existing link is left alone. `updatedAt` does not change.
-- [ ] T057 [P] [US2] Adoption tests in `frontend/src/data/legacyAdoption.test.ts` (extend): adopted records get `upsert` outbox items in the target, in the same transaction as the copy, and their count matches the records copied (R6)
+- [X] T057 [P] [US2] Adoption tests in `frontend/src/data/legacyAdoption.test.ts` (extend): adopted records get `upsert` outbox items in the target, in the same transaction as the copy, and their count matches the records copied (R6)
 - [X] T058 [P] [US2] Natural-key merge tests in `backend/MacroCounter.Api.Tests/Sync/SyncMergeTests.cs` (R4):
   - Two different IDs for food "Greek yogurt"/`g` (and " greek YOGURT "/`g`, from `vectors/normalize.json`) give one canonical row and an alias row, with result `merged` and `canonicalId`.
   - The newer corrected macros win on the canonical row, and `last_used_at` keeps the later value.
@@ -368,8 +368,8 @@ both sync, each shows the union exactly once, with a single saved food (quicksta
   - An upsert addressed to an alias ID updates the canonical row.
   - An incoming entry or entry version whose `savedFoodId` is an alias is stored with the canonical ID.
   - An unknown `savedFoodId` is accepted as-is.
-- [ ] T059 [P] [US2] Device merge-handling tests in `frontend/src/sync/syncEngine.test.ts` (extend): a `merged` result rewrites the local saved food or goal to `canonicalId`, repoints `savedFoodId` on every local entry and entry version that used the alias, and drops the alias outbox key, all in one transaction
-- [ ] T060 [P] [US2] Quarantine tests in `frontend/src/sync/syncEngine.test.ts` (extend):
+- [X] T059 [P] [US2] Device merge-handling tests in `frontend/src/sync/syncEngine.test.ts` (extend): a `merged` result rewrites the local saved food or goal to `canonicalId`, repoints `savedFoodId` on every local entry and entry version that used the alias, and drops the alias outbox key, all in one transaction
+- [X] T060 [P] [US2] Quarantine tests in `frontend/src/sync/syncEngine.test.ts` (extend):
   - Before pushing, each record is checked against `vectors/bounds.json` rules. A failing record goes to `quarantine` with its reason, and the rest of the batch is pushed.
   - The status shows "N can't sync".
   - The record stays visible locally.
@@ -380,15 +380,15 @@ both sync, each shows the union exactly once, with a single saved food (quicksta
 
 ### Implementation for User Story 2
 
-- [ ] T062 [US2] Extend migration `version: 2` in `frontend/src/data/db.ts` to link entries to saved foods by normalized name and unit, then enqueue an `upsert` outbox item for every existing entry, saved food and goal. Makes T056 pass.
-- [ ] T063 [US2] Make the copy step in `frontend/src/data/legacyAdoption.ts` write the matching outbox items in the same transaction as the records. Makes T057 pass. Depends on T031.
+- [X] T062 [US2] Extend migration `version: 2` in `frontend/src/data/db.ts` to link entries to saved foods by normalized name and unit, then enqueue an `upsert` outbox item for every existing entry, saved food and goal. Makes T056 pass.
+- [X] T063 [US2] Make the copy step in `frontend/src/data/legacyAdoption.ts` write the matching outbox items in the same transaction as the records. Makes T057 pass. Depends on T031.
 - [X] T064 [US2] Implement natural-key merges in `backend/MacroCounter.Api/Sync/SyncStore.cs`:
   - Before inserting a new food or goal ID, look up a live row with the same `(normalized_name, ref_unit)` or `effective_from`.
   - If one exists: apply LWW to the canonical row, insert `saved_food_aliases`/`protein_goal_aliases`, and report `merged` + `canonicalId`.
   - Resolve alias IDs on upsert, and rewrite aliased `saved_food_id` on incoming entries and versions.
   - Makes T058 pass.
-- [ ] T065 [US2] Handle `merged` results in `frontend/src/sync/syncEngine.ts` with a new `rewriteId` in `frontend/src/data/remoteApply.ts`. Makes T059 pass.
-- [ ] T066 [US2] Implement the device pre-push check in `frontend/src/data/syncBounds.ts` (zod, exactly the data-model.md bounds). Use it in `syncEngine.ts` to quarantine records, and surface `quarantineCount()` in `useSyncStatus`. Makes T060 and T061 pass.
+- [X] T065 [US2] Handle `merged` results in `frontend/src/sync/syncEngine.ts` with a new `rewriteId` in `frontend/src/data/remoteApply.ts`. Makes T059 pass.
+- [X] T066 [US2] Implement the device pre-push check in `frontend/src/data/syncBounds.ts` (zod, exactly the data-model.md bounds). Use it in `syncEngine.ts` to quarantine records, and surface `quarantineCount()` in `useSyncStatus`. Makes T060 and T061 pass.
 
 **Checkpoint**: Existing users can turn on sync without losing or duplicating anything.
 
@@ -404,16 +404,16 @@ receives the changes. Signing out offline shows the warning (quickstart V3, V6).
 
 ### Tests for User Story 3 (write first, see them fail)
 
-- [ ] T067 [P] [US3] Scheduler offline tests in `frontend/src/sync/scheduler.test.ts` (extend):
+- [X] T067 [P] [US3] Scheduler offline tests in `frontend/src/sync/scheduler.test.ts` (extend):
   - No requests while `navigator.onLine` is false.
   - The `online` event triggers an immediate round.
   - On network, 5xx, 429 or `service_unavailable` failures, retries back off 5→10→20→40→60 s (429 honours Retry-After).
   - Any immediate trigger resets the backoff.
-- [ ] T068 [P] [US3] Status tests in `frontend/src/features/sync/SyncStatus.test.tsx` (extend): "N not synced" (pending), "Offline: will sync later", "Sync problem, retrying" (failing). Logging while offline updates the totals immediately (`frontend/src/features/today/TodayScreen.test.tsx`).
-- [ ] T069 [P] [US3] Offline edit tests in `frontend/src/sync/syncEngine.test.ts` (extend):
+- [X] T068 [P] [US3] Status tests in `frontend/src/features/sync/SyncStatus.test.tsx` (extend): "N not synced" (pending), "Offline: will sync later", "Sync problem, retrying" (failing). Logging while offline updates the totals immediately (`frontend/src/features/today/TodayScreen.test.tsx`).
+- [X] T069 [P] [US3] Offline edit tests in `frontend/src/sync/syncEngine.test.ts` (extend):
   - An edit made while a push is in flight keeps its outbox item (new `seq`) and is pushed in the next round.
   - Three offline edits push the latest entry state once, plus each replaced state as a version (R14, FR-024).
-- [ ] T070 [P] [US3] Sign-out warning tests in `frontend/src/auth/AccountMenu.test.tsx`, per contracts/ui-sync.md:
+- [X] T070 [P] [US3] Sign-out warning tests in `frontend/src/auth/AccountMenu.test.tsx`, per contracts/ui-sync.md:
   - With a non-empty outbox, "Sign out" and "Sign out everywhere" show an inline confirmation "N changes haven't synced yet…" with **Sign out anyway** / **Cancel**.
   - No `window.confirm`.
   - With an empty outbox, behaviour is unchanged.
@@ -424,9 +424,9 @@ receives the changes. Signing out offline shows the warning (quickstart V3, V6).
 
 ### Implementation for User Story 3
 
-- [ ] T072 [US3] Add the offline gating, `online` trigger, exponential backoff and Retry-After handling to `frontend/src/sync/scheduler.ts`. Makes T067 pass.
-- [ ] T073 [US3] Add the pending / offline / failing states to `frontend/src/sync/useSyncStatus.ts` and `frontend/src/features/sync/SyncStatus.tsx`. Makes T068 and T069 pass (verify `ack` by `seq` from T031).
-- [ ] T074 [US3] Add the inline unsynced-changes confirmation to `frontend/src/auth/AccountMenu.tsx`, using `services.sync.pendingCount()`. Makes T070 and T071 pass.
+- [X] T072 [US3] Add the offline gating, `online` trigger, exponential backoff and Retry-After handling to `frontend/src/sync/scheduler.ts`. Makes T067 pass.
+- [X] T073 [US3] Add the pending / offline / failing states to `frontend/src/sync/useSyncStatus.ts` and `frontend/src/features/sync/SyncStatus.tsx`. Makes T068 and T069 pass (verify `ack` by `seq` from T031).
+- [X] T074 [US3] Add the inline unsynced-changes confirmation to `frontend/src/auth/AccountMenu.tsx`, using `services.sync.pendingCount()`. Makes T070 and T071 pass.
 
 **Checkpoint**: Logging works anywhere, and nothing done offline is lost.
 
@@ -455,13 +455,13 @@ V11, SC-005, SC-009).
   - The app role cannot execute the function.
   - An unknown username raises an error.
 - [X] T077 [P] [US4] Sentinel log and audit scan in `backend/MacroCounter.Api.Tests/Audit/SecretScanTests.cs` (extend). Push valid and invalid records named `"SENTINEL-FOOD-7f3a"`, then assert the string appears in no captured log line (`Infrastructure/CapturingLogger.cs`) and no `macro.audit_events` column (FR-015, FR-019, R9).
-- [ ] T078 [P] [US4] Export tests in `frontend/src/data/exportData.test.ts` (FR-036, FR-037, R21):
+- [X] T078 [P] [US4] Export tests in `frontend/src/data/exportData.test.ts` (FR-036, FR-037, R21):
   - `buildExport` returns `format: 'macro-counter-export'`, `formatVersion: 1`, `exportedAt`, `entries`, `savedFoods`, `proteinGoals` and `entryVersions`.
   - Values keep full precision (`kcal: 123.456789`).
   - The result has no outbox, quarantine, meta or device-preference content.
   - `exportData()` reads only the database it was opened with, and its record counts match the stores.
   - The file name is `macro-counter-export-<YYYY-MM-DD>.json`.
-- [ ] T079 [P] [US4] Export UI tests in `frontend/src/auth/AccountMenu.test.tsx` (extend), per contracts/ui-sync.md "Export":
+- [X] T079 [P] [US4] Export UI tests in `frontend/src/auth/AccountMenu.test.tsx` (extend), per contracts/ui-sync.md "Export":
   - **Export my data** calls the injected `downloadFile` and announces the result.
   - It works while offline.
   - With a non-empty outbox or quarantine, a pull still in progress, or an unfinished first pull, a note says the export may be incomplete and the button stays enabled.
@@ -475,9 +475,9 @@ V11, SC-005, SC-009).
   - Run `revoke execute … from public`.
   - Makes T076 pass.
 - [X] T082 [US4] Fix any isolation or logging gaps found by T075/T077 in `backend/MacroCounter.Api/Sync/SyncStore.cs`, `SyncEndpoints.cs` and `Security/RefusedRequestLogging.cs`, until both pass
-- [ ] T083 [P] [US4] Document `delete_user` in `specs/003-auth-security-foundations/contracts/owner-procedures.md` (new section, with a link back to 007 research R8)
-- [ ] T084 [US4] Implement `frontend/src/data/exportData.ts`: pure `buildExport(records, exportedAt)`, plus `UserData.exportData()` reading through the repositories (add `listAll` to the entry and saved-food repositories, and use `entryVersionRepository.listAll` from T033). Wire it in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T078 pass.
-- [ ] T085 [US4] Implement `frontend/src/data/downloadFile.ts` (`Blob` and a temporary `download` link, injected through services) and add **Export my data**, its note about the file's contents, and the incomplete-export note (from `services.sync.isComplete()`) to `frontend/src/auth/AccountMenu.tsx`. Makes T079 and T080 pass. Depends on T084.
+- [X] T083 [P] [US4] Document `delete_user` in `specs/003-auth-security-foundations/contracts/owner-procedures.md` (new section, with a link back to 007 research R8)
+- [X] T084 [US4] Implement `frontend/src/data/exportData.ts`: pure `buildExport(records, exportedAt)`, plus `UserData.exportData()` reading through the repositories (add `listAll` to the entry and saved-food repositories, and use `entryVersionRepository.listAll` from T033). Wire it in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T078 pass.
+- [X] T085 [US4] Implement `frontend/src/data/downloadFile.ts` (`Blob` and a temporary `download` link, injected through services) and add **Export my data**, its note about the file's contents, and the incomplete-export note (from `services.sync.isComplete()`) to `frontend/src/auth/AccountMenu.tsx`. Makes T079 and T080 pass. Depends on T084.
 
 **Checkpoint**: All sync stories work, and the data can be exported. The sync core is releasable once
 the Polish phase passes.

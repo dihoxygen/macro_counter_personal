@@ -1,6 +1,7 @@
 import type { Estimate, Flag } from '../api/estimates';
 import type { NewEntry } from '../data/repositories';
 import { toDayKey } from './days';
+import { categoryForTime } from './meals';
 import { isCalorieMismatch, isLargePortion } from './nutrition/plausibility';
 import { sumMacros } from './nutrition/totals';
 import { assertMacros, assertNonNegative } from './nutrition/validate';
@@ -106,6 +107,7 @@ export function toEntries(state: ReviewState, now: Date): NewEntry[] {
     dayKey: toDayKey(now),
     loggedAt: new Date(now.getTime() + index).toISOString(),
     savedFoodId: null,
+    mealCategory: categoryForTime(now),
   }));
 }
 

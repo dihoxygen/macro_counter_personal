@@ -13,6 +13,7 @@ const entry = (overrides: Partial<NewEntry> = {}): NewEntry => ({
   macros: { kcal: 100, proteinG: 17, carbsG: 6, fatG: 0.7 },
   source: 'ai',
   savedFoodId: null,
+  mealCategory: 'lunch',
   ...overrides,
 });
 
@@ -46,10 +47,10 @@ describe('LogService.confirmEntries', () => {
     expect(food).toMatchObject({ name: 'Homemade soup', source: 'manual' });
   });
 
-  it('keeps savedFoodId on entries logged from Recent and refreshes that saved food', async () => {
+  it('links each entry to its saved food, and logging it again refreshes that food', async () => {
     const [first] = await log.confirmEntries([entry()]);
     const [food] = await savedFoods.listRecent();
-    expect(first!.savedFoodId).toBeNull();
+    expect(first!.savedFoodId).toBe(food!.id);
 
     const [relogged] = await log.confirmEntries([
       entry({

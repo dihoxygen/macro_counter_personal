@@ -580,6 +580,28 @@ button.entry {
   margin-left: auto;
 }
 
+.sync-status-wrap {
+  flex-basis: 100%;
+  order: 3;
+}
+
+.sync-status {
+  min-height: var(--touch);
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+.sync-status-failing {
+  border-color: currentcolor;
+  font-weight: 600;
+}
+
+.sync-status-explanation {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;

@@ -200,6 +200,7 @@ describe('Composer: describe on Today', () => {
       macros: { kcal: 384, proteinG: 96, carbsG: 0, fatG: 0 },
       source: 'manual',
       savedFoodId: null,
+      mealCategory: 'lunch',
     });
     await renderWithServices(<TodayScreen onNavigate={vi.fn()} />, services);
     const composer = await screen.findByRole('region', { name: 'Log food' });

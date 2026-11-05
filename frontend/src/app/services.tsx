@@ -2,16 +2,20 @@ import { createContext, useContext, type ReactNode } from 'react';
 import type { AuthApi, SessionUser } from '../api/auth';
 import type { Estimate } from '../api/estimates';
 import type { Status } from '../api/status';
+import type { Changes } from '../data/changes';
 import type { DeviceRepository } from '../data/deviceRepository';
+import type { ExportFile } from '../data/exportData';
 import type { AdoptionResult } from '../data/legacyAdoption';
 import type { LogService } from '../data/logService';
 import type { CameraService } from '../media/camera';
 import type {
   DevicePreferences,
   EntryRepository,
+  EntryVersionRepository,
   ProteinGoalRepository,
   SavedFoodRepository,
 } from '../data/repositories';
+import type { SyncService } from '../sync/syncService';
 
 /** One account's local food data (its own IndexedDB database, FR-016). */
 export interface UserData {
@@ -22,6 +26,13 @@ export interface UserData {
   devicePreferences: DevicePreferences;
   /** Confirms entries into the log and remembers each food (FR-014). */
   log: LogService;
+  /** Earlier states of entries (007 FR-024). */
+  entryVersions: EntryVersionRepository;
+  /** Says when changes from another device arrive (007 FR-005). */
+  changes: Changes;
+  sync: SyncService;
+  /** Everything of this account on this device, as one document (007 FR-036). */
+  exportData: () => Promise<ExportFile>;
   close: () => void;
 }
 
@@ -42,6 +53,8 @@ export interface Services extends Omit<UserData, 'close'> {
   /** The only code that touches navigator.mediaDevices. */
   camera: CameraService;
   now: () => Date;
+  /** Hands the person a file through the browser's download. */
+  downloadFile: (name: string, content: string) => void;
   /** Sign-in, setup and sign-out (contracts/auth-api.yaml). */
   auth: AuthApi;
   /** Reloads the page, dropping everything in memory (sign-out, switching person). */

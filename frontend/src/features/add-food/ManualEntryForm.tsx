@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useServices } from '../../app/services';
 import { toDayKey } from '../../domain/days';
+import { categoryForTime } from '../../domain/meals';
 import { isImplausiblyLarge } from '../../domain/nutrition/plausibility';
 import type { Macros, Quantity, Unit } from '../../domain/types';
 import {
@@ -35,6 +36,7 @@ export function ManualEntryForm({ onSaved }: { onSaved: () => void }) {
         dayKey: toDayKey(now),
         loggedAt: now.toISOString(),
         savedFoodId: null,
+        mealCategory: categoryForTime(now),
       },
     ]);
     onSaved();

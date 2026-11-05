@@ -3,9 +3,13 @@ import { render } from '@testing-library/react';
 import { vi } from 'vitest';
 import type { AuthApi, SessionState } from '../../src/api/auth';
 import { EstimateError } from '../../src/api/estimates';
+import { createChanges } from '../../src/data/changes';
 import { openDb } from '../../src/data/db';
 import { IdbEntryRepository } from '../../src/data/entryRepository';
+import { IdbEntryVersionRepository } from '../../src/data/entryVersionRepository';
+import { readExport } from '../../src/data/exportData';
 import { LogService } from '../../src/data/logService';
+import type { SyncService, SyncSnapshot } from '../../src/sync/syncService';
 import { IdbProteinGoalRepository } from '../../src/data/proteinGoalRepository';
 import { IdbSavedFoodRepository } from '../../src/data/savedFoodRepository';
 import { IdbDevicePreferences } from '../../src/data/devicePreferences';
@@ -78,6 +82,23 @@ export function fakeAuth(overrides: Partial<AuthApi> = {}): AuthApi {
   };
 }
 
+/** A sync service with the notice acknowledged and nothing waiting. */
+export function fakeSync(overrides: Partial<SyncService> = {}): SyncService {
+  const snapshot: SyncSnapshot = { started: true, online: true, outcome: { kind: 'ok' }, running: false, pending: 0, quarantined: 0 };
+  return {
+    start: vi.fn(),
+    stop: vi.fn(),
+    notifyLocalChange: vi.fn(),
+    getState: vi.fn(async () => ({ noticeAcknowledged: true, revision: 0 })),
+    acknowledgeNotice: vi.fn(async () => undefined),
+    pendingCount: vi.fn(async () => 0),
+    isComplete: vi.fn(async () => true),
+    snapshot: () => snapshot,
+    subscribe: () => () => undefined,
+    ...overrides,
+  };
+}
+
 /** Real repositories on a fresh fake-indexeddb database; API calls stubbed. */
 export async function createTestServices(overrides: Partial<Services> = {}): Promise<Services> {
   const db = await openDb(`component-test-${++dbCounter}-${Date.now()}`);
@@ -86,12 +107,21 @@ export async function createTestServices(overrides: Partial<Services> = {}): Pro
   const goals = new IdbProteinGoalRepository(db);
   const log = new LogService(entries, savedFoods);
   const devicePreferences = new IdbDevicePreferences(db);
+  const entryVersions = new IdbEntryVersionRepository(db);
+  const changes = createChanges();
+  const sync = fakeSync();
+  const exportData = () => readExport({ entries, savedFoods, goals, entryVersions }, new Date());
   return {
     entries,
     savedFoods,
     goals,
     log,
     devicePreferences,
+    entryVersions,
+    changes,
+    sync,
+    exportData,
+    downloadFile: vi.fn(),
     getStatus: vi.fn(async () => ({ aiAvailable: true })),
     estimateFromText: vi.fn(async () => {
       throw new EstimateError('ai_unavailable');
@@ -112,6 +142,10 @@ export async function createTestServices(overrides: Partial<Services> = {}): Pro
       goals,
       log,
       devicePreferences,
+      entryVersions,
+      changes,
+      sync,
+      exportData,
       close: () => undefined,
     })),
     adoptLegacyData: vi.fn(async () => 'not-owner' as const),

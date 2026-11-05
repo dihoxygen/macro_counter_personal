@@ -15,6 +15,7 @@ const entry = (name: string): NewEntry => ({
   macros: { kcal: 100, proteinG: 10, carbsG: 10, fatG: 1 },
   source: 'manual',
   savedFoodId: null,
+  mealCategory: 'lunch',
 });
 
 describe('App shell', () => {

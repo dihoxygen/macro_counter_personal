@@ -3,6 +3,7 @@ import { useServices } from '../../app/services';
 import type { SavedFood } from '../../data/records';
 import { formatGrams, formatKcal } from '../../domain/nutrition/format';
 import { toInputValue } from '../shared/entryForm';
+import { useRemoteChanges } from '../shared/useRemoteChanges';
 import { RelogForm } from './RelogForm';
 
 /** Re-log a previously confirmed food without asking the AI again (User Story 4). */
@@ -10,6 +11,7 @@ export function RecentFoods({ onLogged }: { onLogged: () => void }) {
   const services = useServices();
   const [foods, setFoods] = useState<SavedFood[] | null>(null);
   const [picked, setPicked] = useState<SavedFood | null>(null);
+  const remote = useRemoteChanges('food');
 
   useEffect(() => {
     let active = true;
@@ -19,7 +21,7 @@ export function RecentFoods({ onLogged }: { onLogged: () => void }) {
     return () => {
       active = false;
     };
-  }, [services]);
+  }, [services, remote]);
 
   if (picked) {
     return <RelogForm food={picked} onLogged={onLogged} onBack={() => setPicked(null)} />;

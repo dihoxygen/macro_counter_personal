@@ -6,11 +6,17 @@ import App from './App.tsx';
 import { authApi } from './api/auth.ts';
 import { estimateFromPhoto, estimateFromText } from './api/estimates.ts';
 import { getStatus } from './api/status.ts';
+import { syncApi } from './api/sync.ts';
 import { ServicesProvider, type Services } from './app/services.tsx';
 import { AuthGate } from './auth/AuthGate.tsx';
+import { withSyncNotice } from './auth/setupNotice.ts';
+import { createChanges } from './data/changes.ts';
 import { DB_NAME, openDb, openUserDb } from './data/db.ts';
 import { openDeviceRepository } from './data/deviceRepository.ts';
+import { downloadFile } from './data/downloadFile.ts';
 import { IdbEntryRepository } from './data/entryRepository.ts';
+import { IdbEntryVersionRepository } from './data/entryVersionRepository.ts';
+import { readExport } from './data/exportData.ts';
 import { adoptLegacyData, databaseExists, deleteDatabase } from './data/legacyAdoption.ts';
 import { lockedRepositories } from './data/lockedData.ts';
 import { LogService } from './data/logService.ts';
@@ -21,6 +27,7 @@ import { browserIntroSession } from './data/introSession.ts';
 import { SplashGate } from './features/splash/SplashGate.tsx';
 import { browserCameraService } from './media/camera.ts';
 import { reencodePhoto } from './media/reencodePhoto.ts';
+import { createSyncService } from './sync/syncService.ts';
 import './styles.css';
 
 const device = await openDeviceRepository();
@@ -34,20 +41,31 @@ const services: Services = {
   reencodePhoto,
   camera: browserCameraService(),
   now: () => new Date(),
-  auth: authApi,
+  downloadFile,
+  // New accounts read the sync disclosure in the setup notice (007 R7).
+  auth: withSyncNotice(authApi, syncApi.acknowledgeNotice),
   // replace(): a fresh load, with no history entry to go Back to (US1.3).
   reload: () => window.location.replace('/'),
   device,
   openUserData: async (userId) => {
     const db = await openUserDb(userId);
-    const entries = new IdbEntryRepository(db);
-    const savedFoods = new IdbSavedFoodRepository(db);
+    const changes = createChanges();
+    const sync = createSyncService({ db, api: syncApi, changes, now: () => new Date() });
+    const onWrite = () => sync.notifyLocalChange();
+    const entries = new IdbEntryRepository(db, onWrite);
+    const savedFoods = new IdbSavedFoodRepository(db, onWrite);
+    const goals = new IdbProteinGoalRepository(db, onWrite);
+    const entryVersions = new IdbEntryVersionRepository(db);
     return {
       entries,
       savedFoods,
-      goals: new IdbProteinGoalRepository(db),
+      goals,
+      entryVersions,
+      changes,
+      sync,
       devicePreferences: new IdbDevicePreferences(db),
       log: new LogService(entries, savedFoods),
+      exportData: () => readExport({ entries, savedFoods, goals, entryVersions }, new Date()),
       close: () => db.close(),
     };
   },

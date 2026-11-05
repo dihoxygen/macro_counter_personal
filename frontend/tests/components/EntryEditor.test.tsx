@@ -17,6 +17,7 @@ const yogurt = (): NewEntry => ({
   macros: { kcal: 100, proteinG: 17, carbsG: 6, fatG: 0.7 },
   source: 'ai',
   savedFoodId: null,
+  mealCategory: 'lunch',
 });
 
 async function setup(entry: NewEntry = yogurt()) {

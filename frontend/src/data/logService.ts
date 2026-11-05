@@ -14,8 +14,9 @@ export class LogService {
   async confirmEntries(entries: readonly NewEntry[]): Promise<LogEntry[]> {
     const created: LogEntry[] = [];
     for (const entry of entries) {
-      created.push(await this.entries.create(entry));
-      await this.savedFoods.upsertFromEntry(entry);
+      // The food first, so the entry can link to it: quick picks count entries by this link (research R18).
+      const food = await this.savedFoods.upsertFromEntry(entry);
+      created.push(await this.entries.create({ ...entry, savedFoodId: food.id }));
     }
     return created;
   }

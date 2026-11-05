@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useServices } from '../../app/services';
 import type { SavedFood } from '../../data/records';
 import { toDayKey } from '../../domain/days';
+import { categoryForTime } from '../../domain/meals';
 import { formatGrams, formatKcal } from '../../domain/nutrition/format';
 import { scaleMacros } from '../../domain/nutrition/scale';
 import type { Macros } from '../../domain/types';
@@ -49,6 +50,7 @@ export function RelogForm({ food, onLogged, onBack, backLabel = 'Back to list' }
         savedFoodId: food.id,
         dayKey: toDayKey(now),
         loggedAt: now.toISOString(),
+        mealCategory: categoryForTime(now),
       },
     ]);
     onLogged();
