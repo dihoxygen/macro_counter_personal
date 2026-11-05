@@ -3,7 +3,7 @@ import { useServices } from '../../app/services';
 import { toDayKey } from '../../domain/days';
 import { categoryForTime } from '../../domain/meals';
 import { isImplausiblyLarge } from '../../domain/nutrition/plausibility';
-import type { Macros, Quantity, Unit } from '../../domain/types';
+import type { Macros, MealCategory, Quantity, Unit } from '../../domain/types';
 import {
   entryFieldLabels,
   parseEntryForm,
@@ -11,6 +11,7 @@ import {
   type EntryNumberField,
 } from '../shared/entryForm';
 import { FieldError, LargeValuesConfirm, NumberInput } from '../shared/FormBits';
+import { MealCategoryField } from '../shared/MealCategoryField';
 
 /** Enter calories and macros without the AI (FR-008). */
 export function ManualEntryForm({ onSaved }: { onSaved: () => void }) {
@@ -26,6 +27,7 @@ export function ManualEntryForm({ onSaved }: { onSaved: () => void }) {
   });
   const [errors, setErrors] = useState<EntryFormErrors>({});
   const [pending, setPending] = useState<{ name: string; quantity: Quantity; macros: Macros } | null>(null);
+  const [meal, setMeal] = useState<MealCategory>(() => categoryForTime(services.now()));
 
   const save = async (entry: { name: string; quantity: Quantity; macros: Macros }) => {
     const now = services.now();
@@ -36,7 +38,7 @@ export function ManualEntryForm({ onSaved }: { onSaved: () => void }) {
         dayKey: toDayKey(now),
         loggedAt: now.toISOString(),
         savedFoodId: null,
-        mealCategory: categoryForTime(now),
+        mealCategory: meal,
       },
     ]);
     onSaved();
@@ -66,6 +68,7 @@ export function ManualEntryForm({ onSaved }: { onSaved: () => void }) {
         <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
       </label>
       <FieldError message={errors.name} />
+      <MealCategoryField value={meal} onChange={setMeal} />
 
       <div className="field-grid">
         <div>

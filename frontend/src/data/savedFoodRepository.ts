@@ -1,3 +1,5 @@
+import { quickPickWindowStart, rankQuickPicks } from '../domain/quickPicks';
+import type { DayKey } from '../domain/types';
 import { RECORD_SCHEMA_VERSION, syncTransaction, type Db } from './db';
 import { newId } from './ids';
 import { laterThan } from './entryRepository';
@@ -49,13 +51,12 @@ export class IdbSavedFoodRepository implements SavedFoodRepository {
     return this.db.getAll('savedFoods');
   }
 
-  async listRecent(limit = 20): Promise<SavedFood[]> {
-    const foods: SavedFood[] = [];
-    let cursor = await this.db.transaction('savedFoods').store.index('lastUsedAt').openCursor(null, 'prev');
-    while (cursor && foods.length < limit) {
-      foods.push(cursor.value);
-      cursor = await cursor.continue();
-    }
-    return foods;
+  async listQuickPicks(today: DayKey, limit = 20): Promise<SavedFood[]> {
+    const tx = this.db.transaction(['savedFoods', 'entries']);
+    const [foods, entries] = await Promise.all([
+      tx.objectStore('savedFoods').getAll(),
+      tx.objectStore('entries').index('dayKey').getAll(IDBKeyRange.bound(quickPickWindowStart(today), today)),
+    ]);
+    return rankQuickPicks(foods, entries, today).slice(0, limit);
   }
 }

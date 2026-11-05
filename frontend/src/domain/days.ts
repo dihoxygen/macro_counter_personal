@@ -15,6 +15,10 @@ export function nextDay(dayKey: DayKey): DayKey {
   return shift(dayKey, 1);
 }
 
+export function daysBefore(dayKey: DayKey, days: number): DayKey {
+  return shift(dayKey, -days);
+}
+
 /** Calendar arithmetic in UTC so DST transitions can never skip or repeat a day. */
 function shift(dayKey: DayKey, days: number): DayKey {
   if (!DayKeySchema.safeParse(dayKey).success) throw new RangeError(`not a day key: ${dayKey}`);

@@ -46,6 +46,10 @@ export class IdbEntryRepository implements EntryRepository {
     return this.db.getAll('entries');
   }
 
+  listByDayRange(from: DayKey, to: DayKey): Promise<LogEntry[]> {
+    return this.db.getAllFromIndex('entries', 'dayKey', IDBKeyRange.bound(from, to));
+  }
+
   async update(id: string, patch: EntryPatch): Promise<LogEntry> {
     const tx = syncTransaction(this.db);
     const existing = await tx.objectStore('entries').get(id);

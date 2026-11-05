@@ -5,9 +5,10 @@ import { toDayKey } from '../../domain/days';
 import { categoryForTime } from '../../domain/meals';
 import { formatGrams, formatKcal } from '../../domain/nutrition/format';
 import { scaleMacros } from '../../domain/nutrition/scale';
-import type { Macros } from '../../domain/types';
+import type { Macros, MealCategory } from '../../domain/types';
 import { toInputValue } from '../shared/entryForm';
 import { FieldError } from '../shared/FormBits';
+import { MealCategoryField } from '../shared/MealCategoryField';
 import { NUMBER_ERROR, parseNonNegative } from '../shared/numberField';
 
 interface Props {
@@ -26,6 +27,7 @@ export function RelogForm({ food, onLogged, onBack, backLabel = 'Back to list' }
   const scalable = reference.amount > 0;
   const [amount, setAmount] = useState(toInputValue(reference.amount));
   const [error, setError] = useState<string | null>(null);
+  const [meal, setMeal] = useState<MealCategory>(() => categoryForTime(services.now()));
 
   const parsed = parseNonNegative(amount);
   const macros: Macros | null = !scalable
@@ -50,7 +52,7 @@ export function RelogForm({ food, onLogged, onBack, backLabel = 'Back to list' }
         savedFoodId: food.id,
         dayKey: toDayKey(now),
         loggedAt: now.toISOString(),
-        mealCategory: categoryForTime(now),
+        mealCategory: meal,
       },
     ]);
     onLogged();
@@ -78,6 +80,7 @@ export function RelogForm({ food, onLogged, onBack, backLabel = 'Back to list' }
         <span className="unit">{reference.unit}</span>
       </div>
       <FieldError message={error ?? undefined} />
+      <MealCategoryField value={meal} onChange={setMeal} />
       {macros && (
         <div role="group" aria-label="Will log" className="macro-list">
           <div>

@@ -20,6 +20,8 @@ export interface EntryRepository {
   get(id: string): Promise<LogEntry | undefined>;
   listByDay(dayKey: DayKey): Promise<LogEntry[]>;
   listAll(): Promise<LogEntry[]>;
+  /** Inclusive at both ends. */
+  listByDayRange(from: DayKey, to: DayKey): Promise<LogEntry[]>;
   update(id: string, patch: EntryPatch): Promise<LogEntry>;
   delete(id: string): Promise<void>;
 }
@@ -29,12 +31,15 @@ export interface SavedFoodRepository {
   upsertFromEntry(entry: NewEntry): Promise<SavedFood>;
   get(id: string): Promise<SavedFood | undefined>;
   listAll(): Promise<SavedFood[]>;
-  /** Most recently used first. */
-  listRecent(limit?: number): Promise<SavedFood[]>;
+  /** Most used in the 30 days ending on `today` first (FR-029). */
+  listQuickPicks(today: DayKey, limit?: number): Promise<SavedFood[]>;
 }
 
 export interface EntryVersionRepository {
   listAll(): Promise<EntryVersion[]>;
+  listForEntry(entry: Pick<LogEntry, 'id' | 'versionId'>): Promise<EntryVersion[]>;
+  listDeletedForDay(dayKey: DayKey): Promise<EntryVersion[]>;
+  restore(versionId: string): Promise<LogEntry>;
 }
 
 export interface ProteinGoalRepository {

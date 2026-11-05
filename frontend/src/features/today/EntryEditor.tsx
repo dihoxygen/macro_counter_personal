@@ -13,6 +13,8 @@ import {
 } from '../shared/entryForm';
 import { parseNonNegative } from '../shared/numberField';
 import { FieldError, LargeValuesConfirm, NumberInput } from '../shared/FormBits';
+import { MealCategoryField } from '../shared/MealCategoryField';
+import { EntryHistory } from './EntryHistory';
 
 type MacroField = keyof typeof entryFieldLabels;
 
@@ -35,6 +37,8 @@ export function EntryEditor({ entry, onClose, onChanged }: Props) {
   const [errors, setErrors] = useState<EntryFormErrors>({});
   const [pending, setPending] = useState<{ name: string; quantity: Quantity; macros: Macros } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [meal, setMeal] = useState(entry.mealCategory);
+  const [showingHistory, setShowingHistory] = useState(false);
 
   const changeAmount = (raw: string) => {
     setValues((v) => ({ ...v, amount: raw }));
@@ -56,6 +60,7 @@ export function EntryEditor({ entry, onClose, onChanged }: Props) {
       quantity: update.quantity,
       macros: update.macros,
       source: macrosTouched && entry.source === 'ai' ? 'ai-edited' : entry.source,
+      ...(meal !== null && { mealCategory: meal }),
     });
     onChanged();
   };
@@ -81,6 +86,10 @@ export function EntryEditor({ entry, onClose, onChanged }: Props) {
     onChanged();
   };
 
+  if (showingHistory) {
+    return <EntryHistory entry={entry} onClose={() => setShowingHistory(false)} onRestored={onChanged} />;
+  }
+
   return (
     <form className="card stack" onSubmit={submit} noValidate aria-label={`Edit ${entry.name}`}>
       <label>
@@ -88,6 +97,7 @@ export function EntryEditor({ entry, onClose, onChanged }: Props) {
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
       </label>
       <FieldError message={errors.name} />
+      <MealCategoryField value={meal} onChange={setMeal} />
       <div className="field-grid">
         <div>
           <NumberInput label={`Amount (${entry.quantity.unit})`} value={values.amount} onChange={changeAmount} />
@@ -125,6 +135,9 @@ export function EntryEditor({ entry, onClose, onChanged }: Props) {
           </button>
           <button type="button" onClick={() => setConfirmingDelete(true)}>
             Delete
+          </button>
+          <button type="button" onClick={() => setShowingHistory(true)}>
+            History
           </button>
         </div>
       )}

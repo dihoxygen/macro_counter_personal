@@ -7,7 +7,7 @@ describe('lockedRepositories', () => {
     await expect(locked.entries.listByDay('2026-10-14')).rejects.toThrow(
       /locked until someone signs in/,
     );
-    await expect(locked.savedFoods.listRecent()).rejects.toThrow(/locked/);
+    await expect(locked.savedFoods.listAll()).rejects.toThrow(/locked/);
     await expect(locked.goals.listAll()).rejects.toThrow(/locked/);
     await expect(locked.devicePreferences.getCameraId()).rejects.toThrow(/locked/);
   });

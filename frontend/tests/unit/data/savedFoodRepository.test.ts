@@ -59,14 +59,14 @@ describe('IdbSavedFoodRepository.upsertFromEntry', () => {
       source: 'ai-edited',
       lastUsedAt: '2026-10-09T08:00:00.000Z',
     });
-    expect(await repo.listRecent()).toHaveLength(1);
+    expect(await repo.listQuickPicks('2030-01-01')).toHaveLength(1);
   });
 
   it('treats a different unit as a different food', async () => {
     const grams = await repo.upsertFromEntry(yogurt);
     const serving = await repo.upsertFromEntry({ ...yogurt, quantity: { amount: 1, unit: 'serving' } });
     expect(serving.id).not.toBe(grams.id);
-    expect(await repo.listRecent()).toHaveLength(2);
+    expect(await repo.listQuickPicks('2030-01-01')).toHaveLength(2);
   });
 
   it('rejects invalid values', async () => {
@@ -77,12 +77,12 @@ describe('IdbSavedFoodRepository.upsertFromEntry', () => {
   });
 });
 
-describe('IdbSavedFoodRepository.listRecent', () => {
+describe('IdbSavedFoodRepository.listQuickPicks with no recent use', () => {
   it('sorts by lastUsedAt, most recent first', async () => {
     await repo.upsertFromEntry({ ...yogurt, name: 'Old', loggedAt: '2026-10-01T08:00:00.000Z' });
     await repo.upsertFromEntry({ ...yogurt, name: 'New', loggedAt: '2026-10-08T08:00:00.000Z' });
     await repo.upsertFromEntry({ ...yogurt, name: 'Middle', loggedAt: '2026-10-05T08:00:00.000Z' });
-    expect((await repo.listRecent()).map((f) => f.name)).toEqual(['New', 'Middle', 'Old']);
+    expect((await repo.listQuickPicks('2030-01-01')).map((f) => f.name)).toEqual(['New', 'Middle', 'Old']);
   });
 
   it('returns at most 20 by default, and honours a limit', async () => {
@@ -93,13 +93,13 @@ describe('IdbSavedFoodRepository.listRecent', () => {
         loggedAt: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(),
       });
     }
-    const recent = await repo.listRecent();
+    const recent = await repo.listQuickPicks('2030-01-01');
     expect(recent).toHaveLength(20);
     expect(recent[0]!.name).toBe('Food 24');
-    expect(await repo.listRecent(3)).toHaveLength(3);
+    expect(await repo.listQuickPicks('2030-01-01', 3)).toHaveLength(3);
   });
 
   it('is empty when nothing has been saved', async () => {
-    expect(await repo.listRecent()).toEqual([]);
+    expect(await repo.listQuickPicks('2030-01-01')).toEqual([]);
   });
 });

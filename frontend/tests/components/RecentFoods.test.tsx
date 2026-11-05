@@ -61,7 +61,7 @@ describe('RecentFoods', () => {
       macros: { kcal: 100, proteinG: 17, carbsG: 6, fatG: 0.7 },
       source: 'ai',
     });
-    const [saved] = await services.savedFoods.listRecent();
+    const [saved] = await services.savedFoods.listAll();
     expect(logged!.savedFoodId).toBe(saved!.id);
   });
 
@@ -93,7 +93,7 @@ describe('RecentFoods', () => {
     await user.click(await screen.findByRole('button', { name: /oatmeal/i }));
     expect(screen.getByLabelText(/amount/i)).toBeInTheDocument();
     expect(screen.getByText(/serving/)).toBeInTheDocument();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /unit/i })).not.toBeInTheDocument();
   });
 
   it('rejects an invalid amount', async () => {

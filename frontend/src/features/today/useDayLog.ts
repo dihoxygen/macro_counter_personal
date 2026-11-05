@@ -57,6 +57,8 @@ export function useDayLog(dayKey: DayKey, refreshKey = 0) {
     // An editor opened on another day (before a rollover or navigation) is not shown.
     editing: selected?.dayKey === dayKey ? selected : null,
     notice,
+    /** Rises after each local change, for pieces that show more of the day. */
+    reloads: version,
     select: (entry: LogEntry) => {
       setNotice(null);
       setSelected(entry);

@@ -493,20 +493,20 @@ subtotals and the change match on a second device (quickstart V7).
 
 ### Tests for User Story 5 (write first, see them fail)
 
-- [ ] T086 [P] [US5] `groupByCategory` tests in `frontend/src/domain/meals.test.ts` (extend): order Breakfast, Lunch, Dinner, Snacks, Uncategorized; empty groups left out; subtotals through `sumMacros`; subtotals add up to the day total at full precision (FR-023). 100% coverage
-- [ ] T087 [P] [US5] Meal field tests in `frontend/src/features/shared/MealCategoryField.test.tsx`, and extend `ManualEntryForm.test.tsx`, `ReviewEstimate.test.tsx`, `RelogForm.test.tsx` and `EntryEditor.test.tsx`:
+- [X] T086 [P] [US5] `groupByCategory` tests in `frontend/src/domain/meals.test.ts` (extend): order Breakfast, Lunch, Dinner, Snacks, Uncategorized; empty groups left out; subtotals through `sumMacros`; subtotals add up to the day total at full precision (FR-023). 100% coverage
+- [X] T087 [P] [US5] Meal field tests in `frontend/src/features/shared/MealCategoryField.test.tsx`, and extend `ManualEntryForm.test.tsx`, `ReviewEstimate.test.tsx`, `RelogForm.test.tsx` and `EntryEditor.test.tsx`:
   - The field shows the pre-fill, and accepting it adds no interaction (FR-021).
   - Each item in a multi-item estimate has its own field.
   - A null entry shows Uncategorized in the editor, can take a category, and the field has no Uncategorized option (FR-022).
   - 44 px targets at 360 px.
-- [ ] T088 [P] [US5] Grouped list tests in `frontend/src/features/today/EntryList.test.tsx` (new), extending `DayLog.test.tsx` (new in T047) and `TodayScreen.test.tsx`: Today and the day view show headed groups with subtotals, and the day total is unchanged
+- [X] T088 [P] [US5] Grouped list tests in `frontend/src/features/today/EntryList.test.tsx` (new), extending `DayLog.test.tsx` (new in T047) and `TodayScreen.test.tsx`: Today and the day view show headed groups with subtotals, and the day total is unchanged
 - [ ] T089 [US5] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): log and change a category on A, then confirm that groups and subtotals match on B within 10 s
 
 ### Implementation for User Story 5
 
-- [ ] T090 [P] [US5] Implement `groupByCategory(entries)` in `frontend/src/domain/meals.ts`. Makes T086 pass.
-- [ ] T091 [US5] Implement `frontend/src/features/shared/MealCategoryField.tsx` and add it to `ManualEntryForm.tsx`, `ReviewEstimate.tsx`, `RelogForm.tsx` and `EntryEditor.tsx`. Makes T087 pass.
-- [ ] T092 [US5] Group entries in `frontend/src/features/today/EntryList.tsx` using T090. Makes T088 and T089 pass.
+- [X] T090 [P] [US5] Implement `groupByCategory(entries)` in `frontend/src/domain/meals.ts`. Makes T086 pass.
+- [X] T091 [US5] Implement `frontend/src/features/shared/MealCategoryField.tsx` and add it to `ManualEntryForm.tsx`, `ReviewEstimate.tsx`, `RelogForm.tsx` and `EntryEditor.tsx`. Makes T087 pass.
+- [X] T092 [US5] Group entries in `frontend/src/features/today/EntryList.tsx` using T090. Makes T088 and T089 pass.
 
 **Checkpoint**: Days read by meal on every device.
 
@@ -521,24 +521,24 @@ confirm both devices show it with full history (quickstart V8).
 
 ### Tests for User Story 6 (write first, see them fail)
 
-- [ ] T093 [P] [US6] Repository tests in `frontend/src/data/entryVersionRepository.test.ts`:
+- [X] T093 [P] [US6] Repository tests in `frontend/src/data/entryVersionRepository.test.ts`:
   - `listForEntry` returns versions newest first, without the one matching the current `versionId`.
   - `listDeletedForDay` returns delete versions whose entry is not live.
   - Versions past the 90-day cut-off from `meta.sync.serverNow` are not listed.
   - `restore` on a deleted entry recreates it with the same ID and a new `versionId`, and queues `{op:'restore'}`.
   - `restore` on a live entry also adds the current state with `changeType: 'restore'` and queues it.
   - A later edit keeps the pending `restore` op. An aborted transaction leaves no write.
-- [ ] T094 [P] [US6] History UI tests in `frontend/src/features/today/EntryHistory.test.tsx`, per contracts/ui-sync.md: opened from the editor, current then earlier versions newest first with when and how each changed, **Restore** applies at once with no confirmation and a status message, and it refreshes on a `version` change
-- [ ] T095 [P] [US6] Recently deleted tests in `frontend/src/features/today/RecentlyDeleted.test.tsx`: hidden with none, listed per day with **Restore**, and shown on Today and the history day view
+- [X] T094 [P] [US6] History UI tests in `frontend/src/features/today/EntryHistory.test.tsx`, per contracts/ui-sync.md: opened from the editor, current then earlier versions newest first with when and how each changed, **Restore** applies at once with no confirmation and a status message, and it refreshes on a `version` change
+- [X] T095 [P] [US6] Recently deleted tests in `frontend/src/features/today/RecentlyDeleted.test.tsx`: hidden with none, listed per day with **Restore**, and shown on Today and the history day view
 - [ ] T096 [US6] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend):
   - Edit twice, then delete on A. Restore on B. Both show the entry with the same ID and the history.
   - An offline edit on A made before the delete syncs and leaves the entry deleted, then appears in history (quickstart V8).
 
 ### Implementation for User Story 6
 
-- [ ] T097 [US6] Extend `frontend/src/data/entryVersionRepository.ts` (created in T033) with history, recently deleted and restore, and add it to `UserData` in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T093 pass.
-- [ ] T098 [US6] Implement `frontend/src/features/today/EntryHistory.tsx` and open it from `EntryEditor.tsx`. Makes T094 pass.
-- [ ] T099 [US6] Implement `frontend/src/features/today/RecentlyDeleted.tsx` and add it to `TodayScreen.tsx` and `DayLog.tsx`. Makes T095 and T096 pass.
+- [X] T097 [US6] Extend `frontend/src/data/entryVersionRepository.ts` (created in T033) with history, recently deleted and restore, and add it to `UserData` in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T093 pass.
+- [X] T098 [US6] Implement `frontend/src/features/today/EntryHistory.tsx` and open it from `EntryEditor.tsx`. Makes T094 pass.
+- [X] T099 [US6] Implement `frontend/src/features/today/RecentlyDeleted.tsx` and add it to `TodayScreen.tsx` and `DayLog.tsx`. Makes T095 and T096 pass.
 
 **Checkpoint**: Mistakes can be undone from any device for 90 days.
 
@@ -553,16 +553,16 @@ order on both (quickstart V9).
 
 ### Tests for User Story 7 (write first, see them fail)
 
-- [ ] T100 [P] [US7] `rankQuickPicks` tests in `frontend/src/domain/quickPicks.test.ts` (R18): count first; ties by latest linked `loggedAt`; foods unused in the window follow by `lastUsedAt`; the food ID breaks any remaining tie; day 29 back is inside the window and day 30 back is outside; deleted entries are not counted
-- [ ] T101 [P] [US7] `listQuickPicks(today, limit)` tests in `frontend/src/data/savedFoodRepository.test.ts` (extend): it reads the 30-day range through the `dayKey` index and honours `limit`
-- [ ] T102 [P] [US7] UI tests in `frontend/src/features/add-food/QuickPicks.test.tsx` and `frontend/src/features/recent/RecentFoods.test.tsx` (extend): both show the new order, with labels and flows unchanged
+- [X] T100 [P] [US7] `rankQuickPicks` tests in `frontend/src/domain/quickPicks.test.ts` (R18): count first; ties by latest linked `loggedAt`; foods unused in the window follow by `lastUsedAt`; the food ID breaks any remaining tie; day 29 back is inside the window and day 30 back is outside; deleted entries are not counted
+- [X] T101 [P] [US7] `listQuickPicks(today, limit)` tests in `frontend/src/data/savedFoodRepository.test.ts` (extend): it reads the 30-day range through the `dayKey` index and honours `limit`
+- [X] T102 [P] [US7] UI tests in `frontend/src/features/add-food/QuickPicks.test.tsx` and `frontend/src/features/recent/RecentFoods.test.tsx` (extend): both show the new order, with labels and flows unchanged
 - [ ] T103 [US7] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): uses across two devices give the same order on both. Deleting entries changes it, and restoring them changes it back
 
 ### Implementation for User Story 7
 
-- [ ] T104 [P] [US7] Implement `rankQuickPicks(foods, entries, today)` in `frontend/src/domain/quickPicks.ts`. Makes T100 pass.
-- [ ] T105 [US7] Replace `listRecent` with `listQuickPicks` in `frontend/src/data/repositories.ts` and `savedFoodRepository.ts`. Makes T101 pass. Depends on T104.
-- [ ] T106 [US7] Use it in `frontend/src/features/add-food/QuickPicks.tsx` and `frontend/src/features/recent/RecentFoods.tsx`. Makes T102 and T103 pass.
+- [X] T104 [P] [US7] Implement `rankQuickPicks(foods, entries, today)` in `frontend/src/domain/quickPicks.ts`. Makes T100 pass.
+- [X] T105 [US7] Replace `listRecent` with `listQuickPicks` in `frontend/src/data/repositories.ts` and `savedFoodRepository.ts`. Makes T101 pass. Depends on T104.
+- [X] T106 [US7] Use it in `frontend/src/features/add-food/QuickPicks.tsx` and `frontend/src/features/recent/RecentFoods.tsx`. Makes T102 and T103 pass.
 
 **Checkpoint**: Repeat foods come first on every device.
 
@@ -578,16 +578,16 @@ per day and on average (quickstart V10).
 
 ### Tests for User Story 8 (write first, see them fail)
 
-- [ ] T107 [P] [US8] `buildTrend` tests in `frontend/src/domain/nutrition/trends.test.ts` (R19): ranges of 7, 30 and 90 days ending today; hand-verified daily totals and averages; days with no entries are `null` and left out of averages; a day of real zero values is counted; the goal per day comes from `goalForDay`; an all-empty range. 100% coverage (Principle II)
-- [ ] T108 [P] [US8] `listByDayRange(from, to)` tests in `frontend/src/data/entryRepository.test.ts` (extend): it uses the `dayKey` index range, inclusive at both ends
-- [ ] T109 [P] [US8] View tests in `frontend/src/features/trends/TrendsView.test.tsx`, per contracts/ui-sync.md "Trends": the range buttons default to 7, the four measures show with averages, the protein goal shows, "no data" appears in the table, the table holds the same values as the charts, the empty message shows, and it refreshes on an `entry` or `goal` change
+- [X] T107 [P] [US8] `buildTrend` tests in `frontend/src/domain/nutrition/trends.test.ts` (R19): ranges of 7, 30 and 90 days ending today; hand-verified daily totals and averages; days with no entries are `null` and left out of averages; a day of real zero values is counted; the goal per day comes from `goalForDay`; an all-empty range. 100% coverage (Principle II)
+- [X] T108 [P] [US8] `listByDayRange(from, to)` tests in `frontend/src/data/entryRepository.test.ts` (extend): it uses the `dayKey` index range, inclusive at both ends
+- [X] T109 [P] [US8] View tests in `frontend/src/features/trends/TrendsView.test.tsx`, per contracts/ui-sync.md "Trends": the range buttons default to 7, the four measures show with averages, the protein goal shows, "no data" appears in the table, the table holds the same values as the charts, the empty message shows, and it refreshes on an `entry` or `goal` change
 - [ ] T110 [US8] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): seed 30 days with gaps, open Trends on the second device, and confirm values match the day view and an edit updates that day. Confirm it works offline
 
 ### Implementation for User Story 8
 
-- [ ] T111 [P] [US8] Implement `buildTrend` in `frontend/src/domain/nutrition/trends.ts`, reusing `sumMacros` and `goalForDay`. Makes T107 pass.
-- [ ] T112 [P] [US8] Add `listByDayRange` to `frontend/src/data/repositories.ts` and `entryRepository.ts`. Makes T108 pass.
-- [ ] T113 [US8] Implement `frontend/src/features/trends/TrendChart.tsx` (inline SVG, no new dependency) and `TrendsView.tsx`. Add the `'trends'` view to `frontend/src/App.tsx` and a **Trends** button to `frontend/src/features/today/TodayScreen.tsx`. Makes T109 and T110 pass. Depends on T111 and T112.
+- [X] T111 [P] [US8] Implement `buildTrend` in `frontend/src/domain/nutrition/trends.ts`, reusing `sumMacros` and `goalForDay`. Makes T107 pass.
+- [X] T112 [P] [US8] Add `listByDayRange` to `frontend/src/data/repositories.ts` and `entryRepository.ts`. Makes T108 pass.
+- [X] T113 [US8] Implement `frontend/src/features/trends/TrendChart.tsx` (inline SVG, no new dependency) and `TrendsView.tsx`. Add the `'trends'` view to `frontend/src/App.tsx` and a **Trends** button to `frontend/src/features/today/TodayScreen.tsx`. Makes T109 and T110 pass. Depends on T111 and T112.
 
 **Checkpoint**: All eight stories work.
 
