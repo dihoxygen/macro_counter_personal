@@ -241,11 +241,443 @@ namespace MacroCounter.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("ck_audit_events_actor", "actor in ('user', 'system', 'owner')");
 
-                            t.HasCheckConstraint("ck_audit_events_event_type", "event_type in ('sign_in', 'sign_in_locked', 'rate_limited', 'sign_out', 'sign_out_everywhere', 'session_revoked', 'setup_started', 'password_set', 'password_rejected', 'totp_enrolled', 'totp_failed', 'ai_notice_acknowledged', 'account_invited', 'account_reset', 'account_disabled', 'account_enabled', 'account_unlocked', 'quota_exceeded', 'ceiling_hit', 'password_accepted', 'device_remembered', 'device_forgotten')");
+                            t.HasCheckConstraint("ck_audit_events_event_type", "event_type in ('sign_in', 'sign_in_locked', 'rate_limited', 'sign_out', 'sign_out_everywhere', 'session_revoked', 'setup_started', 'password_set', 'password_rejected', 'totp_enrolled', 'totp_failed', 'ai_notice_acknowledged', 'account_invited', 'account_reset', 'account_disabled', 'account_enabled', 'account_unlocked', 'quota_exceeded', 'ceiling_hit', 'password_accepted', 'device_remembered', 'device_forgotten', 'sync_rejected', 'user_deleted')");
 
                             t.HasCheckConstraint("ck_audit_events_outcome", "outcome in ('success', 'failure', 'info')");
 
-                            t.HasCheckConstraint("ck_audit_events_reason", "reason is null or reason in ('bad_credentials', 'locked', 'rate_limited', 'account_incomplete', 'account_disabled', 'setup_expired', 'breach_check_unavailable', 'quota_user_daily', 'quota_global_daily', 'quota_global_monthly', 'invalid_code', 'remembered_device', 'invite_code')");
+                            t.HasCheckConstraint("ck_audit_events_reason", "reason is null or reason in ('bad_credentials', 'locked', 'rate_limited', 'account_incomplete', 'account_disabled', 'setup_expired', 'breach_check_unavailable', 'quota_user_daily', 'quota_global_daily', 'quota_global_monthly', 'invalid_code', 'remembered_device', 'invite_code', 'invalid_record', 'day_key_changed', 'too_many_changes', 'unknown_schema_version', 'sync')");
+                        });
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.EntryVersionRow", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double>("CarbsG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("carbs_g");
+
+                    b.Property<string>("ChangeType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("change_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("DayKey")
+                        .HasColumnType("date")
+                        .HasColumnName("day_key");
+
+                    b.Property<DateTimeOffset>("EffectiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_at");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entry_id");
+
+                    b.Property<double>("FatG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("fat_g");
+
+                    b.Property<double>("Kcal")
+                        .HasColumnType("double precision")
+                        .HasColumnName("kcal");
+
+                    b.Property<DateTimeOffset>("LoggedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("logged_at");
+
+                    b.Property<string>("MealCategory")
+                        .HasColumnType("text")
+                        .HasColumnName("meal_category");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<double>("ProteinG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("protein_g");
+
+                    b.Property<double>("QuantityAmount")
+                        .HasColumnType("double precision")
+                        .HasColumnName("quantity_amount");
+
+                    b.Property<string>("QuantityUnit")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("quantity_unit");
+
+                    b.Property<DateTimeOffset>("ReplacedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("replaced_at");
+
+                    b.Property<DateTimeOffset?>("RestoredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("restored_at");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    b.Property<Guid?>("SavedFoodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("saved_food_id");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.HasKey("UserId", "Id");
+
+                    b.HasIndex("ReplacedAt")
+                        .HasDatabaseName("ix_entry_versions_replaced_at");
+
+                    b.HasIndex("UserId", "EntryId")
+                        .HasDatabaseName("ix_entry_versions_user_id_entry_id");
+
+                    b.HasIndex("UserId", "Revision")
+                        .HasDatabaseName("ix_entry_versions_user_id_revision");
+
+                    b.ToTable("entry_versions", "macro_data", t =>
+                        {
+                            t.HasCheckConstraint("ck_entry_versions_category", "meal_category is null or meal_category in ('breakfast', 'lunch', 'dinner', 'snacks')");
+
+                            t.HasCheckConstraint("ck_entry_versions_change_type", "change_type in ('edit', 'delete', 'restore')");
+
+                            t.HasCheckConstraint("ck_entry_versions_kcal", "kcal between 0 and 100000");
+
+                            t.HasCheckConstraint("ck_entry_versions_macros", "protein_g between 0 and 10000 and carbs_g between 0 and 10000 and fat_g between 0 and 10000");
+
+                            t.HasCheckConstraint("ck_entry_versions_name", "char_length(name) <= 120 and btrim(name, E' \\t\\n\\r') <> ''");
+
+                            t.HasCheckConstraint("ck_entry_versions_quantity", "quantity_amount between 0 and 100000");
+
+                            t.HasCheckConstraint("ck_entry_versions_source", "source in ('ai', 'ai-edited', 'manual')");
+
+                            t.HasCheckConstraint("ck_entry_versions_unit", "quantity_unit in ('g', 'ml', 'serving')");
+                        });
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.LogEntryRow", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double?>("CarbsG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("carbs_g");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly?>("DayKey")
+                        .HasColumnType("date")
+                        .HasColumnName("day_key");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTimeOffset>("EffectiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_at");
+
+                    b.Property<double?>("FatG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("fat_g");
+
+                    b.Property<double?>("Kcal")
+                        .HasColumnType("double precision")
+                        .HasColumnName("kcal");
+
+                    b.Property<DateTimeOffset?>("LoggedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("logged_at");
+
+                    b.Property<string>("MealCategory")
+                        .HasColumnType("text")
+                        .HasColumnName("meal_category");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<double?>("ProteinG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("protein_g");
+
+                    b.Property<double?>("QuantityAmount")
+                        .HasColumnType("double precision")
+                        .HasColumnName("quantity_amount");
+
+                    b.Property<string>("QuantityUnit")
+                        .HasColumnType("text")
+                        .HasColumnName("quantity_unit");
+
+                    b.Property<DateTimeOffset?>("RestoredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("restored_at");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    b.Property<Guid?>("SavedFoodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("saved_food_id");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<string>("Source")
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<Guid?>("VersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("version_id");
+
+                    b.HasKey("UserId", "Id");
+
+                    b.HasIndex("UserId", "DayKey")
+                        .HasDatabaseName("ix_log_entries_user_id_day_key");
+
+                    b.HasIndex("UserId", "Revision")
+                        .HasDatabaseName("ix_log_entries_user_id_revision");
+
+                    b.ToTable("log_entries", "macro_data", t =>
+                        {
+                            t.HasCheckConstraint("ck_log_entries_category", "meal_category is null or meal_category in ('breakfast', 'lunch', 'dinner', 'snacks')");
+
+                            t.HasCheckConstraint("ck_log_entries_kcal", "kcal is null or kcal between 0 and 100000");
+
+                            t.HasCheckConstraint("ck_log_entries_live", "deleted_at is not null or (day_key is not null and logged_at is not null and name is not null and quantity_amount is not null and quantity_unit is not null and kcal is not null and protein_g is not null and carbs_g is not null and fat_g is not null and source is not null and version_id is not null)");
+
+                            t.HasCheckConstraint("ck_log_entries_macros", "protein_g is null or carbs_g is null or fat_g is null or (protein_g between 0 and 10000 and carbs_g between 0 and 10000 and fat_g between 0 and 10000)");
+
+                            t.HasCheckConstraint("ck_log_entries_name", "name is null or (char_length(name) <= 120 and btrim(name, E' \\t\\n\\r') <> '')");
+
+                            t.HasCheckConstraint("ck_log_entries_quantity", "quantity_amount is null or quantity_amount between 0 and 100000");
+
+                            t.HasCheckConstraint("ck_log_entries_source", "source is null or source in ('ai', 'ai-edited', 'manual')");
+
+                            t.HasCheckConstraint("ck_log_entries_tombstone", "deleted_at is null or (day_key is null and logged_at is null and name is null and quantity_amount is null and quantity_unit is null and kcal is null and protein_g is null and carbs_g is null and fat_g is null and source is null and saved_food_id is null and meal_category is null and version_id is null)");
+
+                            t.HasCheckConstraint("ck_log_entries_unit", "quantity_unit is null or quantity_unit in ('g', 'ml', 'serving')");
+                        });
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.ProteinGoalAlias", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("AliasId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("alias_id");
+
+                    b.Property<Guid>("CanonicalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("canonical_id");
+
+                    b.HasKey("UserId", "AliasId");
+
+                    b.ToTable("protein_goal_aliases", "macro_data");
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.ProteinGoalRow", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTimeOffset>("EffectiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_at");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_from");
+
+                    b.Property<double?>("Grams")
+                        .HasColumnType("double precision")
+                        .HasColumnName("grams");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.HasKey("UserId", "Id");
+
+                    b.HasIndex("UserId", "EffectiveFrom")
+                        .IsUnique()
+                        .HasDatabaseName("ux_protein_goals_natural_key");
+
+                    b.HasIndex("UserId", "Revision")
+                        .HasDatabaseName("ix_protein_goals_user_id_revision");
+
+                    b.ToTable("protein_goals", "macro_data", t =>
+                        {
+                            t.HasCheckConstraint("ck_protein_goals_grams", "grams is null or (grams > 0 and grams <= 10000)");
+                        });
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.SavedFoodAlias", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("AliasId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("alias_id");
+
+                    b.Property<Guid>("CanonicalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("canonical_id");
+
+                    b.HasKey("UserId", "AliasId");
+
+                    b.ToTable("saved_food_aliases", "macro_data");
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.SavedFoodRow", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double>("CarbsG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("carbs_g");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTimeOffset>("EffectiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_at");
+
+                    b.Property<double>("FatG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("fat_g");
+
+                    b.Property<double>("Kcal")
+                        .HasColumnType("double precision")
+                        .HasColumnName("kcal");
+
+                    b.Property<DateTimeOffset>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("normalized_name");
+
+                    b.Property<double>("ProteinG")
+                        .HasColumnType("double precision")
+                        .HasColumnName("protein_g");
+
+                    b.Property<double>("RefAmount")
+                        .HasColumnType("double precision")
+                        .HasColumnName("ref_amount");
+
+                    b.Property<string>("RefUnit")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ref_unit");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.HasKey("UserId", "Id");
+
+                    b.HasIndex("UserId", "Revision")
+                        .HasDatabaseName("ix_saved_foods_user_id_revision");
+
+                    b.HasIndex("UserId", "NormalizedName", "RefUnit")
+                        .IsUnique()
+                        .HasDatabaseName("ux_saved_foods_natural_key")
+                        .HasFilter("deleted_at is null");
+
+                    b.ToTable("saved_foods", "macro_data", t =>
+                        {
+                            t.HasCheckConstraint("ck_saved_foods_kcal", "kcal between 0 and 100000");
+
+                            t.HasCheckConstraint("ck_saved_foods_macros", "protein_g between 0 and 10000 and carbs_g between 0 and 10000 and fat_g between 0 and 10000");
+
+                            t.HasCheckConstraint("ck_saved_foods_name", "char_length(name) <= 120 and btrim(name, E' \\t\\n\\r') <> ''");
+
+                            t.HasCheckConstraint("ck_saved_foods_quantity", "ref_amount between 0 and 100000");
+
+                            t.HasCheckConstraint("ck_saved_foods_source", "source in ('ai', 'ai-edited', 'manual')");
+
+                            t.HasCheckConstraint("ck_saved_foods_unit", "ref_unit in ('g', 'ml', 'serving')");
                         });
                 });
 
@@ -301,6 +733,27 @@ namespace MacroCounter.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("ck_sessions_kind", "kind in ('setup', 'full', 'mfa')");
                         });
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.SyncState", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset?>("NoticeAckAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("notice_ack_at");
+
+                    b.Property<long>("Revision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("revision");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("sync_state", "macro_data");
                 });
 
             modelBuilder.Entity("MacroCounter.Api.Data.TrustedDevice", b =>
@@ -449,7 +902,70 @@ namespace MacroCounter.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("MacroCounter.Api.Data.EntryVersionRow", b =>
+                {
+                    b.HasOne("MacroCounter.Api.Auth.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.LogEntryRow", b =>
+                {
+                    b.HasOne("MacroCounter.Api.Auth.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.ProteinGoalAlias", b =>
+                {
+                    b.HasOne("MacroCounter.Api.Auth.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.ProteinGoalRow", b =>
+                {
+                    b.HasOne("MacroCounter.Api.Auth.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.SavedFoodAlias", b =>
+                {
+                    b.HasOne("MacroCounter.Api.Auth.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.SavedFoodRow", b =>
+                {
+                    b.HasOne("MacroCounter.Api.Auth.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MacroCounter.Api.Data.SessionRecord", b =>
+                {
+                    b.HasOne("MacroCounter.Api.Auth.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MacroCounter.Api.Data.SyncState", b =>
                 {
                     b.HasOne("MacroCounter.Api.Auth.AppUser", null)
                         .WithMany()

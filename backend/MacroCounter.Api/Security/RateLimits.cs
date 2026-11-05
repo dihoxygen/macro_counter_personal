@@ -18,6 +18,10 @@ public static class RateLimits
 {
     public const string SignIn = "sign-in";
     public const string AiBurst = "ai-burst";
+    public const string SyncPerUser = "sync";
+
+    /// <summary>5 s polling is 12 a minute; the rest is headroom for pushes from two tabs (007 R11).</summary>
+    public const int SyncPerMinute = 60;
 
     public static WebApplicationBuilder AddRateLimits(this WebApplicationBuilder builder)
     {
@@ -62,13 +66,23 @@ public static class RateLimits
                         AutoReplenishment = true,
                     });
             });
+            o.AddPolicy(SyncPerUser, context => RateLimitPartition.GetFixedWindowLimiter(
+                $"user:{context.User.FindFirstValue(AuthClaims.Subject) ?? "anonymous"}",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = SyncPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
             o.OnRejected = async (context, cancellationToken) =>
             {
                 var http = context.HttpContext;
                 var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var wait) ? wait : TimeSpan.FromMinutes(1);
                 var userId = Guid.TryParse(http.User.FindFirstValue(AuthClaims.Subject), out var id) ? id : (Guid?)null;
+                var policy = http.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
+                var reason = policy == SyncPerUser ? AuditReason.Sync : AuditReason.RateLimited;
                 await http.RequestServices.GetRequiredService<IAuditLog>().WriteAsync(AuditEvent.RateLimited, AuditOutcome.Failure,
-                    userId, AuditReason.RateLimited, http.Connection.RemoteIpAddress, cancellationToken);
+                    userId, reason, http.Connection.RemoteIpAddress, cancellationToken);
                 await Problems.RateLimited(retryAfter).ExecuteAsync(http);
             };
         });

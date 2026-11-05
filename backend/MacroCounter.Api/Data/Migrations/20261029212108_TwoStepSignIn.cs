@@ -87,7 +87,7 @@ namespace MacroCounter.Api.Data.Migrations
             migrationBuilder.Sql(RegrantExistingAppRoles);
         }
 
-        private const string RegrantExistingAppRoles = """
+        internal const string RegrantExistingAppRoles = """
             do $$
             declare r name;
             begin
@@ -103,7 +103,7 @@ namespace MacroCounter.Api.Data.Migrations
         /// macro_admin.grant_app_role as defined in RolesGrantsAndRls, plus select/insert/delete (never update) on
         /// trusted_devices and its RLS policy.
         /// </summary>
-        private static string GrantAppRole(bool withTrustedDevices) => $$"""
+        internal static string GrantAppRole(bool withTrustedDevices) => $$"""
             create or replace function macro_admin.grant_app_role(p_role name) returns void
             language plpgsql
             set search_path = macro, extensions, public, pg_temp
@@ -151,7 +151,7 @@ namespace MacroCounter.Api.Data.Migrations
         /// reset_user, disable_user and revoke_sessions as defined in OwnerProcedures, and purge_expired as defined in
         /// AuditRetention, each also deleting remembered devices (006 FR-018).
         /// </summary>
-        private static string OwnerProcedures(bool withTrustedDevices)
+        internal static string OwnerProcedures(bool withTrustedDevices)
         {
             var forgetDevices = withTrustedDevices ? "delete from macro.trusted_devices where user_id = v_id;" : "";
             var purgeDevices = withTrustedDevices

@@ -15,7 +15,8 @@ public static class StrictJson
         PropertyNameCaseInsensitive = false,
     };
 
-    public static async Task<(T? Value, IResult? Problem)> ReadAsync<T>(HttpContext context, int maxBytes)
+    public static async Task<(T? Value, IResult? Problem)> ReadAsync<T>(HttpContext context, int maxBytes,
+        JsonSerializerOptions? options = null)
         where T : class
     {
         if (context.Request.ContentLength > maxBytes) return (null, Problems.BodyTooLarge());
@@ -35,7 +36,7 @@ public static class StrictJson
 
         try
         {
-            var value = JsonSerializer.Deserialize<T>(buffer.ToArray(), Options);
+            var value = JsonSerializer.Deserialize<T>(buffer.ToArray(), options ?? Options);
             return value is null ? (null, Problems.InvalidRequest("The body must be a JSON object.")) : (value, null);
         }
         catch (JsonException)

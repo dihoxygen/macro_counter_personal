@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using MacroCounter.Api.Tests.Endpoints;
 using MacroCounter.Api.Tests.Infrastructure;
+using MacroCounter.Api.Tests.Sync;
 
 namespace MacroCounter.Api.Tests.Audit;
 
@@ -17,11 +18,12 @@ public sealed class AuditScenario(PostgresFixture db, ApiFactory factory)
     public const string FoodDescription = "2 scrambled eggs with smoked salmon";
     public const string PhotoNote = "grilled, no sauce, side of kimchi";
     public const string TypedUnknownName = "Pa55word!not-a-user";
+    public const string SyncSentinelFood = "SENTINEL-FOOD-7f3a";
 
     private static readonly byte[] Photo = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x42, 0x13, 0x37];
 
     /// <summary>Everything that must never appear in the audit table or the logs.</summary>
-    public List<string> Secrets { get; } = [FoodDescription, PhotoNote, TypedUnknownName, Convert.ToBase64String(Photo)];
+    public List<string> Secrets { get; } = [FoodDescription, PhotoNote, TypedUnknownName, SyncSentinelFood, Convert.ToBase64String(Photo)];
 
     /// <summary>The limits the scenario needs, set on the factory before it starts.</summary>
     public static void Configure(ApiFactory factory)
@@ -119,6 +121,18 @@ public sealed class AuditScenario(PostgresFixture db, ApiFactory factory)
             await eve.Http.SendAsync(request);
         }
 
+        // Sync: a stored record and a refused push, both named with a sentinel that must reach neither log nor audit.
+        await Expect(carol.PostAsync("/api/sync/notice"), HttpStatusCode.NoContent);
+        var now = factory.Clock.GetUtcNow();
+        var (stored, refused) = (Guid.NewGuid(), Guid.NewGuid());
+        await carol.PushAsync(now, SyncTestData.Upsert("entry", stored, SyncTestData.Entry(stored, now, name: SyncSentinelFood)));
+        await Expect(carol.PostAsync("/api/sync/push", new
+        {
+            clientNow = SyncTestData.Iso(now),
+            changes = new[] { SyncTestData.Upsert("entry", refused, SyncTestData.Entry(refused, now, name: SyncSentinelFood, kcal: -1)) },
+        }), HttpStatusCode.BadRequest);
+        await carol.PullAllAsync();
+
         // Signing out, everywhere, and every owner procedure.
         await Expect(carol.PostAsync("/api/auth/sign-out"), HttpStatusCode.NoContent);
         // Unticking the box on the remembered browser forgets it; then a full sign-in again.
@@ -135,6 +149,8 @@ public sealed class AuditScenario(PostgresFixture db, ApiFactory factory)
         await Sql.Execute(db.AdminConnectionString, "select macro_admin.unlock_user('eve')");
         var resetCode = await Sql.Scalar<string>(db.AdminConnectionString, "select macro_admin.reset_user('dave')");
         Secrets.AddRange([resetCode, resetCode.Replace("-", "")]);
+        await Sql.InsertUser(db.AdminConnectionString, "leaving");
+        await Sql.Execute(db.AdminConnectionString, "select macro_admin.delete_user('leaving')");
     }
 
     private async Task<string> Remember(Task<string> secret)

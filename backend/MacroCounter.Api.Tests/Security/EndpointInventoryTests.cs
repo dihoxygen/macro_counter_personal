@@ -17,10 +17,16 @@ public class EndpointInventoryTests(PostgresFixture db)
 {
     public sealed record ContractEndpoint(string Method, string Path, string Access);
 
-    /// <summary>Line-based reader for the contract's paths, methods and x-access (no YAML package, Principle V).</summary>
-    public static IReadOnlyList<ContractEndpoint> ReadContract()
+    /// <summary>Every live contract: auth and estimates (006), and sync (007).</summary>
+    public static IReadOnlyList<ContractEndpoint> ReadContract() =>
+    [
+        .. ReadContract(Path.Combine(RepoRoot(), "specs", "006-security-qol", "contracts", "auth-api.yaml")),
+        .. ReadContract(Path.Combine(RepoRoot(), "specs", "007-cross-device-sync", "contracts", "sync-api.yaml")),
+    ];
+
+    /// <summary>Line-based reader for a contract's paths, methods and x-access (no YAML package, Principle V).</summary>
+    private static List<ContractEndpoint> ReadContract(string file)
     {
-        var file = Path.Combine(RepoRoot(), "specs", "006-security-qol", "contracts", "auth-api.yaml");
         var endpoints = new List<ContractEndpoint>();
         string? path = null;
         string? method = null;

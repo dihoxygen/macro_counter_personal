@@ -44,8 +44,8 @@ The data design for US5–US8 ships in Foundational and US1, and only their scre
 
 **Purpose**: Folders, shared test vectors and constants that both sides read
 
-- [ ] T001 Create folders `backend/MacroCounter.Api/Sync/`, `backend/MacroCounter.Api.Tests/Sync/vectors/`, `frontend/src/sync/`, `frontend/src/features/sync/` and `frontend/src/features/trends/` (add each only when its first file is created; no placeholder files)
-- [ ] T002 [P] Create shared validation vectors at `backend/MacroCounter.Api.Tests/Sync/vectors/bounds.json`. Include valid and invalid cases for every row of data-model.md "Validation bounds", verbatim:
+- [X] T001 Create folders `backend/MacroCounter.Api/Sync/`, `backend/MacroCounter.Api.Tests/Sync/vectors/`, `frontend/src/sync/`, `frontend/src/features/sync/` and `frontend/src/features/trends/` (add each only when its first file is created; no placeholder files)
+- [X] T002 [P] Create shared validation vectors at `backend/MacroCounter.Api.Tests/Sync/vectors/bounds.json`. Include valid and invalid cases for every row of data-model.md "Validation bounds", verbatim:
   - name: "Non-empty after trim, ≤ 120 chars"
   - quantity `amount`: "Finite, 0 ≤ x ≤ 100 000"
   - `unit`: "`g`, `ml`, `serving`"
@@ -60,8 +60,8 @@ The data design for US5–US8 ships in Foundational and US1, and only their scre
   - `changeType`: "`edit`, `delete`, `restore`"
 
   Each case is `{ type, record, valid, reason? }`, with reason in `invalid_record | unknown_schema_version`. Types are `entry | food | goal | version`.
-- [ ] T003 [P] Create shared name-normalization vectors at `backend/MacroCounter.Api.Tests/Sync/vectors/normalize.json`, covering the device rule `trim().toLowerCase()` against the server's `lower(btrim(name))` (spaces, tabs, mixed case, non-ASCII letters such as "Crème Brûlée", and trailing newline)
-- [ ] T004 [P] Let the frontend tests read the vectors: add a helper `frontend/src/test/syncVectors.ts` that imports `../../../backend/MacroCounter.Api.Tests/Sync/vectors/*.json`. Check that `tsconfig.app.json`/vitest config allow the JSON import, and adjust the vitest config if needed
+- [X] T003 [P] Create shared name-normalization vectors at `backend/MacroCounter.Api.Tests/Sync/vectors/normalize.json`, covering the device rule `trim().toLowerCase()` against the server's `lower(btrim(name))` (spaces, tabs, mixed case, non-ASCII letters such as "Crème Brûlée", and trailing newline)
+- [X] T004 [P] Let the frontend tests read the vectors: add a helper `frontend/src/test/syncVectors.ts` that imports `../../../backend/MacroCounter.Api.Tests/Sync/vectors/*.json`. Check that `tsconfig.app.json`/vitest config allow the JSON import, and adjust the vitest config if needed
 
 ---
 
@@ -75,7 +75,7 @@ that is not captured from the first sync can never be recovered, so none of this
 
 ### Tests for Foundational (write first, see them fail)
 
-- [ ] T005 [P] Migration/schema tests in `backend/MacroCounter.Api.Tests/Database/ActivityDataMigrationTests.cs`:
+- [X] T005 [P] Migration/schema tests in `backend/MacroCounter.Api.Tests/Database/ActivityDataMigrationTests.cs`:
   - Schema `macro_data` exists with tables `log_entries`, `entry_versions`, `saved_foods`, `protein_goals`, `saved_food_aliases`, `protein_goal_aliases`, `sync_state`.
   - Each data table has PK `(user_id, id)` and FK `user_id → macro.users(id) on delete cascade`.
   - Index `(user_id, revision)` on each data table. `entry_versions` also has `(user_id, entry_id)` and `(replaced_at)`.
@@ -84,30 +84,30 @@ that is not captured from the first sync can never be recovered, so none of this
   - `log_entries` requires its data columns when `deleted_at is null`, and accepts them null on a tombstone (R16).
   - RLS is enabled on every `macro_data` table.
   - `macro_admin.purge_expired()` removes `entry_versions` rows with `replaced_at` older than 90 days, keeps newer ones, leaves tombstones in place, and still performs its existing purges (R16, threat S12).
-- [ ] T006 [P] Grant tests in `backend/MacroCounter.Api.Tests/Database/AppRoleGrantTests.cs` (extend). After `macro_admin.grant_app_role(<role>)`:
+- [X] T006 [P] Grant tests in `backend/MacroCounter.Api.Tests/Database/AppRoleGrantTests.cs` (extend). After `macro_admin.grant_app_role(<role>)`:
   - The app role has `select, insert, update` and **no `delete`** on every `macro_data` table except `entry_versions`, and no DDL.
   - On `entry_versions` it has only `select, insert`.
   - With `macro.user_id` unset, `select count(*)` on each table returns 0.
   - With it set to user A, an unscoped `select` returns only A's rows (plan threat S2).
-- [ ] T007 [P] `ClockSkew` unit tests in `backend/MacroCounter.Api.Tests/Sync/ClockSkewTests.cs`:
+- [X] T007 [P] `ClockSkew` unit tests in `backend/MacroCounter.Api.Tests/Sync/ClockSkewTests.cs`:
   - `offset = serverNow − clientNow`, and `effective = updatedAt + offset`, clamped to `serverNow`.
   - Device clocks ±2 h and ±3 days wrong give the correct ordering.
   - A future-dated edit is clamped.
   - Equal inputs give equal outputs.
   - Use `FakeTimeProvider`.
-- [ ] T008 [P] `SyncValidator` tests in `backend/MacroCounter.Api.Tests/Sync/SyncValidatorTests.cs`:
+- [X] T008 [P] `SyncValidator` tests in `backend/MacroCounter.Api.Tests/Sync/SyncValidatorTests.cs`:
   - Drive every case in `vectors/bounds.json` (T002).
   - `record.id` must equal the change `id`.
   - `delete` and `restore` are allowed only for `type: entry`, and `insert` only for `type: version`.
   - A pushed `restoredAt` is rejected, because it is pull-only (R15).
   - More than 200 changes gives `too_many_changes`. Versions count toward the 200.
   - The result lists `{index, reason}` and never echoes field values.
-- [ ] T009 [P] Notice-gate and access tests in `backend/MacroCounter.Api.Tests/Sync/SyncNoticeTests.cs`:
+- [X] T009 [P] Notice-gate and access tests in `backend/MacroCounter.Api.Tests/Sync/SyncNoticeTests.cs`:
   - `GET /api/sync/state` returns `{noticeAcknowledged:false, revision:0}` for a new user.
   - `POST /api/sync/push` and `GET /api/sync/changes` return `409 sync_notice_required` until `POST /api/sync/notice` (204, idempotent).
   - Every sync endpoint returns 401 without a session, and the `POST`s return 403 without a CSRF token.
-- [ ] T010 [P] Extend `backend/MacroCounter.Api.Tests/Security/EndpointInventoryTests.cs` and `AccessMatrixTests.cs` with the 4 endpoints from contracts/sync-api.yaml, all `x-access: full`
-- [ ] T011 [P] Rate-limit and size tests in `backend/MacroCounter.Api.Tests/Sync/SyncLimitsTests.cs`:
+- [X] T010 [P] Extend `backend/MacroCounter.Api.Tests/Security/EndpointInventoryTests.cs` and `AccessMatrixTests.cs` with the 4 endpoints from contracts/sync-api.yaml, all `x-access: full`
+- [X] T011 [P] Rate-limit and size tests in `backend/MacroCounter.Api.Tests/Sync/SyncLimitsTests.cs`:
   - The `SyncPerUser` limiter allows 60 requests per minute per user and returns `429 rate_limited` with Retry-After.
   - A push body over 256 KiB returns 413.
   - `limit` > 500 is capped at 500.
@@ -152,15 +152,15 @@ that is not captured from the first sync can never be recovered, so none of this
 
 ### Implementation for Foundational
 
-- [ ] T019 Add entity classes in `backend/MacroCounter.Api/Data/ActivityRecords.cs`:
+- [X] T019 Add entity classes in `backend/MacroCounter.Api/Data/ActivityRecords.cs`:
   - `LogEntryRow`, `EntryVersionRow`, `SavedFoodRow`, `ProteinGoalRow`, `SavedFoodAlias`, `ProteinGoalAlias`, `SyncState`, with the columns from data-model.md.
   - Doc comment: "mapped so migrations create the tables; rows are written with raw SQL by SyncStore".
-- [ ] T020 Map the new entities in `backend/MacroCounter.Api/Data/IdentityDbContext.cs` under schema `macro_data`:
+- [X] T020 Map the new entities in `backend/MacroCounter.Api/Data/IdentityDbContext.cs` under schema `macro_data`:
   - snake_case columns, PKs, FKs (cascade), indexes and check constraints exactly as data-model.md.
   - `double precision` for all amounts and macros (no rounding, Principle II).
   - `log_entries` data columns are nullable, with a check that requires them when `deleted_at is null` (R16). `restored_at` stays optional.
   - Update the class doc comment to "identity, security and activity data (constitution v3.0.0)".
-- [ ] T021 Generate the EF migration `backend/MacroCounter.Api/Data/Migrations/<ts>_ActivityData.cs` (`dotnet ef migrations add ActivityData`), then add hand-written SQL to it:
+- [X] T021 Generate the EF migration `backend/MacroCounter.Api/Data/Migrations/<ts>_ActivityData.cs` (`dotnet ef migrations add ActivityData`), then add hand-written SQL to it:
   - `revoke all on schema macro_data from public` (and from `anon, authenticated` when present, as in `RolesGrantsAndRls`).
   - Enable RLS on every `macro_data` table.
   - `create or replace function macro_admin.grant_app_role(p_role name)` keeping every existing grant, and adding:
@@ -170,26 +170,26 @@ that is not captured from the first sync can never be recovered, so none of this
   - `create or replace function macro_admin.purge_expired()` keeping every existing delete, adding `delete from macro_data.entry_versions where replaced_at < now() - interval '90 days'` to the total. Qualify the schema, because the function's `search_path` does not include `macro_data`. Keep `revoke all … from public`. The `pg_cron` schedule stays as it is.
   - The `Down` restores both previous function bodies.
   - Depends on T020. Makes T005 and T006 pass.
-- [ ] T022 Add audit codes in `backend/MacroCounter.Api/Audit/AuditLog.cs`: events `sync_rejected`, `user_deleted`, and reasons `invalid_record`, `day_key_changed`, `too_many_changes`, `unknown_schema_version`, `sync`. Include the check-constraint update in the T021 migration (or a follow-on migration if T021 is already generated). Update `Audit/AuditCoverageTests.cs` expectations.
-- [ ] T023 [P] Implement `backend/MacroCounter.Api/Sync/ClockSkew.cs` as a pure static class (makes T007 pass)
-- [ ] T024 [P] Implement the request/response records in `backend/MacroCounter.Api/Sync/SyncContracts.cs`, matching contracts/sync-api.yaml exactly:
+- [X] T022 Add audit codes in `backend/MacroCounter.Api/Audit/AuditLog.cs`: events `sync_rejected`, `user_deleted`, and reasons `invalid_record`, `day_key_changed`, `too_many_changes`, `unknown_schema_version`, `sync`. Include the check-constraint update in the T021 migration (or a follow-on migration if T021 is already generated). Update `Audit/AuditCoverageTests.cs` expectations.
+- [X] T023 [P] Implement `backend/MacroCounter.Api/Sync/ClockSkew.cs` as a pure static class (makes T007 pass)
+- [X] T024 [P] Implement the request/response records in `backend/MacroCounter.Api/Sync/SyncContracts.cs`, matching contracts/sync-api.yaml exactly:
   - `Change` is a discriminated union by `op` (`upsert`, `restore`, `insert`, `delete`), and `record` by `type` (`entry`, `food`, `goal`, `version`).
   - Wire names are camelCase.
   - Unknown properties are rejected by StrictJson.
-- [ ] T025 Implement `backend/MacroCounter.Api/Sync/SyncValidator.cs`, makes T008 pass:
+- [X] T025 Implement `backend/MacroCounter.Api/Sync/SyncValidator.cs`, makes T008 pass:
   - Bounds come from the data-model.md table.
   - It returns all invalid indexes with fixed reason codes.
   - Depends on T024.
-- [ ] T026 Implement the base of `backend/MacroCounter.Api/Sync/SyncStore.cs`:
+- [X] T026 Implement the base of `backend/MacroCounter.Api/Sync/SyncStore.cs`:
   - `BeginUserTransaction(userId)` opens a transaction and runs `select set_config('macro.user_id', $1, true)`.
   - `GetState`/`EnsureState` (insert `sync_state` on first use).
   - `AcknowledgeNotice` sets `notice_ack_at` if null.
   - `NextRevision()` uses `update macro_data.sync_state set revision = revision + 1 where user_id = $1 returning revision`, holding the row lock for the transaction (R2). Each row written takes one revision.
   - Depends on T021.
-- [ ] T027 Add the `SyncPerUser` policy in `backend/MacroCounter.Api/Security/RateLimits.cs`:
+- [X] T027 Add the `SyncPerUser` policy in `backend/MacroCounter.Api/Security/RateLimits.cs`:
   - 60 requests per minute, partitioned by session user ID, rejected with problem `rate_limited` + Retry-After.
   - Audit `rate_limited` with reason `sync` (makes the limit part of T011 pass).
-- [ ] T028 Implement `backend/MacroCounter.Api/Sync/SyncEndpoints.cs`, and register it with `api.MapSyncEndpoints()` in `backend/MacroCounter.Api/Program.cs`:
+- [X] T028 Implement `backend/MacroCounter.Api/Sync/SyncEndpoints.cs`, and register it with `api.MapSyncEndpoints()` in `backend/MacroCounter.Api/Program.cs`:
   - `GET /api/sync/state`, `POST /api/sync/notice`.
   - Stubs for `POST /api/sync/push` and `GET /api/sync/changes`, which enforce the notice gate (`409 sync_notice_required`), the 256 KiB request size limit and the `SyncPerUser` limiter.
   - The user ID comes only from the session claims (`Auth/AuthClaims.cs`).
@@ -245,13 +245,13 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
 
 ### Tests for User Story 1 (write first, see them fail)
 
-- [ ] T039 [P] [US1] Push contract tests in `backend/MacroCounter.Api.Tests/Sync/SyncPushTests.cs`:
+- [X] T039 [P] [US1] Push contract tests in `backend/MacroCounter.Api.Tests/Sync/SyncPushTests.cs`:
   - Upsert of an entry, a food and a goal: `200 {revision, results:[{status:'applied'}]}`.
   - Revision increases once per row written.
   - Re-sending the same push is idempotent: the result is `superseded` and the stored data does not change. The stored row takes a new revision (R2).
   - Changing `dayKey` of an existing entry gives `400 invalid_request` with reason `day_key_changed`.
   - **All or nothing**: one invalid change in a batch of 5 applies none (FR-014), and audit records `sync_rejected` with a reason code only.
-- [ ] T040 [P] [US1] Conflict-matrix tests in `backend/MacroCounter.Api.Tests/Sync/SyncConflictTests.cs` (R3, R15, FR-007, SC-007). Use `FakeTimeProvider`:
+- [X] T040 [P] [US1] Conflict-matrix tests in `backend/MacroCounter.Api.Tests/Sync/SyncConflictTests.cs` (R3, R15, FR-007, SC-007). Use `FakeTimeProvider`:
   - A newer corrected time wins and an older one is `superseded`; a tie keeps the stored version.
   - Device A's clock 2 h fast, edit pushed later, is ordered correctly against device B.
   - Delete versus older edit and delete versus newer edit: **delete wins both**.
@@ -260,7 +260,7 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - A device's clock 2 h fast does not let a stale upsert revive a tombstone.
   - **Stale pull (R2, constitution III)**: a stored row or tombstone that beats an incoming change takes a new revision, and a pull from a cursor already past its old revision returns it. The same holds for a `merged` result where the canonical row wins.
   - **Long offline (constitution III)**: a device offline for weeks, with its clock drifting, reconnects after edits on both sides and a delete on the other device. Every record converges, and the delete holds.
-- [ ] T041 [P] [US1] History capture tests in `backend/MacroCounter.Api.Tests/Sync/SyncHistoryTests.cs` (R14, R16, R17, SC-007):
+- [X] T041 [P] [US1] History capture tests in `backend/MacroCounter.Api.Tests/Sync/SyncHistoryTests.cs` (R14, R16, R17, SC-007):
   - An applied upsert inserts the displaced state with `change_type = 'edit'`. A delete inserts it with `delete`, and a restore with `restore`.
   - A superseded upsert inserts the incoming state, including one lost to a tombstone.
   - The same `versionId` from two devices leaves one row, with the first arrival's `change_type` and `replaced_at`.
@@ -269,13 +269,13 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - A tombstone row has null data columns while its delete version holds the data.
   - An upsert or restore with a null `meal_category` keeps a stored category (FR-022).
   - A pushed version whose ID matches the current row's `version_id` takes its fields from that row, so `restored_at` is kept and `effective_at` is not corrected twice. Only `change_type` and `replaced_at` come from the push (R14, FR-026).
-- [ ] T042 [P] [US1] Pull tests in `backend/MacroCounter.Api.Tests/Sync/SyncPullTests.cs`:
+- [X] T042 [P] [US1] Pull tests in `backend/MacroCounter.Api.Tests/Sync/SyncPullTests.cs`:
   - `since=0` returns all records oldest revision first, across all four record types.
   - Pages of `limit` with `cursor`/`hasMore`, and every response has `serverNow`.
   - Tombstones come back as `{type, revision, id, deleted:true}`.
   - The record shape equals the device record (camelCase, `updatedAt` = `effective_at`, full precision such as `kcal: 123.456789`, `restoredAt` server-assigned).
   - An empty result returns `cursor = since`.
-- [ ] T043 [P] [US1] Concurrency test in `backend/MacroCounter.Api.Tests/Sync/SyncConcurrencyTests.cs`: 2 parallel pushes of 50 changes each for one user. Then a pull from 0 returns every change with no duplicates, and a pull started between commits never skips a revision (R2).
+- [X] T043 [P] [US1] Concurrency test in `backend/MacroCounter.Api.Tests/Sync/SyncConcurrencyTests.cs`: 2 parallel pushes of 50 changes each for one user. Then a pull from 0 returns every change with no duplicates, and a pull started between commits never skips a revision (R2).
 - [ ] T044 [P] [US1] Sync engine tests in `frontend/src/sync/syncEngine.test.ts` (fake API + fake-indexeddb):
   - A round is push then pull.
   - Push sends the current record for each outbox key (coalesced), and each queued version, in batches of ≤ 200, with `clientNow`, oldest `seq` first. `restoredAt` is never sent.
@@ -315,7 +315,7 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
 
 ### Implementation for User Story 1
 
-- [ ] T050 [US1] Implement push in `backend/MacroCounter.Api/Sync/SyncStore.cs` (R3, R14, R15, R17):
+- [X] T050 [US1] Implement push in `backend/MacroCounter.Api/Sync/SyncStore.cs` (R3, R14, R15, R17):
   - In one user transaction: validate (T025), lock the revision row, handle `version` changes first (`insert … on conflict do nothing`), then the rest in request order, computing `effective_at` and `replaced_at` with `ClockSkew`.
   - Upsert: `insert … on conflict (user_id, id) do update … where macro_data.log_entries.deleted_at is null and excluded.effective_at > macro_data.log_entries.effective_at`, giving `applied` or `superseded`. Keep a stored `meal_category` when the incoming one is null.
   - Implement every row of the R15 table for `delete` and `restore`. A delete clears the data columns (R16). `restored_at` is set only by a `restore`.
@@ -326,11 +326,11 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
   - A pushed version whose ID matches the current row's `version_id` takes its fields from that row (R14).
   - Each row written takes one revision. Whenever the stored row beats an incoming change, including a `merged` result where the canonical row wins, give it a new revision so the next pull brings it (R2).
   - Makes T039, T040, T041 and T043 pass.
-- [ ] T051 [US1] Implement pull in `backend/MacroCounter.Api/Sync/SyncStore.cs`:
+- [X] T051 [US1] Implement pull in `backend/MacroCounter.Api/Sync/SyncStore.cs`:
   - A `union all` across the four tables `where revision > $since order by revision limit $limit`.
   - Map rows to the wire shape, tombstones as `deleted:true`, and include `serverNow`.
   - Makes T042 pass. Depends on T050.
-- [ ] T052 [US1] Replace the push and changes stubs in `backend/MacroCounter.Api/Sync/SyncEndpoints.cs` with calls to T050/T051. Return `400 invalid_request` with `invalid[]` or `too_many_changes` from the validator, and audit `sync_rejected` (reason code only).
+- [X] T052 [US1] Replace the push and changes stubs in `backend/MacroCounter.Api/Sync/SyncEndpoints.cs` with calls to T050/T051. Return `400 invalid_request` with `invalid[]` or `too_many_changes` from the validator, and audit `sync_rejected` (reason code only).
 - [ ] T053 [P] [US1] Implement `frontend/src/data/remoteApply.ts`: write pulled records in one transaction per page (`entries`, `entryVersions`, `savedFoods`, `proteinGoals`, `outbox`, `meta`), skip pending keys, delete on tombstone, save `sync.cursor` and `sync.serverNow`, remove expired versions, and emit changes. Makes T045 pass.
 - [ ] T054 [US1] Implement `frontend/src/sync/syncEngine.ts`: `runRound()` = push (peek ≤ 200 → read current records and versions, leaving out `restoredAt` → `api.push` → ack by `seq`) then pull (loop pages via T053). It exposes `pendingCount()`, `isComplete()` and the last outcome. Makes T044 pass. Depends on T053.
 - [ ] T055 [US1] Implement `frontend/src/sync/scheduler.ts` and `frontend/src/sync/useSyncStatus.ts`:
@@ -360,7 +360,7 @@ both sync, each shows the union exactly once, with a single saved food (quicksta
   - An entry with `savedFoodId: null` is linked to a saved food with the same normalized name and unit.
   - An entry with no match stays `null`, and an existing link is left alone. `updatedAt` does not change.
 - [ ] T057 [P] [US2] Adoption tests in `frontend/src/data/legacyAdoption.test.ts` (extend): adopted records get `upsert` outbox items in the target, in the same transaction as the copy, and their count matches the records copied (R6)
-- [ ] T058 [P] [US2] Natural-key merge tests in `backend/MacroCounter.Api.Tests/Sync/SyncMergeTests.cs` (R4):
+- [X] T058 [P] [US2] Natural-key merge tests in `backend/MacroCounter.Api.Tests/Sync/SyncMergeTests.cs` (R4):
   - Two different IDs for food "Greek yogurt"/`g` (and " greek YOGURT "/`g`, from `vectors/normalize.json`) give one canonical row and an alias row, with result `merged` and `canonicalId`.
   - The newer corrected macros win on the canonical row, and `last_used_at` keeps the later value.
   - The same name with a different unit is **not** merged.
@@ -382,7 +382,7 @@ both sync, each shows the union exactly once, with a single saved food (quicksta
 
 - [ ] T062 [US2] Extend migration `version: 2` in `frontend/src/data/db.ts` to link entries to saved foods by normalized name and unit, then enqueue an `upsert` outbox item for every existing entry, saved food and goal. Makes T056 pass.
 - [ ] T063 [US2] Make the copy step in `frontend/src/data/legacyAdoption.ts` write the matching outbox items in the same transaction as the records. Makes T057 pass. Depends on T031.
-- [ ] T064 [US2] Implement natural-key merges in `backend/MacroCounter.Api/Sync/SyncStore.cs`:
+- [X] T064 [US2] Implement natural-key merges in `backend/MacroCounter.Api/Sync/SyncStore.cs`:
   - Before inserting a new food or goal ID, look up a live row with the same `(normalized_name, ref_unit)` or `effective_from`.
   - If one exists: apply LWW to the canonical row, insert `saved_food_aliases`/`protein_goal_aliases`, and report `merged` + `canonicalId`.
   - Resolve alias IDs on upsert, and rewrite aliased `saved_food_id` on incoming entries and versions.
@@ -443,18 +443,18 @@ V11, SC-005, SC-009).
 
 ### Tests for User Story 4 (write first, see them fail)
 
-- [ ] T075 [P] [US4] Isolation tests in `backend/MacroCounter.Api.Tests/Security/SyncIsolationTests.cs` (extend `CrossUserTests.cs` patterns):
+- [X] T075 [P] [US4] Isolation tests in `backend/MacroCounter.Api.Tests/Security/SyncIsolationTests.cs` (extend `CrossUserTests.cs` patterns):
   - User X pushes upserts, deletes, restores and versions using IDs that exist for user Y. Y's rows are unchanged, and X gets its own rows.
   - X's pull never contains Y's records or versions.
   - No sync request body or query accepts a user ID (contract has none; StrictJson rejects `userId`).
   - A push with a photo or device-preference field is rejected by StrictJson, and no `macro_data` table has a column for either (FR-002).
   - Every sync endpoint returns 401 when unauthenticated (SC-005: 0 successful cross-user reads or writes).
-- [ ] T076 [P] [US4] `delete_user` tests in `backend/MacroCounter.Api.Tests/Database/DeleteUserTests.cs`:
+- [X] T076 [P] [US4] `delete_user` tests in `backend/MacroCounter.Api.Tests/Database/DeleteUserTests.cs`:
   - After `select macro_admin.delete_user('<y>')`, every `macro_data` table and every `macro` user table has 0 rows for Y.
   - Y's audit rows are kept with `user_id` null, plus a new `user_deleted` (actor `owner`).
   - The app role cannot execute the function.
   - An unknown username raises an error.
-- [ ] T077 [P] [US4] Sentinel log and audit scan in `backend/MacroCounter.Api.Tests/Audit/SecretScanTests.cs` (extend). Push valid and invalid records named `"SENTINEL-FOOD-7f3a"`, then assert the string appears in no captured log line (`Infrastructure/CapturingLogger.cs`) and no `macro.audit_events` column (FR-015, FR-019, R9).
+- [X] T077 [P] [US4] Sentinel log and audit scan in `backend/MacroCounter.Api.Tests/Audit/SecretScanTests.cs` (extend). Push valid and invalid records named `"SENTINEL-FOOD-7f3a"`, then assert the string appears in no captured log line (`Infrastructure/CapturingLogger.cs`) and no `macro.audit_events` column (FR-015, FR-019, R9).
 - [ ] T078 [P] [US4] Export tests in `frontend/src/data/exportData.test.ts` (FR-036, FR-037, R21):
   - `buildExport` returns `format: 'macro-counter-export'`, `formatVersion: 1`, `exportedAt`, `entries`, `savedFoods`, `proteinGoals` and `entryVersions`.
   - Values keep full precision (`kcal: 123.456789`).
@@ -470,11 +470,11 @@ V11, SC-005, SC-009).
 
 ### Implementation for User Story 4
 
-- [ ] T081 [US4] Add a migration `backend/MacroCounter.Api/Data/Migrations/<ts>_DeleteUser.cs` (or append to `<ts>_ActivityData` if it is not yet applied anywhere) with `macro_admin.delete_user(p_username text) returns void`:
+- [X] T081 [US4] Add a migration `backend/MacroCounter.Api/Data/Migrations/<ts>_DeleteUser.cs` (or append to `<ts>_ActivityData` if it is not yet applied anywhere) with `macro_admin.delete_user(p_username text) returns void`:
   - It follows `disable_user`'s pattern (`find_user`, `owner_audit('user_deleted', id)` **before** the delete, then `delete from macro.users where id = v_id`).
   - Run `revoke execute … from public`.
   - Makes T076 pass.
-- [ ] T082 [US4] Fix any isolation or logging gaps found by T075/T077 in `backend/MacroCounter.Api/Sync/SyncStore.cs`, `SyncEndpoints.cs` and `Security/RefusedRequestLogging.cs`, until both pass
+- [X] T082 [US4] Fix any isolation or logging gaps found by T075/T077 in `backend/MacroCounter.Api/Sync/SyncStore.cs`, `SyncEndpoints.cs` and `Security/RefusedRequestLogging.cs`, until both pass
 - [ ] T083 [P] [US4] Document `delete_user` in `specs/003-auth-security-foundations/contracts/owner-procedures.md` (new section, with a link back to 007 research R8)
 - [ ] T084 [US4] Implement `frontend/src/data/exportData.ts`: pure `buildExport(records, exportedAt)`, plus `UserData.exportData()` reading through the repositories (add `listAll` to the entry and saved-food repositories, and use `entryVersionRepository.listAll` from T033). Wire it in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T078 pass.
 - [ ] T085 [US4] Implement `frontend/src/data/downloadFile.ts` (`Blob` and a temporary `download` link, injected through services) and add **Export my data**, its note about the file's contents, and the incomplete-export note (from `services.sync.isComplete()`) to `frontend/src/auth/AccountMenu.tsx`. Makes T079 and T080 pass. Depends on T084.

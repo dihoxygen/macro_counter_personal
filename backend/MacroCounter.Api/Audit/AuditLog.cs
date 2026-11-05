@@ -32,6 +32,12 @@ public enum AuditEvent
     PasswordAccepted,
     DeviceRemembered,
     DeviceForgotten,
+
+    /// <summary>A sync push was refused as a whole (007 FR-014).</summary>
+    SyncRejected,
+
+    /// <summary>The owner removed an account and its activity data (007 FR-016).</summary>
+    UserDeleted,
 }
 
 public enum AuditOutcome
@@ -61,6 +67,13 @@ public enum AuditReason
 
     /// <summary>Setup started from the owner's invite code (rather than a password chosen earlier).</summary>
     InviteCode,
+
+    // Why a sync push was refused (007 FR-019), and the sync rate limit. Never the record's contents (R9).
+    InvalidRecord,
+    DayKeyChanged,
+    TooManyChanges,
+    UnknownSchemaVersion,
+    Sync,
 }
 
 public interface IAuditLog
