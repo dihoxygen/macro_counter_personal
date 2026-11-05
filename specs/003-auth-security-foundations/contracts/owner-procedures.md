@@ -50,9 +50,14 @@ pre-feature local data (data-model.md). See plan.md, Constitution Check, Authori
    72 hours.
 2. **Friend locked out or lost their phone**: run `select macro_admin.reset_user('<name>');` and
    give them the new code.
-3. **Remove a friend**: run `select macro_admin.disable_user('<name>');`. It takes effect at once.
-   Rows are never deleted, so the audit trail stays intact.
+3. **Stop a friend's access**: run `select macro_admin.disable_user('<name>');`. It takes effect at
+   once and deletes nothing, so re-enabling them brings their history back.
 4. **Check usage or a suspected compromise**: look at `ai_usage_today` and `recent_audit`.
+5. **Remove a friend and their data**, when they ask or when they leave: run
+   `select macro_admin.delete_user('<name>');`. This cannot be undone. It deletes the account and all
+   of its activity data at once, and records `user_deleted`. Audit rows stay, without a link to the
+   account. Backups hold the data for up to 7 more days (`docs/deploy.md` section 1, and
+   `specs/007-cross-device-sync/research.md` R8). An unknown name raises an error.
 
 ## Tests (written first, run against local PostgreSQL)
 

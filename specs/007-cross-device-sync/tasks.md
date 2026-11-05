@@ -475,7 +475,7 @@ V11, SC-005, SC-009).
   - Run `revoke execute … from public`.
   - Makes T076 pass.
 - [X] T082 [US4] Fix any isolation or logging gaps found by T075/T077 in `backend/MacroCounter.Api/Sync/SyncStore.cs`, `SyncEndpoints.cs` and `Security/RefusedRequestLogging.cs`, until both pass
-- [ ] T083 [P] [US4] Document `delete_user` in `specs/003-auth-security-foundations/contracts/owner-procedures.md` (new section, with a link back to 007 research R8)
+- [X] T083 [P] [US4] Document `delete_user` in `specs/003-auth-security-foundations/contracts/owner-procedures.md` (new section, with a link back to 007 research R8)
 - [X] T084 [US4] Implement `frontend/src/data/exportData.ts`: pure `buildExport(records, exportedAt)`, plus `UserData.exportData()` reading through the repositories (add `listAll` to the entry and saved-food repositories, and use `entryVersionRepository.listAll` from T033). Wire it in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T078 pass.
 - [X] T085 [US4] Implement `frontend/src/data/downloadFile.ts` (`Blob` and a temporary `download` link, injected through services) and add **Export my data**, its note about the file's contents, and the incomplete-export note (from `services.sync.isComplete()`) to `frontend/src/auth/AccountMenu.tsx`. Makes T079 and T080 pass. Depends on T084.
 
@@ -595,7 +595,7 @@ per day and on average (quickstart V10).
 
 ## Phase 11: Polish & Cross-Cutting Concerns
 
-- [ ] T114 [P] Update `docs/deploy.md`:
+- [X] T114 [P] Update `docs/deploy.md`:
   - §1 heading "identity and security data only" becomes "identity, security and activity data".
   - Re-run `grant_app_role` after migrating.
   - Backup retention note (Supabase ≤ 7 days, R8), and the 90-day version purge (R16). The `pg_cron` step now also covers entry history.
