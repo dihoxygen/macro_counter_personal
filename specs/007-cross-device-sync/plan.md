@@ -212,6 +212,7 @@ What is new is that boundary 2 now carries health data.
 | S12 | A deleted entry's food data outlives its 90 days (privacy) | Tombstones hold no food data. A daily purge removes versions. A test seeds expired rows and asserts both. A failed `pg_cron` job is visible in Supabase | Low: a stopped job delays removal until it runs again |
 | S13 | A forged version or restore rewrites history (A04, A08) | Versions are insert-only with no `update` or `delete` grant. `id` collisions are ignored. Same validator and RLS as entries. Restore is scoped to the session's user | Accepted: a user can only change their own history |
 | S14 | History grows without limit through repeated edits (A04/A05) | Versions count toward the 200-change and 256 KiB caps and the rate limiter. The 90-day purge bounds the total | Low |
+| S16 | A tab left open after someone else signs in on that browser syncs their data into its own account's database, or its changes into theirs (A01) | Every sync request names the tab's account, and the server refuses a mismatch in the same request (R22). Tests at API level, and an e2e with two tabs | Low |
 | S15 | An exported file is left somewhere others can read it (privacy) | The Account screen says the file holds the food log. Export is built only from the signed-in user's database, and a test signs in as a second user to confirm it | Accepted: the file is the user's own copy once saved |
 
 ## Project Structure
@@ -221,7 +222,7 @@ What is new is that boundary 2 now carries health data.
 ```text
 specs/007-cross-device-sync/
 ├── plan.md              # This file
-├── research.md          # Phase 0: R1–R21
+├── research.md          # Phase 0: R1–R22
 ├── data-model.md        # Phase 1: server tables, device stores, bounds, export file, state transitions
 ├── quickstart.md        # Phase 1: setup, test suites, manual validation V1–V11, rollout
 ├── contracts/

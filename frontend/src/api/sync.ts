@@ -68,22 +68,29 @@ export interface SyncApi {
   pull(since: number): Promise<PullResponse>;
 }
 
-export const syncApi: SyncApi = {
-  async getState() {
-    return SyncStateSchema.parse(await (await apiFetch('/api/sync/state')).json());
-  },
-  async acknowledgeNotice() {
-    await apiFetch('/api/sync/notice', { method: 'POST' });
-  },
-  async push(request) {
-    const response = await apiFetch('/api/sync/push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
-    return PushResponseSchema.parse(await response.json());
-  },
-  async pull(since) {
-    return PullResponseSchema.parse(await (await apiFetch(`/api/sync/changes?since=${since}`)).json());
-  },
-};
+/**
+ * The client for one account's local database. The cookie is shared by every tab, so each request says whose database
+ * it is for, and the server refuses it if that is not the session's account (research R22).
+ */
+export function syncApiFor(userId: string): SyncApi {
+  const headers = { 'X-Sync-Account': userId };
+  return {
+    async getState() {
+      return SyncStateSchema.parse(await (await apiFetch('/api/sync/state', { headers })).json());
+    },
+    async acknowledgeNotice() {
+      await apiFetch('/api/sync/notice', { method: 'POST', headers });
+    },
+    async push(request) {
+      const response = await apiFetch('/api/sync/push', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+      return PushResponseSchema.parse(await response.json());
+    },
+    async pull(since) {
+      return PullResponseSchema.parse(await (await apiFetch(`/api/sync/changes?since=${since}`, { headers })).json());
+    },
+  };
+}

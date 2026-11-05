@@ -101,6 +101,60 @@ public class SyncIsolationTests(PostgresFixture db) : IAsyncLifetime
         Assert.Single(changes);
     }
 
+    /// <summary>A tab still open for one account, after the browser's shared cookie moved on to another (threat S16).</summary>
+    private void ActAsStaleTabOf(ActiveUser previous)
+    {
+        _y.Http.DefaultRequestHeaders.Remove(SyncTestData.AccountHeader);
+        _y.Http.DefaultRequestHeaders.Add(SyncTestData.AccountHeader, previous.Id.ToString());
+    }
+
+    [Theory]
+    [InlineData("/api/sync/state")]
+    [InlineData("/api/sync/changes?since=0")]
+    public async Task A_stale_tab_reads_nothing_of_the_account_now_signed_in(string path)
+    {
+        var id = Guid.NewGuid();
+        await _y.PushAsync(Now, Upsert("entry", id, Entry(id, Now, name: "Yuki's lunch")));
+        ActAsStaleTabOf(_xUser);
+
+        var response = await _y.Http.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("unauthenticated", (await AuthClient.Json(response)).GetProperty("code").GetString());
+        Assert.DoesNotContain("lunch", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task A_stale_tab_cannot_write_to_the_account_now_signed_in()
+    {
+        ActAsStaleTabOf(_xUser);
+        var id = Guid.NewGuid();
+
+        var push = await _y.PostAsync("/api/sync/push", new { clientNow = Iso(Now), changes = new[] { Upsert("entry", id, Entry(id, Now)) } });
+        var notice = await _y.PostAsync("/api/sync/notice");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, push.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, notice.StatusCode);
+        Assert.Equal(0L, await Sql.Scalar<long>(db.AdminConnectionString, "select count(*) from macro_data.log_entries where id = @i", ("i", id)));
+    }
+
+    [Fact]
+    public async Task A_sync_request_that_names_no_account_is_refused()
+    {
+        _y.Http.DefaultRequestHeaders.Remove(SyncTestData.AccountHeader);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _y.Http.GetAsync("/api/sync/changes?since=0")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Naming_your_own_account_works_as_usual()
+    {
+        var id = Guid.NewGuid();
+        await _x.PushAsync(Now, Upsert("entry", id, Entry(id, Now)));
+
+        Assert.NotNull((await _x.PullAllAsync()).Find("entry", id));
+    }
+
     [Fact]
     public async Task No_request_can_name_a_user()
     {

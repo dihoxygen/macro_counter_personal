@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AuthApi, SessionState } from '../../../src/api/auth';
 import { withSyncNotice } from '../../../src/auth/setupNotice';
 
-const session = { state: 'signed_in' } as SessionState;
+const session = { state: 'signed_in', user: { id: 'u1' } } as SessionState;
 const auth = () => ({ acknowledgeNotice: vi.fn(async () => session) }) as unknown as AuthApi;
 
 describe('withSyncNotice', () => {

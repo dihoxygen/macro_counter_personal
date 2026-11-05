@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '../test';
 import { adminSql, invite, uniqueUsername } from './db';
-import { completeSetup, logManually } from './flows';
+import { completeSetup, logManually, nextCode, PASSWORD, signIn, signOut } from './flows';
 import {
   anotherDevice,
   changeAmount,
@@ -190,6 +190,45 @@ test.describe('your own data (US4)', () => {
     await expect(b.page.getByRole('button', { name: 'Synced', exact: true })).toBeVisible({ timeout: SYNC_TIMEOUT });
     await expect(b.page.getByText('Only mine')).toHaveCount(0);
   });
+});
+
+test('a tab left open never takes in the data of the next person on that browser (threat S16)', async ({ browser }, testInfo) => {
+  const { account: first, first: browserProfile } = await newAccount(browser, testInfo, 'tabA');
+  const { account: second, first: secondDevice } = await newAccount(browser, testInfo, 'tabB');
+  await logManually(secondDevice.page, 'Private dinner', 40);
+  await waitForSynced(secondDevice.page);
+
+  const staleTab = browserProfile.page;
+  await expect(staleTab.getByRole('button', { name: 'Synced', exact: true })).toBeVisible({ timeout: SYNC_TIMEOUT });
+
+  // The same browser, in a new tab: the first person leaves and the second signs in, so the cookie changes hands.
+  const newTab = await browserProfile.context.newPage();
+  await newTab.goto('/');
+  await signOut(newTab);
+  await signIn(newTab, second.username, PASSWORD, nextCode(second.setupKey, second.nextStep()));
+  await expect(entryList(newTab)).toContainText('Private dinner', { timeout: SYNC_TIMEOUT });
+
+  // The old tab syncs again, as it would on coming back into view.
+  await staleTab.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await staleTab.waitForTimeout(6_000);
+
+  const leaked = await staleTab.evaluate(
+    (userId) =>
+      new Promise<string[]>((resolve, reject) => {
+        const open = indexedDB.open(`macro-counter.u.${userId}`);
+        open.onerror = () => reject(new Error('could not open'));
+        open.onsuccess = () => {
+          const all = open.result.transaction('entries').objectStore('entries').getAll();
+          all.onsuccess = () => {
+            open.result.close();
+            resolve((all.result as { name: string }[]).map((e) => e.name));
+          };
+        };
+      }),
+    first.id,
+  );
+  expect(leaked).toEqual([]);
+  await expect(staleTab.getByText('Private dinner')).toHaveCount(0);
 });
 
 test('a meal change shows in the same group on the other device (US5)', async ({ browser }, testInfo) => {

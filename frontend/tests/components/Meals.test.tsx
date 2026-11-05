@@ -75,7 +75,9 @@ describe('the logging forms', () => {
 
     await fill(user);
 
-    expect(await services.entries.listByDay('2026-11-04')).toMatchObject([{ mealCategory: 'breakfast' }]);
+    await vi.waitFor(async () =>
+      expect(await services.entries.listByDay('2026-11-04')).toMatchObject([{ mealCategory: 'breakfast' }]),
+    );
   });
 
   it('saves the meal chosen on the manual form', { timeout: 20_000 }, async () => {
@@ -85,7 +87,9 @@ describe('the logging forms', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Meal' }), 'Snacks');
     await fill(user);
 
-    expect(await services.entries.listByDay('2026-11-04')).toMatchObject([{ mealCategory: 'snacks' }]);
+    await vi.waitFor(async () =>
+      expect(await services.entries.listByDay('2026-11-04')).toMatchObject([{ mealCategory: 'snacks' }]),
+    );
   });
 
   it('gives each item of an estimate its own field', async () => {
@@ -125,8 +129,10 @@ describe('the logging forms', () => {
 
     await user.click(screen.getByRole('button', { name: 'Log' }));
 
-    expect(onLogged).toHaveBeenCalled();
-    expect(await services.entries.listByDay('2026-11-04')).toMatchObject([{ mealCategory: 'breakfast' }]);
+    await vi.waitFor(() => expect(onLogged).toHaveBeenCalled());
+    await vi.waitFor(async () =>
+      expect(await services.entries.listByDay('2026-11-04')).toMatchObject([{ mealCategory: 'breakfast' }]),
+    );
   });
 });
 

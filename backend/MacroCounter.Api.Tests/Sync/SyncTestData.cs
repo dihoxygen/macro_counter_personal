@@ -7,6 +7,9 @@ namespace MacroCounter.Api.Tests.Sync;
 /// <summary>Wire-shaped records and calls for the sync tests (contracts/sync-api.yaml).</summary>
 public static class SyncTestData
 {
+    /// <summary>Which account a tab is syncing for (contracts/sync-api.yaml). TestUsers.ActivateAsync sets it.</summary>
+    public const string AccountHeader = "X-Sync-Account";
+
     public static readonly DateTimeOffset Start = new(2026, 11, 4, 8, 0, 0, TimeSpan.Zero);
 
     public static string Iso(DateTimeOffset time) => time.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'");
@@ -14,35 +17,35 @@ public static class SyncTestData
     public static object Entry(Guid id, DateTimeOffset updatedAt, double amount = 120, string name = "Banana",
         Guid? versionId = null, string dayKey = "2026-11-04", string? meal = "breakfast", Guid? savedFoodId = null,
         double kcal = 107) => new Dictionary<string, object?>
-    {
-        ["id"] = id,
-        ["versionId"] = versionId ?? Guid.NewGuid(),
-        ["createdAt"] = Iso(Start),
-        ["updatedAt"] = Iso(updatedAt),
-        ["schemaVersion"] = 1,
-        ["dayKey"] = dayKey,
-        ["loggedAt"] = Iso(Start),
-        ["name"] = name,
-        ["quantity"] = new { amount, unit = "g" },
-        ["macros"] = new { kcal, proteinG = 1.3, carbsG = 27.5, fatG = 0.4 },
-        ["source"] = "manual",
-        ["savedFoodId"] = savedFoodId,
-        ["mealCategory"] = meal,
-    };
+        {
+            ["id"] = id,
+            ["versionId"] = versionId ?? Guid.NewGuid(),
+            ["createdAt"] = Iso(Start),
+            ["updatedAt"] = Iso(updatedAt),
+            ["schemaVersion"] = 1,
+            ["dayKey"] = dayKey,
+            ["loggedAt"] = Iso(Start),
+            ["name"] = name,
+            ["quantity"] = new { amount, unit = "g" },
+            ["macros"] = new { kcal, proteinG = 1.3, carbsG = 27.5, fatG = 0.4 },
+            ["source"] = "manual",
+            ["savedFoodId"] = savedFoodId,
+            ["mealCategory"] = meal,
+        };
 
     public static object Food(Guid id, DateTimeOffset updatedAt, string name = "Greek yogurt", string unit = "g",
         DateTimeOffset? lastUsedAt = null, double kcal = 100) => new Dictionary<string, object?>
-    {
-        ["id"] = id,
-        ["createdAt"] = Iso(Start),
-        ["updatedAt"] = Iso(updatedAt),
-        ["schemaVersion"] = 1,
-        ["name"] = name,
-        ["referenceQuantity"] = new { amount = 100, unit },
-        ["macros"] = new { kcal, proteinG = 10, carbsG = 4, fatG = 5 },
-        ["source"] = "ai",
-        ["lastUsedAt"] = Iso(lastUsedAt ?? updatedAt),
-    };
+        {
+            ["id"] = id,
+            ["createdAt"] = Iso(Start),
+            ["updatedAt"] = Iso(updatedAt),
+            ["schemaVersion"] = 1,
+            ["name"] = name,
+            ["referenceQuantity"] = new { amount = 100, unit },
+            ["macros"] = new { kcal, proteinG = 10, carbsG = 4, fatG = 5 },
+            ["source"] = "ai",
+            ["lastUsedAt"] = Iso(lastUsedAt ?? updatedAt),
+        };
 
     public static object Goal(Guid id, DateTimeOffset updatedAt, double? grams = 150, string effectiveFrom = "2026-11-04") =>
         new Dictionary<string, object?>

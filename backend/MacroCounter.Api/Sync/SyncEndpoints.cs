@@ -17,9 +17,13 @@ public static class SyncEndpoints
 
     public const int MaxPageSize = 500;
 
+    public const string AccountHeader = "X-Sync-Account";
+
     public static void MapSyncEndpoints(this IEndpointRouteBuilder api)
     {
-        var sync = api.MapGroup("/sync").RequireRateLimiting(RateLimits.SyncPerUser);
+        var sync = api.MapGroup("/sync")
+            .RequireRateLimiting(RateLimits.SyncPerUser)
+            .AddEndpointFilter(RequireSameAccount);
         sync.MapGet("/state", GetState);
         sync.MapPost("/notice", AcknowledgeNotice);
         sync.MapPost("/push", Push);
@@ -27,6 +31,19 @@ public static class SyncEndpoints
     }
 
     private static Guid UserId(HttpContext context) => Guid.Parse(context.User.FindFirstValue(AuthClaims.Subject)!);
+
+    /// <summary>
+    /// The session cookie belongs to the browser, but a tab's local database belongs to one account. After someone else
+    /// signs in on that browser, a tab left open would sync the new account's data into the old account's database
+    /// (research R22, threat S16). So a tab says whose it is, and a mismatch gets nothing. The header is only compared:
+    /// the acting user still comes from the session alone (R10).
+    /// </summary>
+    private static async ValueTask<object?> RequireSameAccount(EndpointFilterInvocationContext invocation, EndpointFilterDelegate next)
+    {
+        var http = invocation.HttpContext;
+        var named = Guid.TryParse(http.Request.Headers[AccountHeader], out var account);
+        return named && account == UserId(http) ? await next(invocation) : Problems.Unauthenticated();
+    }
 
     private static async Task<IResult> GetState(HttpContext context, SyncStore store) =>
         Results.Json(await store.GetStateAsync(UserId(context), context.RequestAborted), SyncJson.Options);

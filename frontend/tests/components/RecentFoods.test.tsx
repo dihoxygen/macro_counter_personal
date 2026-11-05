@@ -61,7 +61,7 @@ describe('RecentFoods', () => {
       macros: { kcal: 100, proteinG: 17, carbsG: 6, fatG: 0.7 },
       source: 'ai',
     });
-    const [saved] = await services.savedFoods.listAll();
+    const saved = (await services.savedFoods.listAll()).find((food) => food.name === 'Greek yogurt');
     expect(logged!.savedFoodId).toBe(saved!.id);
   });
 

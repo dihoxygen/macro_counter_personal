@@ -122,6 +122,8 @@ public sealed class AuditScenario(PostgresFixture db, ApiFactory factory)
         }
 
         // Sync: a stored record and a refused push, both named with a sentinel that must reach neither log nor audit.
+        var carolId = await Sql.Scalar<Guid>(db.AdminConnectionString, "select id from macro.users where username = 'carol'");
+        carol.Http.DefaultRequestHeaders.Add(SyncTestData.AccountHeader, carolId.ToString());
         await Expect(carol.PostAsync("/api/sync/notice"), HttpStatusCode.NoContent);
         var now = factory.Clock.GetUtcNow();
         var (stored, refused) = (Guid.NewGuid(), Guid.NewGuid());

@@ -12,6 +12,12 @@ info:
     selects a user (research R10).
 
 
+    **Account check.** Every request sends `X-Sync-Account` with the id of the account whose local
+    database the tab holds. The server compares it with the session and answers 401 unauthenticated on
+    a mismatch, so a tab left open after someone else signs in gets nothing (research R22). It never
+    selects a user.
+
+
     **CSRF.** `POST` requests send `X-CSRF-Token`, as for every other unsafe /api request.
 
 

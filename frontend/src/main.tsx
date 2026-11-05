@@ -6,7 +6,7 @@ import App from './App.tsx';
 import { authApi } from './api/auth.ts';
 import { estimateFromPhoto, estimateFromText } from './api/estimates.ts';
 import { getStatus } from './api/status.ts';
-import { syncApi } from './api/sync.ts';
+import { syncApiFor } from './api/sync.ts';
 import { ServicesProvider, type Services } from './app/services.tsx';
 import { AuthGate } from './auth/AuthGate.tsx';
 import { withSyncNotice } from './auth/setupNotice.ts';
@@ -43,14 +43,14 @@ const services: Services = {
   now: () => new Date(),
   downloadFile,
   // New accounts read the sync disclosure in the setup notice (007 R7).
-  auth: withSyncNotice(authApi, syncApi.acknowledgeNotice),
+  auth: withSyncNotice(authApi, (userId) => syncApiFor(userId).acknowledgeNotice()),
   // replace(): a fresh load, with no history entry to go Back to (US1.3).
   reload: () => window.location.replace('/'),
   device,
   openUserData: async (userId) => {
     const db = await openUserDb(userId);
     const changes = createChanges();
-    const sync = createSyncService({ db, api: syncApi, changes, now: () => new Date() });
+    const sync = createSyncService({ db, api: syncApiFor(userId), changes, now: () => new Date() });
     const onWrite = () => sync.notifyLocalChange();
     const entries = new IdbEntryRepository(db, onWrite);
     const savedFoods = new IdbSavedFoodRepository(db, onWrite);

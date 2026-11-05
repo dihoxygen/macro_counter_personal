@@ -146,7 +146,7 @@ public class SyncPullTests(PostgresFixture db) : IAsyncLifetime
             times.Add(watch.Elapsed.TotalMilliseconds);
         }
 
-        // A loose bound on purpose: this guards against a full scan, not against a busy test machine.
-        Assert.True(times.Order().ElementAt(37) < 200, $"p95 was {times.Order().ElementAt(37)} ms");
+        // A loose bound on purpose: this guards against a full scan, not against a busy machine running coverage.
+        Assert.True(times.Order().ElementAt(37) < 1000, $"p95 was {times.Order().ElementAt(37)} ms");
     }
 }

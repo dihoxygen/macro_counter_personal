@@ -66,7 +66,8 @@ Expected results are in **bold**.
 
 1. As user Y, try `GET /api/sync/changes?since=0` with no session. **401.** Signed in as Y, the
    response contains **only Y's records**.
-2. A push before acknowledging the notice gets **409 `sync_notice_required`**.
+2. A push before acknowledging the notice gets **409 `sync_notice_required`**. A request whose
+   `X-Sync-Account` is not the session's account gets **401**, and no data (R22).
 3. A push with a negative `kcal` gets **400 `invalid_request`, and no other change in that push is
    applied**.
 4. As the owner in `psql`: `select macro_admin.delete_user('<y>');`. Then

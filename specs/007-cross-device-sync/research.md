@@ -484,6 +484,29 @@ quick-pick ordering, and trends.
 
 ---
 
+## R22. A tab left open after the account changes (FR-013, plan threat S16)
+
+**Decision**: Every `/api/sync` request carries an `X-Sync-Account` header naming the account the tab's
+local database belongs to. The server answers `401 unauthenticated` unless it equals the session's
+user. Found by the security review, and proven by a failing test before the fix.
+
+- The session cookie belongs to the browser and a local database belongs to one account. If A's tab
+  stays open while B signs in on that browser, A's tab sends B's cookie. Without this check, its next
+  pull would write B's records into A's database, where they would survive and appear in A's export.
+- The header is only compared. The acting user still comes from the session alone (R10), so no request
+  can choose a user.
+- The check is in the same request as the cookie, so nothing can change between checking and reading.
+  A 401 leads to the existing expired-session overlay and stops polling.
+
+**Alternatives considered**:
+- *Requiring the CSRF token on the pull.* Rejected: it depends on a token that session rotation replaces,
+  and a stale token would look like a failure rather than a sign-out.
+- *Stopping sync on `session-expired`.* Rejected: a hidden tab never receives a 401.
+- *BroadcastChannel between tabs.* Rejected: it misses session expiry, and frozen tabs may not receive it.
+- *Checking the session before each round.* Rejected: not atomic, and one more request every 5 s.
+
+---
+
 ## R21. Export (FR-036, FR-037, SC-009, constitution III)
 
 **Decision**: Build the file on the device from the local copy, as one versioned JSON document. There is

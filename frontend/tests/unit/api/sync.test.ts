@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, setCsrfToken } from '../../../src/api/http';
-import { syncApi } from '../../../src/api/sync';
+import { syncApiFor } from '../../../src/api/sync';
+
+const USER = '6f1c2a4e-0000-4000-8000-000000000001';
+const syncApi = syncApiFor(USER);
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
@@ -152,5 +155,31 @@ describe('errors', () => {
     fetchMock.mockRejectedValue(new TypeError('failed'));
 
     await expect(syncApi.pull(0)).rejects.toMatchObject({ code: 'network' });
+  });
+});
+
+describe('the account a tab belongs to', () => {
+  it('goes with every request, so the server can refuse a stale tab', async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith('/notice')
+        ? new Response(null, { status: 204 })
+        : json(
+            url.endsWith('/state')
+              ? { noticeAcknowledged: true, revision: 0 }
+              : url.endsWith('/push')
+                ? { revision: 0, results: [] }
+                : { changes: [], cursor: 0, hasMore: false, serverNow: 'x' },
+          ),
+    );
+
+    await syncApi.getState();
+    await syncApi.acknowledgeNotice();
+    await syncApi.push({ clientNow: 'x', changes: [] });
+    await syncApi.pull(0);
+
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    for (const [, init] of fetchMock.mock.calls as [string, RequestInit][]) {
+      expect(new Headers(init.headers).get('X-Sync-Account')).toBe(USER);
+    }
   });
 });
