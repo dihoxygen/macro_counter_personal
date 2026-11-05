@@ -61,6 +61,38 @@ describe('signing out with unsynced changes', () => {
     expect(auth.signOut).not.toHaveBeenCalled();
   });
 
+  it('stops syncing before signing out, so no poll trips over the ended session', async () => {
+    const user = userEvent.setup();
+    const order: string[] = [];
+    const sync = fakeSync({
+      drain: vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        order.push('drained');
+      }),
+    });
+    const auth = fakeAuth({ signOut: vi.fn(async () => void order.push('sign-out')) });
+    await renderWithServices(<AccountMenu />, { auth, sync });
+
+    await user.click(screen.getByRole('button', { name: /^sign out$/i }));
+
+    await waitFor(() => expect(order).toEqual(['drained', 'sign-out']));
+  });
+
+  it('carries on syncing when signing out fails', async () => {
+    const user = userEvent.setup();
+    const sync = fakeSync();
+    const auth = fakeAuth({
+      signOut: vi.fn(async () => {
+        throw new Error('offline');
+      }),
+    });
+    await renderWithServices(<AccountMenu />, { auth, sync });
+
+    await user.click(screen.getByRole('button', { name: /^sign out$/i }));
+
+    await waitFor(() => expect(sync.resume).toHaveBeenCalled());
+  });
+
   it('does not ask when everything is synced', async () => {
     const { auth, user } = await menu(0);
 

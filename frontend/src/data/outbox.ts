@@ -45,6 +45,16 @@ export function pendingCount(db: Db): Promise<number> {
   return db.count('outbox');
 }
 
+/**
+ * How many changes to tell a person about. Logging one food also queues its saved food, and an edit queues the state
+ * it replaced: those are the machinery of one change, so they only count when nothing else is waiting.
+ */
+export async function unsyncedCount(db: Db): Promise<number> {
+  const keys = await db.getAllKeys('outbox');
+  const visible = keys.filter((key) => key.startsWith('entry:') || key.startsWith('goal:')).length;
+  return visible > 0 ? visible : Math.min(keys.length, 1);
+}
+
 export function quarantineCount(db: Db): Promise<number> {
   return db.count('quarantine');
 }

@@ -88,5 +88,10 @@ export async function setProteinGoal(page: Page, grams: number) {
 export async function signOut(page: Page) {
   await page.getByRole('button', { name: 'Account' }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  const signInButton = page.getByRole('button', { name: 'Sign in', exact: true });
+  // A change made just before may not have synced yet (007 FR-011): it stays on the device either way.
+  const anyway = page.getByRole('button', { name: 'Sign out anyway' });
+  await expect(signInButton.or(anyway)).toBeVisible();
+  if (await anyway.isVisible()) await anyway.click();
+  await expect(signInButton).toBeVisible();
 }

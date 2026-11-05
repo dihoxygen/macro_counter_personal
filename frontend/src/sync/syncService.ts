@@ -1,7 +1,7 @@
 import type { SyncApi, SyncState } from '../api/sync';
 import type { Changes } from '../data/changes';
 import type { Db } from '../data/db';
-import { pendingCount, quarantineCount } from '../data/outbox';
+import { quarantineCount, unsyncedCount } from '../data/outbox';
 import { createSyncScheduler } from './scheduler';
 import { createSyncEngine, type RoundOutcome } from './syncEngine';
 
@@ -20,6 +20,13 @@ export interface SyncService {
   /** Begins syncing. Called once the notice has been acknowledged (FR-017). */
   start(): void;
   stop(): void;
+  /**
+   * Stops for good, and waits for a round in flight. Before signing out: a late request would find the session gone,
+   * so nothing can start again from here, not even a state check that was still on its way.
+   */
+  drain(): Promise<void>;
+  /** Undoes a drain, when signing out did not work after all. */
+  resume(): void;
   notifyLocalChange(): void;
   getState(): Promise<SyncState>;
   acknowledgeNotice(): Promise<void>;
@@ -51,7 +58,7 @@ export function createSyncService({ db, api, changes, now }: Deps): SyncService 
   };
 
   async function refresh() {
-    const [pending, quarantined] = await Promise.all([pendingCount(db), quarantineCount(db)]);
+    const [pending, quarantined] = await Promise.all([unsyncedCount(db), quarantineCount(db)]);
     snapshot = {
       ...snapshot,
       online: navigator.onLine,
@@ -64,23 +71,39 @@ export function createSyncService({ db, api, changes, now }: Deps): SyncService 
   }
 
   const onConnectivity = () => void refresh();
-  const unsubscribeEngine = engine.subscribe(onConnectivity);
+  let unsubscribeEngine = () => {};
+  let drained = false;
+
+  function start() {
+    if (snapshot.started || drained) return;
+    snapshot = { ...snapshot, started: true };
+    // Here, not once at creation: stop() ends this, and React runs a mount twice in development.
+    unsubscribeEngine = engine.subscribe(onConnectivity);
+    window.addEventListener('online', onConnectivity);
+    window.addEventListener('offline', onConnectivity);
+    scheduler.start();
+    void refresh();
+  }
+
+  function stop() {
+    snapshot = { ...snapshot, started: false };
+    scheduler.stop();
+    unsubscribeEngine();
+    window.removeEventListener('online', onConnectivity);
+    window.removeEventListener('offline', onConnectivity);
+  }
 
   return {
-    start() {
-      if (snapshot.started) return;
-      snapshot = { ...snapshot, started: true };
-      window.addEventListener('online', onConnectivity);
-      window.addEventListener('offline', onConnectivity);
-      scheduler.start();
-      void refresh();
+    start,
+    stop,
+    async drain() {
+      drained = true;
+      stop();
+      await engine.settled();
     },
-    stop() {
-      snapshot = { ...snapshot, started: false };
-      scheduler.stop();
-      unsubscribeEngine();
-      window.removeEventListener('online', onConnectivity);
-      window.removeEventListener('offline', onConnectivity);
+    resume() {
+      drained = false;
+      start();
     },
     notifyLocalChange() {
       scheduler.notifyLocalChange();
@@ -88,7 +111,7 @@ export function createSyncService({ db, api, changes, now }: Deps): SyncService 
     },
     getState: () => api.getState(),
     acknowledgeNotice: () => api.acknowledgeNotice(),
-    pendingCount: () => pendingCount(db),
+    pendingCount: () => unsyncedCount(db),
     isComplete: () => engine.isComplete(),
     snapshot: () => snapshot,
     subscribe(listener) {

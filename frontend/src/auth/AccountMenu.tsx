@@ -42,6 +42,8 @@ export function AccountMenu() {
     setError(undefined);
     setUnsynced(undefined);
     try {
+      // A request that lands after the session ends would raise the expired-session sign-in over the reload.
+      await sync.drain();
       await signOut();
       await forgetAndReload();
     } catch (e) {
@@ -50,6 +52,7 @@ export function AccountMenu() {
         await forgetAndReload();
         return;
       }
+      sync.resume();
       setError("Couldn't sign out. Check your connection and try again.");
       setBusy(false);
     }

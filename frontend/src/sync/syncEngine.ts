@@ -18,6 +18,8 @@ export interface SyncEngine {
   runRound(): Promise<void>;
   outcome(): RoundOutcome;
   isRunning(): boolean;
+  /** Resolves once no round is running. */
+  settled(): Promise<void>;
   /** True when this device holds everything: the first pull finished, nothing is queued or set aside (research R21). */
   isComplete(): Promise<boolean>;
   subscribe(listener: () => void): () => void;
@@ -166,6 +168,7 @@ export function createSyncEngine({ db, api, changes, now }: Deps): SyncEngine {
     },
     outcome: () => outcome,
     isRunning: () => round !== undefined,
+    settled: () => round ?? Promise.resolve(),
     async isComplete() {
       const [firstPull, pending, setAside] = await Promise.all([
         db.get('meta', FIRST_PULL_DONE),

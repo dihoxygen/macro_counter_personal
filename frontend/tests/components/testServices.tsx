@@ -88,6 +88,8 @@ export function fakeSync(overrides: Partial<SyncService> = {}): SyncService {
   return {
     start: vi.fn(),
     stop: vi.fn(),
+    drain: vi.fn(async () => undefined),
+    resume: vi.fn(),
     notifyLocalChange: vi.fn(),
     getState: vi.fn(async () => ({ noticeAcknowledged: true, revision: 0 })),
     acknowledgeNotice: vi.fn(async () => undefined),

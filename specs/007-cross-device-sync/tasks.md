@@ -305,7 +305,7 @@ matches within 10 s. A third fresh context gets everything (quickstart V1).
 - [X] T048 [P] [US1] Status indicator tests in `frontend/src/features/sync/SyncStatus.test.tsx`:
   - States synced / syncing (only after more than 1 s) / failing / off, with text labels.
   - 44×44 px target, and tapping shows the explanation (contracts/ui-sync.md "Sync status").
-- [ ] T049 [US1] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts`, using two browser contexts signed in as `e2e-owner`:
+- [X] T049 [US1] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts`, using two browser contexts signed in as `e2e-owner`:
   - Log on A → visible on B within 10 s.
   - Edit on B → A updates.
   - Delete on A → gone on B and stays gone after reload.
@@ -373,7 +373,7 @@ both sync, each shows the union exactly once, with a single saved food (quicksta
   - Before pushing, each record is checked against `vectors/bounds.json` rules. A failing record goes to `quarantine` with its reason, and the rest of the batch is pushed.
   - The status shows "N can't sync".
   - The record stays visible locally.
-- [ ] T061 [US2] E2E first-sync merge in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend):
+- [X] T061 [US2] E2E first-sync merge in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend):
   - Seed two contexts' v1 IndexedDB with different entries plus the same food (helper in `frontend/tests/e2e/helpers/`).
   - Sign in and acknowledge on both.
   - Both show the union exactly once, there is one quick-pick "Greek yogurt", and the entries link to it.
@@ -417,7 +417,7 @@ receives the changes. Signing out offline shows the warning (quickstart V3, V6).
   - With a non-empty outbox, "Sign out" and "Sign out everywhere" show an inline confirmation "N changes haven't synced yet…" with **Sign out anyway** / **Cancel**.
   - No `window.confirm`.
   - With an empty outbox, behaviour is unchanged.
-- [ ] T071 [US3] E2E offline in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend):
+- [X] T071 [US3] E2E offline in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend):
   - `contextA.setOffline(true)` → log 2 foods and edit 1 → the status shows offline → `setOffline(false)` → B receives them within 10 s.
   - Offline sign-out shows the warning. Signing in as `e2e-friend` on A does not show the entry. Signing back in as `e2e-owner` online syncs it.
   - Re-logging a previously used food takes the same number of interactions offline as online, and no more than 3 (SC-004, Principle IV).
@@ -466,7 +466,7 @@ V11, SC-005, SC-009).
   - It works while offline.
   - With a non-empty outbox or quarantine, a pull still in progress, or an unfinished first pull, a note says the export may be incomplete and the button stays enabled.
   - A failure shows an inline error.
-- [ ] T080 [US4] E2E export in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): download the file with Playwright's `download` event, parse it, and confirm its entries match the account. Signing in as `e2e-friend` on the same browser exports only that user's data (threat S15).
+- [X] T080 [US4] E2E export in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): download the file with Playwright's `download` event, parse it, and confirm its entries match the account. Signing in as `e2e-friend` on the same browser exports only that user's data (threat S15).
 
 ### Implementation for User Story 4
 
@@ -475,7 +475,7 @@ V11, SC-005, SC-009).
   - Run `revoke execute … from public`.
   - Makes T076 pass.
 - [X] T082 [US4] Fix any isolation or logging gaps found by T075/T077 in `backend/MacroCounter.Api/Sync/SyncStore.cs`, `SyncEndpoints.cs` and `Security/RefusedRequestLogging.cs`, until both pass
-- [X] T083 [P] [US4] Document `delete_user` in `specs/003-auth-security-foundations/contracts/owner-procedures.md` (new section, with a link back to 007 research R8)
+- [ ] T083 [P] [US4] Document `delete_user` in `specs/003-auth-security-foundations/contracts/owner-procedures.md` (new section, with a link back to 007 research R8)
 - [X] T084 [US4] Implement `frontend/src/data/exportData.ts`: pure `buildExport(records, exportedAt)`, plus `UserData.exportData()` reading through the repositories (add `listAll` to the entry and saved-food repositories, and use `entryVersionRepository.listAll` from T033). Wire it in `frontend/src/app/services.tsx` and `frontend/src/data/lockedData.ts`. Makes T078 pass.
 - [X] T085 [US4] Implement `frontend/src/data/downloadFile.ts` (`Blob` and a temporary `download` link, injected through services) and add **Export my data**, its note about the file's contents, and the incomplete-export note (from `services.sync.isComplete()`) to `frontend/src/auth/AccountMenu.tsx`. Makes T079 and T080 pass. Depends on T084.
 
@@ -500,7 +500,7 @@ subtotals and the change match on a second device (quickstart V7).
   - A null entry shows Uncategorized in the editor, can take a category, and the field has no Uncategorized option (FR-022).
   - 44 px targets at 360 px.
 - [X] T088 [P] [US5] Grouped list tests in `frontend/src/features/today/EntryList.test.tsx` (new), extending `DayLog.test.tsx` (new in T047) and `TodayScreen.test.tsx`: Today and the day view show headed groups with subtotals, and the day total is unchanged
-- [ ] T089 [US5] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): log and change a category on A, then confirm that groups and subtotals match on B within 10 s
+- [X] T089 [US5] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): log and change a category on A, then confirm that groups and subtotals match on B within 10 s
 
 ### Implementation for User Story 5
 
@@ -530,7 +530,7 @@ confirm both devices show it with full history (quickstart V8).
   - A later edit keeps the pending `restore` op. An aborted transaction leaves no write.
 - [X] T094 [P] [US6] History UI tests in `frontend/src/features/today/EntryHistory.test.tsx`, per contracts/ui-sync.md: opened from the editor, current then earlier versions newest first with when and how each changed, **Restore** applies at once with no confirmation and a status message, and it refreshes on a `version` change
 - [X] T095 [P] [US6] Recently deleted tests in `frontend/src/features/today/RecentlyDeleted.test.tsx`: hidden with none, listed per day with **Restore**, and shown on Today and the history day view
-- [ ] T096 [US6] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend):
+- [X] T096 [US6] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend):
   - Edit twice, then delete on A. Restore on B. Both show the entry with the same ID and the history.
   - An offline edit on A made before the delete syncs and leaves the entry deleted, then appears in history (quickstart V8).
 
@@ -556,7 +556,7 @@ order on both (quickstart V9).
 - [X] T100 [P] [US7] `rankQuickPicks` tests in `frontend/src/domain/quickPicks.test.ts` (R18): count first; ties by latest linked `loggedAt`; foods unused in the window follow by `lastUsedAt`; the food ID breaks any remaining tie; day 29 back is inside the window and day 30 back is outside; deleted entries are not counted
 - [X] T101 [P] [US7] `listQuickPicks(today, limit)` tests in `frontend/src/data/savedFoodRepository.test.ts` (extend): it reads the 30-day range through the `dayKey` index and honours `limit`
 - [X] T102 [P] [US7] UI tests in `frontend/src/features/add-food/QuickPicks.test.tsx` and `frontend/src/features/recent/RecentFoods.test.tsx` (extend): both show the new order, with labels and flows unchanged
-- [ ] T103 [US7] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): uses across two devices give the same order on both. Deleting entries changes it, and restoring them changes it back
+- [X] T103 [US7] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): uses across two devices give the same order on both. Deleting entries changes it, and restoring them changes it back
 
 ### Implementation for User Story 7
 
@@ -581,7 +581,7 @@ per day and on average (quickstart V10).
 - [X] T107 [P] [US8] `buildTrend` tests in `frontend/src/domain/nutrition/trends.test.ts` (R19): ranges of 7, 30 and 90 days ending today; hand-verified daily totals and averages; days with no entries are `null` and left out of averages; a day of real zero values is counted; the goal per day comes from `goalForDay`; an all-empty range. 100% coverage (Principle II)
 - [X] T108 [P] [US8] `listByDayRange(from, to)` tests in `frontend/src/data/entryRepository.test.ts` (extend): it uses the `dayKey` index range, inclusive at both ends
 - [X] T109 [P] [US8] View tests in `frontend/src/features/trends/TrendsView.test.tsx`, per contracts/ui-sync.md "Trends": the range buttons default to 7, the four measures show with averages, the protein goal shows, "no data" appears in the table, the table holds the same values as the charts, the empty message shows, and it refreshes on an `entry` or `goal` change
-- [ ] T110 [US8] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): seed 30 days with gaps, open Trends on the second device, and confirm values match the day view and an edit updates that day. Confirm it works offline
+- [X] T110 [US8] E2E in `frontend/tests/e2e/auth/sync-two-devices.spec.ts` (extend): seed 30 days with gaps, open Trends on the second device, and confirm values match the day view and an edit updates that day. Confirm it works offline
 
 ### Implementation for User Story 8
 
@@ -601,8 +601,8 @@ per day and on average (quickstart V10).
   - Backup retention note (Supabase ≤ 7 days, R8), and the 90-day version purge (R16). The `pg_cron` step now also covers entry history.
   - `delete_user` usage, and that users ask the owner for removal (FR-016).
   - Rollout order: migrate, then deploy (quickstart "Production rollout").
-- [ ] T115 [P] Update `scripts/dev-db.ps1` and `scripts/e2e-db.ps1` so they re-run `macro_admin.grant_app_role` after migrations, and the e2e setup can reset `macro_data` between runs
-- [ ] T116 Performance checks with one seeded year of data (about 2,500 records), in `frontend/tests/e2e/auth/sync-two-devices.spec.ts`: a fresh context is ready in < 15 s (SC-003), the 90-day trends view opens in < 2 s (SC-008), and an export finishes in < 5 s (SC-009). Repeat a change between two contexts 20 times and assert that at least 19 arrive within 10 s (SC-001). Also measure that an empty pull is < 30 ms p95 in a backend test (`Sync/SyncPullTests.cs`, a loose bound to avoid flakiness)
+- [X] T115 [P] Update `scripts/dev-db.ps1` and `scripts/e2e-db.ps1` so they re-run `macro_admin.grant_app_role` after migrations, and the e2e setup can reset `macro_data` between runs
+- [X] T116 Performance checks with one seeded year of data (about 2,500 records), in `frontend/tests/e2e/auth/sync-two-devices.spec.ts`: a fresh context is ready in < 15 s (SC-003), the 90-day trends view opens in < 2 s (SC-008), and an export finishes in < 5 s (SC-009). Repeat a change between two contexts 20 times and assert that at least 19 arrive within 10 s (SC-001). Also measure that an empty pull is < 30 ms p95 in a backend test (`Sync/SyncPullTests.cs`, a loose bound to avoid flakiness)
 - [ ] T117 Run `scripts/check.ps1` (full gate: backend, frontend unit with 100% nutrition coverage, e2e, `npm audit`, `dotnet list package --vulnerable`, secret scan) and fix any failures
 - [ ] T118 Run the manual scenarios V1–V11 in `specs/007-cross-device-sync/quickstart.md` and record the results in the PR description
 - [ ] T119 Governance gate: run `/security-review` plus an ASVS L2 pass over `/api/sync/*`, `SyncStore`, the `macro_data` grants and RLS, and the purge. Resolve or risk-accept the findings in writing in the PR (constitution Governance, plan threat model S1–S15)
