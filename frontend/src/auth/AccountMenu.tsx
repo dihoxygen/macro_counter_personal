@@ -17,7 +17,7 @@ export function AccountMenu() {
   const user = useCurrentUser();
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
-  const [unsynced, setUnsynced] = useState<{ count: number; signOut: SignOut } | undefined>();
+  const [unsynced, setUnsynced] = useState<{ count: number; online: boolean; signOut: SignOut } | undefined>();
   const [mayBeIncomplete, setMayBeIncomplete] = useState(false);
   const [exported, setExported] = useState(false);
 
@@ -61,7 +61,7 @@ export function AccountMenu() {
   /** Unsynced changes are safe, but the person should know they are leaving them here (007 FR-011). */
   async function askThenRun(signOut: SignOut) {
     const count = await sync.pendingCount();
-    if (count > 0) setUnsynced({ count, signOut });
+    if (count > 0) setUnsynced({ count, online: sync.snapshot().online, signOut });
     else await run(signOut);
   }
 
@@ -94,6 +94,7 @@ export function AccountMenu() {
       {unsynced ? (
         <div className="stack">
           <p>{unsyncedMessage(unsynced.count)}</p>
+          {unsynced.online ? null : <p>You're offline, so you'll need to reconnect before you can sign out.</p>}
           <div className="row">
             <button type="button" onClick={() => run(unsynced.signOut)} disabled={busy}>
               Sign out anyway

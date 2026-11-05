@@ -30,7 +30,7 @@ only), a 44×44 px target, and works at 360 px width. Tapping it shows a one-lin
 | State | Label | When |
 |---|---|---|
 | synced | "Synced" | Outbox empty, last round succeeded |
-| syncing | "Syncing…" | A round is in flight for more than 1 s (no flicker on fast rounds) |
+| syncing | "Syncing…" | A round is in flight for more than 1 s (no flicker on fast rounds), or no round has finished since the app opened |
 | pending | "N not synced" | Outbox non-empty, online, round not yet run |
 | offline | "Offline: will sync later" | `navigator.onLine` is false or the request failed with a network error |
 | failing | "Sync problem, retrying" | 5xx, 429 or `service_unavailable` on the last round |
@@ -53,6 +53,9 @@ A `401` hands over to the existing session-expired overlay. The outbox is kept.
 - **Sign out** or **Sign out everywhere** with a non-empty outbox shows an inline confirmation inside
   the account menu: "N changes haven't synced yet. They'll stay on this device and sync the next time
   you sign in here." It offers **Sign out anyway** and **Cancel**.
+- When offline, it adds: "You're offline, so you'll need to reconnect before you can sign out." Signing
+  out needs the server, to end the session. If it is tried anyway, the person stays signed in and sees
+  "Couldn't sign out. Check your connection and try again." The changes stay safe and sync carries on.
 - It is never a browser `confirm()` dialog.
 - With an empty outbox, sign-out behaves as today.
 

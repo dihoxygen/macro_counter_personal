@@ -15,6 +15,8 @@ export interface SyncStatusView {
 
 const noun = (count: number) => (count === 1 ? 'change' : 'changes');
 
+const syncing: SyncStatusView = { kind: 'syncing', label: 'Syncing…', explanation: 'Sending and receiving changes.' };
+
 function statusFor(snapshot: SyncSnapshot, slowRound: boolean): SyncStatusView {
   const { started, online, outcome, pending, quarantined } = snapshot;
   const base = ((): SyncStatusView => {
@@ -35,7 +37,7 @@ function statusFor(snapshot: SyncSnapshot, slowRound: boolean): SyncStatusView {
         explanation: 'Your changes are safe on this device. Sync keeps trying.',
       };
     }
-    if (slowRound) return { kind: 'syncing', label: 'Syncing…', explanation: 'Sending and receiving changes.' };
+    if (slowRound) return syncing;
     if (pending > 0) {
       return {
         kind: 'pending',
@@ -43,6 +45,8 @@ function statusFor(snapshot: SyncSnapshot, slowRound: boolean): SyncStatusView {
         explanation: `${pending} ${noun(pending)} waiting to sync.`,
       };
     }
+    // Nothing has finished since the app opened, so "up to date" would be a guess.
+    if (outcome.kind === 'idle') return syncing;
     return { kind: 'synced', label: 'Synced', explanation: 'This device is up to date.' };
   })();
   if (quarantined === 0) return base;

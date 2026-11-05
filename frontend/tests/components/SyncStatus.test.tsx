@@ -18,6 +18,8 @@ describe('SyncStatus', () => {
     ['off', { started: false, outcome: { kind: 'idle' } }, /sync off/i],
     ['off when the notice is missing', { outcome: { kind: 'off' } }, /sync off/i],
     ['pending', { pending: 3 }, /3 not synced/i],
+    ['syncing until the first round finishes', { outcome: { kind: 'idle' } }, /syncing/i],
+    ['pending before the first round finishes', { outcome: { kind: 'idle' }, pending: 2 }, /2 not synced/i],
     ['offline when the browser says so', { online: false }, /offline: will sync later/i],
     ['offline after a network failure', { outcome: { kind: 'offline' }, pending: 1 }, /offline: will sync later/i],
     ['failing', { outcome: { kind: 'failing' }, pending: 1 }, /sync problem, retrying/i],

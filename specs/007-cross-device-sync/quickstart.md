@@ -77,9 +77,12 @@ Expected results are in **bold**.
 ### V6. Sign-out with unsynced changes (FR-011)
 
 1. Take A offline, log a food, and open the account menu → Sign out. **An inline warning shows "1 change
-   hasn't synced yet…". Choose "Sign out anyway".**
-2. Sign in on A as a different user. **The first user's unsynced entry is not visible.**
-3. Sign back in as the first user while online. **The entry syncs and appears on B.**
+   hasn't synced yet…" and says to reconnect first. "Sign out anyway" is refused with "Couldn't sign out…",
+   A stays signed in, and the change stays.**
+2. Reconnect with `/api/sync/*` blocked in the browser's dev tools, so the change stays unsynced. Sign out
+   and choose "Sign out anyway". **The sign-in screen shows.**
+3. Sign in on A as a different user. **The first user's unsynced entry is not visible.**
+4. Remove the block and sign back in as the first user. **The entry syncs and appears on B.**
 
 ### V7. Meal categories (US5)
 

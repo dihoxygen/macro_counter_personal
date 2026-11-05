@@ -137,6 +137,7 @@ test.describe('offline (US3)', () => {
     await a.page.getByRole('button', { name: 'Account' }).click();
     await a.page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(a.page.getByText(/1 change hasn't synced yet/i)).toBeVisible();
+    await expect(a.page.getByText(/reconnect before you can sign out/i)).toBeVisible();
 
     // Cancelling is the only way out while offline: signing out needs the server.
     await a.page.getByRole('button', { name: 'Cancel' }).click();

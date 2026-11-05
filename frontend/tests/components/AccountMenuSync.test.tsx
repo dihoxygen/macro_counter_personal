@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AccountMenu } from '../../src/auth/AccountMenu';
+import type { SyncSnapshot } from '../../src/sync/syncService';
 import { fakeAuth, fakeSync, renderWithServices } from './testServices';
 
 describe('signing out with unsynced changes', () => {
@@ -21,6 +22,25 @@ describe('signing out with unsynced changes', () => {
     expect(await screen.findByText(/3 changes haven't synced yet/i)).toHaveTextContent(/stay on this device/i);
     expect(auth.signOut).not.toHaveBeenCalled();
     expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('says signing out needs a connection when offline', async () => {
+    const offline: SyncSnapshot = { started: true, online: false, outcome: { kind: 'offline' }, running: false, pending: 1, quarantined: 0 };
+    const sync = fakeSync({ pendingCount: vi.fn(async () => 1), snapshot: () => offline });
+    await renderWithServices(<AccountMenu />, { auth: fakeAuth(), reload: vi.fn(), sync });
+
+    await userEvent.setup().click(screen.getByRole('button', { name: /^sign out$/i }));
+
+    expect(await screen.findByText(/reconnect before you can sign out/i)).toBeInTheDocument();
+  });
+
+  it('does not mention a connection when online', async () => {
+    const { user } = await menu(1);
+
+    await user.click(screen.getByRole('button', { name: /^sign out$/i }));
+
+    await screen.findByText(/1 change hasn't synced yet/i);
+    expect(screen.queryByText(/reconnect/i)).not.toBeInTheDocument();
   });
 
   it('says it the singular way for one change', async () => {
