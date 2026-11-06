@@ -580,6 +580,105 @@ button.entry {
   margin-left: auto;
 }
 
+.sync-status-wrap {
+  flex-basis: 100%;
+  order: 3;
+}
+
+.sync-status {
+  min-height: var(--touch);
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+.sync-status-failing {
+  border-color: currentcolor;
+  font-weight: 600;
+}
+
+.sync-status-explanation {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+}
+
+.meal-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meal-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.meal-heading .muted {
+  font-weight: 400;
+}
+
+.version-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.version-list > li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+[aria-pressed='true'] {
+  font-weight: 700;
+  border-color: currentcolor;
+}
+
+.trend-chart {
+  margin: 0;
+}
+
+.trend-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.trend-bar {
+  fill: currentcolor;
+  opacity: 0.55;
+}
+
+.trend-goal {
+  stroke: currentcolor;
+  stroke-width: 2;
+}
+
+.trend-table {
+  overflow-x: auto;
+}
+
+.trend-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.trend-table th,
+.trend-table td {
+  padding: 6px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;

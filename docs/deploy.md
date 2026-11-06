@@ -8,15 +8,16 @@ your password manager.
 Before inviting anyone other than yourself, complete the security review in the last section
 (Constitution: Governance).
 
-## 1. Supabase (identity and security data only)
+## 1. Supabase (identity, security and activity data)
 
 1. **Create a project** in the region closest to where the app will run. Turn on **MFA on your
    Supabase account**: anyone with access to it controls every account in the app.
 2. **Turn off the Data API** (Project Settings → API). The app never uses it, so nothing in the
-   database is reachable through PostgREST. The tables also sit in a private `macro` schema with
-   row-level security as a second layer.
+   database is reachable through PostgREST. The tables also sit in the private `macro` and
+   `macro_data` schemas with row-level security as a second layer.
 3. **Enable `pg_cron`** (Database → Extensions). This lets the migration schedule the daily
-   retention purge.
+   retention purge, which also removes entry history after 90 days. Without it, nothing is purged:
+   history and deleted food data would stay until you run `select macro_admin.purge_expired();`.
 4. **Download the root certificate** (Database Settings → SSL Configuration) and save it as
    `backend/MacroCounter.Api/certs/supabase-root-ca.crt`. It is public, not a secret, and is
    committed so `SSL Mode=VerifyFull` can check the server.
@@ -39,7 +40,10 @@ Before inviting anyone other than yourself, complete the security review in the 
 
    `macro_app` can read and update sign-in data, but it **cannot create, rename, promote or
    re-enable accounts**, and it can only add audit rows, never read or change them
-   (`specs/003-auth-security-foundations/data-model.md`).
+   (`specs/003-auth-security-foundations/data-model.md`). It can never delete activity data, and it
+   sees only the rows of the user each request is for
+   (`specs/007-cross-device-sync/data-model.md`). Migrations re-grant existing roles; for a role
+   added later, run `select macro_admin.grant_app_role('<role>');`.
 7. **Restrict network access** (Database Settings → Network Restrictions) to the App Service's
    outbound IP addresses (step 2.3) and your own IP.
 8. **Invite yourself:** `select macro_admin.invite_user('<you>', 'owner');`. Keep the printed code
@@ -52,6 +56,10 @@ The connection string the app uses (Supavisor **session** pooler, IPv4):
 ```text
 Host=aws-0-<region>.pooler.supabase.com;Port=5432;Database=postgres;Username=macro_app.<project-ref>;Password=<macro_app password>;SSL Mode=VerifyFull;Root Certificate=certs/supabase-root-ca.crt
 ```
+
+**Backups and removal.** Removing someone with `macro_admin.delete_user` deletes their activity data
+from the database at once. Supabase keeps daily backups for at most 7 days (none on the free plan),
+and point-in-time recovery stays off, so their data is fully gone after 7 days.
 
 ## 2. Azure App Service (one instance)
 
@@ -107,6 +115,9 @@ Host=aws-0-<region>.pooler.supabase.com;Port=5432;Database=postgres;Username=mac
 
 ## 3. Build and deploy
 
+**Migrate first, then deploy.** New code expects the new tables, and every migration so far works
+with the app version before it. For an update, repeat step 1.5, then run the commands below.
+
 ```powershell
 npm --prefix frontend ci
 npm --prefix frontend run build                    # writes the app into backend/MacroCounter.Api/wwwroot
@@ -136,5 +147,6 @@ Then sign in as the owner with the code from step 1.8.
 2. Run `/security-review` on the branch and an OWASP ASVS Level 2 checklist pass
    (`specs/003-auth-security-foundations/checklists/asvs-l2.md`). Resolve each finding, or record a
    written risk acceptance in `plan.md`.
-3. Tell each friend what is sent to Claude and that you run the server. The app also shows this
-   during their first-time setup.
+3. Tell each friend what is sent to Claude, that their log is stored on your server where you can
+   read it, and that you run it. The app also shows this during their first-time setup, and to
+   existing users before their first sync.

@@ -67,6 +67,7 @@ public static class TestUsers
             state = await client.PostForStateAsync("/api/auth/setup/notice", new { acknowledged = true });
         }
         var id = Guid.Parse(state.GetProperty("user").GetProperty("id").GetString()!);
+        client.Http.DefaultRequestHeaders.Add(Sync.SyncTestData.AccountHeader, id.ToString());
         return (client, new ActiveUser(id, username, password, secret));
     }
 }

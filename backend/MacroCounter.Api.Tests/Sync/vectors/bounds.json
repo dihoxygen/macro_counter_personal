@@ -1,0 +1,113 @@
+{
+  "base": {
+    "entry": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "versionId": "22222222-2222-4222-8222-222222222222",
+      "createdAt": "2026-11-04T08:00:00.000Z",
+      "updatedAt": "2026-11-04T08:00:00.000Z",
+      "schemaVersion": 1,
+      "dayKey": "2026-11-04",
+      "loggedAt": "2026-11-04T08:00:00.000Z",
+      "name": "Banana",
+      "quantity": { "amount": 120, "unit": "g" },
+      "macros": { "kcal": 107, "proteinG": 1.3, "carbsG": 27.5, "fatG": 0.4 },
+      "source": "manual",
+      "savedFoodId": null,
+      "mealCategory": "breakfast"
+    },
+    "food": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "createdAt": "2026-11-04T08:00:00.000Z",
+      "updatedAt": "2026-11-04T08:00:00.000Z",
+      "schemaVersion": 1,
+      "name": "Banana",
+      "referenceQuantity": { "amount": 120, "unit": "g" },
+      "macros": { "kcal": 107, "proteinG": 1.3, "carbsG": 27.5, "fatG": 0.4 },
+      "source": "ai",
+      "lastUsedAt": "2026-11-04T08:00:00.000Z"
+    },
+    "goal": {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "createdAt": "2026-11-04T08:00:00.000Z",
+      "updatedAt": "2026-11-04T08:00:00.000Z",
+      "schemaVersion": 1,
+      "effectiveFrom": "2026-11-04",
+      "grams": 150
+    },
+    "version": {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "entryId": "11111111-1111-4111-8111-111111111111",
+      "changeType": "edit",
+      "replacedAt": "2026-11-04T09:00:00.000Z",
+      "createdAt": "2026-11-04T08:00:00.000Z",
+      "updatedAt": "2026-11-04T08:00:00.000Z",
+      "schemaVersion": 1,
+      "dayKey": "2026-11-04",
+      "loggedAt": "2026-11-04T08:00:00.000Z",
+      "name": "Banana",
+      "quantity": { "amount": 120, "unit": "g" },
+      "macros": { "kcal": 107, "proteinG": 1.3, "carbsG": 27.5, "fatG": 0.4 },
+      "source": "manual",
+      "savedFoodId": null,
+      "mealCategory": null
+    }
+  },
+  "cases": [
+    { "name": "entry as given", "type": "entry", "patch": {}, "valid": true },
+    { "name": "food as given", "type": "food", "patch": {}, "valid": true },
+    { "name": "goal as given", "type": "goal", "patch": {}, "valid": true },
+    { "name": "version as given", "type": "version", "patch": {}, "valid": true },
+
+    { "name": "name at 120 chars", "type": "entry", "patch": { "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }, "valid": true },
+    { "name": "name at 121 chars", "type": "entry", "patch": { "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }, "valid": false, "reason": "invalid_record" },
+    { "name": "empty name", "type": "entry", "patch": { "name": "" }, "valid": false, "reason": "invalid_record" },
+    { "name": "name empty after trim", "type": "food", "patch": { "name": " \t " }, "valid": false, "reason": "invalid_record" },
+
+    { "name": "amount zero", "type": "entry", "patch": { "quantity": { "amount": 0, "unit": "g" } }, "valid": true },
+    { "name": "amount at limit", "type": "entry", "patch": { "quantity": { "amount": 100000, "unit": "g" } }, "valid": true },
+    { "name": "amount over limit", "type": "entry", "patch": { "quantity": { "amount": 100000.5, "unit": "g" } }, "valid": false, "reason": "invalid_record" },
+    { "name": "amount negative", "type": "entry", "patch": { "quantity": { "amount": -1, "unit": "g" } }, "valid": false, "reason": "invalid_record" },
+    { "name": "unit ml", "type": "entry", "patch": { "quantity": { "amount": 1, "unit": "ml" } }, "valid": true },
+    { "name": "unit serving", "type": "food", "patch": { "referenceQuantity": { "amount": 1, "unit": "serving" } }, "valid": true },
+    { "name": "unknown unit", "type": "entry", "patch": { "quantity": { "amount": 1, "unit": "oz" } }, "valid": false, "reason": "invalid_record" },
+
+    { "name": "kcal at limit", "type": "entry", "patch": { "macros": { "kcal": 100000, "proteinG": 0, "carbsG": 0, "fatG": 0 } }, "valid": true },
+    { "name": "kcal over limit", "type": "entry", "patch": { "macros": { "kcal": 100001, "proteinG": 0, "carbsG": 0, "fatG": 0 } }, "valid": false, "reason": "invalid_record" },
+    { "name": "negative kcal", "type": "food", "patch": { "macros": { "kcal": -1, "proteinG": 0, "carbsG": 0, "fatG": 0 } }, "valid": false, "reason": "invalid_record" },
+    { "name": "protein at limit", "type": "entry", "patch": { "macros": { "kcal": 0, "proteinG": 10000, "carbsG": 10000, "fatG": 10000 } }, "valid": true },
+    { "name": "protein over limit", "type": "entry", "patch": { "macros": { "kcal": 0, "proteinG": 10001, "carbsG": 0, "fatG": 0 } }, "valid": false, "reason": "invalid_record" },
+    { "name": "carbs over limit", "type": "entry", "patch": { "macros": { "kcal": 0, "proteinG": 0, "carbsG": 10001, "fatG": 0 } }, "valid": false, "reason": "invalid_record" },
+    { "name": "fat negative", "type": "version", "patch": { "macros": { "kcal": 0, "proteinG": 0, "carbsG": 0, "fatG": -0.1 } }, "valid": false, "reason": "invalid_record" },
+
+    { "name": "goal null", "type": "goal", "patch": { "grams": null }, "valid": true },
+    { "name": "goal at limit", "type": "goal", "patch": { "grams": 10000 }, "valid": true },
+    { "name": "goal zero", "type": "goal", "patch": { "grams": 0 }, "valid": false, "reason": "invalid_record" },
+    { "name": "goal over limit", "type": "goal", "patch": { "grams": 10001 }, "valid": false, "reason": "invalid_record" },
+
+    { "name": "dayKey not a date", "type": "entry", "patch": { "dayKey": "2026-13-40" }, "valid": false, "reason": "invalid_record" },
+    { "name": "dayKey wrong shape", "type": "entry", "patch": { "dayKey": "04/11/2026" }, "valid": false, "reason": "invalid_record" },
+    { "name": "effectiveFrom Feb 30", "type": "goal", "patch": { "effectiveFrom": "2026-02-30" }, "valid": false, "reason": "invalid_record" },
+    { "name": "timestamp with offset", "type": "entry", "patch": { "loggedAt": "2026-11-04T08:00:00.000+01:00" }, "valid": true },
+    { "name": "timestamp without offset", "type": "entry", "patch": { "loggedAt": "2026-11-04T08:00:00" }, "valid": false, "reason": "invalid_record" },
+    { "name": "timestamp not a date", "type": "food", "patch": { "lastUsedAt": "yesterday" }, "valid": false, "reason": "invalid_record" },
+
+    { "name": "unknown record schema", "type": "entry", "patch": { "schemaVersion": 2 }, "valid": false, "reason": "unknown_schema_version" },
+    { "name": "unknown food schema", "type": "food", "patch": { "schemaVersion": 0 }, "valid": false, "reason": "unknown_schema_version" },
+
+    { "name": "lunch", "type": "entry", "patch": { "mealCategory": "lunch" }, "valid": true },
+    { "name": "dinner", "type": "entry", "patch": { "mealCategory": "dinner" }, "valid": true },
+    { "name": "snacks", "type": "version", "patch": { "mealCategory": "snacks" }, "valid": true },
+    { "name": "uncategorized is null", "type": "entry", "patch": { "mealCategory": null }, "valid": true },
+    { "name": "unknown meal", "type": "entry", "patch": { "mealCategory": "brunch" }, "valid": false, "reason": "invalid_record" },
+
+    { "name": "versionId not a UUID", "type": "entry", "patch": { "versionId": "abc" }, "valid": false, "reason": "invalid_record" },
+    { "name": "entryId not a UUID", "type": "version", "patch": { "entryId": "abc" }, "valid": false, "reason": "invalid_record" },
+    { "name": "change type delete", "type": "version", "patch": { "changeType": "delete" }, "valid": true },
+    { "name": "change type restore", "type": "version", "patch": { "changeType": "restore" }, "valid": true },
+    { "name": "unknown change type", "type": "version", "patch": { "changeType": "merge" }, "valid": false, "reason": "invalid_record" },
+
+    { "name": "unknown source", "type": "entry", "patch": { "source": "import" }, "valid": false, "reason": "invalid_record" },
+    { "name": "photo field", "type": "entry", "patch": { "photo": "data:image/jpeg;base64,AAAA" }, "valid": false, "reason": "invalid_record" },
+    { "name": "restoredAt is pull-only", "type": "entry", "patch": { "restoredAt": "2026-11-04T08:00:00.000Z" }, "valid": false, "reason": "invalid_record" }
+  ]
+}

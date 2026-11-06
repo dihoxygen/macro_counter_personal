@@ -1,0 +1,10 @@
+{
+  "cases": [
+    { "input": "Greek yogurt", "normalized": "greek yogurt" },
+    { "input": "  greek YOGURT  ", "normalized": "greek yogurt" },
+    { "input": "\tOats\t", "normalized": "oats" },
+    { "input": "Oats\n", "normalized": "oats" },
+    { "input": "Crème Brûlée", "normalized": "crème brûlée" },
+    { "input": " ÉCLAIR ", "normalized": "éclair" }
+  ]
+}

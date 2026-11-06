@@ -10,6 +10,7 @@ import {
 import type { SessionState, SessionUser } from '../api/auth';
 import { authEvents } from '../api/http';
 import { ServicesProvider, useServices, type Services, type UserData } from '../app/services';
+import { SyncGate } from '../features/sync/SyncGate';
 import { initialAuthState, transition, type AuthEvent, type AuthState } from './authMachine';
 import { CurrentUserContext } from './currentUser';
 import { noteSignIn, readRememberedUser } from './rememberedUser';
@@ -204,6 +205,10 @@ function AccountData({
         goals: data.goals,
         log: data.log,
         devicePreferences: data.devicePreferences,
+        entryVersions: data.entryVersions,
+        changes: data.changes,
+        sync: data.sync,
+        exportData: data.exportData,
         aiBlockedReason: offline ? 'offline' : undefined,
       },
     [services, data, offline],
@@ -212,7 +217,9 @@ function AccountData({
   if (!accountServices) return <p className="muted app">Loading…</p>;
   return (
     <ServicesProvider services={accountServices}>
-      <CurrentUserContext.Provider value={user}>{children}</CurrentUserContext.Provider>
+      <CurrentUserContext.Provider value={user}>
+        <SyncGate>{children}</SyncGate>
+      </CurrentUserContext.Provider>
     </ServicesProvider>
   );
 }

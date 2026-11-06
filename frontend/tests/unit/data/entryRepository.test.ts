@@ -14,6 +14,7 @@ const banana: NewEntry = {
   macros: { kcal: 105, proteinG: 1.3, carbsG: 27, fatG: 0.4 },
   source: 'ai',
   savedFoodId: null,
+  mealCategory: 'lunch',
 };
 
 let repo: EntryRepository;

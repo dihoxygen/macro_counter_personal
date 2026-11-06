@@ -5,6 +5,7 @@ using MacroCounter.Api.Contracts;
 using MacroCounter.Api.Data;
 using MacroCounter.Api.Endpoints;
 using MacroCounter.Api.Security;
+using MacroCounter.Api.Sync;
 using MacroCounter.Api.Testing;
 using MacroCounter.Api.Usage;
 using Microsoft.Extensions.Options;
@@ -12,9 +13,10 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Identity and security data only (FR-019). The app never migrates the database: the owner applies
+// Identity, security and activity data. The app never migrates the database: the owner applies
 // migrations as a script, and the app's database role has no DDL rights (research R12).
 builder.AddIdentityStore();
+builder.Services.AddSingleton<SyncStore>();
 // Invite-only sign-in with server-side sessions, CSRF protection and access policies (feature 003).
 builder.AddAuth();
 builder.AddRateLimits();
@@ -79,6 +81,7 @@ api.MapGet("/health", () => new { status = "ok" }).AllowAnonymous();
 api.MapGet("/status", (IOptions<AnthropicOptions> options) => new StatusResponse(options.Value.HasApiKey));
 api.MapEstimateEndpoints();
 api.MapAuthEndpoints();
+api.MapSyncEndpoints();
 
 // The app shell is public so it can show sign-in, but /api never falls back to it: unknown /api paths
 // get no endpoint, so the fallback policy refuses them like any other server feature.

@@ -5,11 +5,14 @@ photo, and Claude estimates calories, protein, carbs and fat. You review and con
 before it is logged. It is invite-only: the owner adds each person, and everyone signs in with a
 password and an authenticator app.
 
-**Where data lives.** Your food log, saved foods and goals stay in your browser (IndexedDB), in a
-database of your own account. Nobody else signing in on that browser can see them. The .NET backend
-holds the Claude API key, validates AI responses, and stores **identity and security data only**:
-accounts, sign-in sessions, AI usage counts and a security audit log. That store is PostgreSQL
-(Supabase in production). It never receives your food log, photos or goals.
+**Where data lives.** Your food log, saved foods and goals are kept in your browser (IndexedDB), in a
+database of your own account, and synced to the server so they appear on every device you sign in
+on. Nobody else signing in on that browser can see them, and the app works offline. The .NET backend
+holds the Claude API key, validates AI responses, and stores your activity data along with accounts,
+sign-in sessions, AI usage counts and a security audit log. That store is PostgreSQL (Supabase in
+production). The owner runs it and can read what is stored there. Earlier versions of entries, and
+deleted entries, are kept for 90 days. Photos are never stored. You can download a copy of your data
+from the Account screen.
 
 **What is sent to Claude.** Only the food description or photo (and its note) that you choose to
 look up, sent to Claude, Anthropic's AI model. Your name, account, food log and goals are never

@@ -21,5 +21,9 @@ export function lockedRepositories(): Omit<UserData, 'close'> {
     goals: locked('goals') as UserData['goals'],
     log: locked('log') as UserData['log'],
     devicePreferences: locked('devicePreferences') as UserData['devicePreferences'],
+    entryVersions: locked('entryVersions') as UserData['entryVersions'],
+    changes: locked('changes') as UserData['changes'],
+    sync: locked('sync') as UserData['sync'],
+    exportData: () => Promise.reject(new Error('exportData is locked until someone signs in.')),
   };
 }

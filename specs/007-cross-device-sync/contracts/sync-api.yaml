@@ -1,0 +1,408 @@
+openapi: 3.1.0
+info:
+  title: Macro Counter API (cross-device sync)
+  version: 3.0.0
+  description: >
+    Adds sync endpoints to the API from 003/006 (specs/006-security-qol/contracts/auth-api.yaml).
+    Every endpoint here requires a *full* session (`x-access: full`). The endpoint-inventory test
+    from 003 must list all of them.
+
+
+    **No user IDs on the wire.** The user is always the session's user. No request field names or
+    selects a user (research R10).
+
+
+    **Account check.** Every request sends `X-Sync-Account` with the id of the account whose local
+    database the tab holds. The server compares it with the session and answers 401 unauthenticated on
+    a mismatch, so a tab left open after someone else signs in gets nothing (research R22). It never
+    selects a user.
+
+
+    **CSRF.** `POST` requests send `X-CSRF-Token`, as for every other unsafe /api request.
+
+
+    **Notice gate.** `/sync/push` and `/sync/changes` answer `409 sync_notice_required` until the user
+    has acknowledged the sync notice (`POST /sync/notice`, research R7).
+
+
+    **Limits (R11).** At most 200 changes per push. Push bodies are at most 256 KiB. Pull pages are at
+    most 500 records. The `SyncPerUser` limiter allows 60 requests per minute across these endpoints.
+    Unknown JSON properties are rejected (StrictJson). All errors are RFC 9457 problem+json with a
+    machine-readable `code`.
+
+
+    **Atomicity (FR-014).** A push is validated as a whole. If any change is invalid, nothing is
+    applied and the response is `400 invalid_request` with the indexes of the bad changes and a fixed
+    reason code. Field values are never echoed back.
+servers:
+  - url: /api
+
+paths:
+  /sync/state:
+    get:
+      x-access: full
+      summary: Whether the sync notice is acknowledged, and the user's current revision.
+      operationId: getSyncState
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [noticeAcknowledged, revision]
+                properties:
+                  noticeAcknowledged: { type: boolean }
+                  revision: { type: integer, minimum: 0 }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /sync/notice:
+    post:
+      x-access: full
+      summary: Acknowledge that activity data is stored on the owner's server (FR-017). Idempotent.
+      operationId: acknowledgeSyncNotice
+      responses:
+        "204": { description: Acknowledged (or already acknowledged) }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+
+  /sync/push:
+    post:
+      x-access: full
+      summary: Apply local changes. All or nothing; last writer wins by skew-corrected time; deletes win unless explicitly restored later.
+      operationId: pushChanges
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [clientNow, changes]
+              properties:
+                clientNow:
+                  type: string
+                  format: date-time
+                  description: Device clock at send time, used for skew correction (R3).
+                changes:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items: { $ref: "#/components/schemas/Change" }
+      responses:
+        "200":
+          description: Every change was applied, superseded or merged.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [revision, results]
+                properties:
+                  revision:
+                    type: integer
+                    description: The user's revision after this push.
+                  results:
+                    type: array
+                    description: One per change, in request order.
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [type, id, status]
+                      properties:
+                        type: { $ref: "#/components/schemas/RecordType" }
+                        id: { type: string, format: uuid }
+                        status:
+                          type: string
+                          enum: [applied, superseded, merged]
+                          description: >
+                            applied: the server now holds this version. superseded: the server kept a
+                            newer version or a tombstone, and gave it a new revision so the next pull
+                            brings it (research R2). merged: matched an existing saved food or goal by
+                            natural key (see canonicalId).
+                        canonicalId:
+                          type: string
+                          format: uuid
+                          description: Present only when status is merged.
+        "400":
+          description: >
+            invalid_request (with `invalid: [{index, reason}]`, reason in invalid_record |
+            unknown_schema_version | day_key_changed) or too_many_changes. Nothing was applied.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/CsrfFailed" }
+        "409": { $ref: "#/components/responses/NoticeRequired" }
+        "413": { description: Body larger than 256 KiB }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /sync/changes:
+    get:
+      x-access: full
+      summary: Every record of this user changed after `since`, oldest revision first.
+      operationId: pullChanges
+      parameters:
+        - name: since
+          in: query
+          required: true
+          schema: { type: integer, minimum: 0 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 500 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [changes, cursor, hasMore, serverNow]
+                properties:
+                  serverNow:
+                    type: string
+                    format: date-time
+                    description: Server time, used by the device for the 90-day history cut-off (R16).
+                  changes:
+                    type: array
+                    items: { $ref: "#/components/schemas/PulledChange" }
+                  cursor:
+                    type: integer
+                    description: Revision of the last change returned (or `since` when empty). Send as the next `since`.
+                  hasMore: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/NoticeRequired" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+components:
+  schemas:
+    RecordType:
+      type: string
+      enum: [entry, food, goal, version]
+
+    Change:
+      description: >
+        The server handles `version` changes before the others in a push (research R14).
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, op, id, record]
+          properties:
+            type: { enum: [entry, food, goal] }
+            op: { const: upsert }
+            id: { type: string, format: uuid }
+            record:
+              description: >
+                The full record, shaped exactly like the device record for `type` (LogEntry, SavedFood
+                or ProteinGoal; data-model.md). `record.id` must equal `id`.
+              oneOf:
+                - $ref: "#/components/schemas/LogEntry"
+                - $ref: "#/components/schemas/SavedFood"
+                - $ref: "#/components/schemas/ProteinGoal"
+        - type: object
+          description: An explicit restore, the only change that can revive a tombstone (R15).
+          additionalProperties: false
+          required: [type, op, id, record]
+          properties:
+            type: { const: entry }
+            op: { const: restore }
+            id: { type: string, format: uuid }
+            record: { $ref: "#/components/schemas/LogEntry" }
+        - type: object
+          description: A replaced state of an entry. Insert-only, and a repeated ID is ignored (R14).
+          additionalProperties: false
+          required: [type, op, id, record]
+          properties:
+            type: { const: version }
+            op: { const: insert }
+            id: { type: string, format: uuid }
+            record: { $ref: "#/components/schemas/EntryVersion" }
+        - type: object
+          additionalProperties: false
+          required: [type, op, id, deletedAt]
+          properties:
+            type: { const: entry, description: Only entries can be deleted today }
+            op: { const: delete }
+            id: { type: string, format: uuid }
+            deletedAt: { type: string, format: date-time }
+
+    PulledChange:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, revision, record]
+          properties:
+            type: { $ref: "#/components/schemas/RecordType" }
+            revision: { type: integer }
+            record:
+              oneOf:
+                - allOf:
+                    - $ref: "#/components/schemas/LogEntry"
+                    - type: object
+                      properties:
+                        restoredAt:
+                          type: [string, "null"]
+                          format: date-time
+                          description: Server-assigned and pull-only. Never sent in a push (R15).
+                - $ref: "#/components/schemas/SavedFood"
+                - $ref: "#/components/schemas/ProteinGoal"
+                - $ref: "#/components/schemas/EntryVersion"
+        - type: object
+          additionalProperties: false
+          required: [type, revision, id, deleted]
+          properties:
+            type: { enum: [entry, food, goal] }
+            revision: { type: integer }
+            id: { type: string, format: uuid }
+            deleted: { const: true }
+
+    Meta:
+      type: object
+      required: [id, createdAt, updatedAt, schemaVersion]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        schemaVersion: { const: 1 }
+
+    Quantity:
+      type: object
+      additionalProperties: false
+      required: [amount, unit]
+      properties:
+        amount: { type: number, minimum: 0, maximum: 100000 }
+        unit: { enum: [g, ml, serving] }
+
+    Macros:
+      type: object
+      additionalProperties: false
+      required: [kcal, proteinG, carbsG, fatG]
+      properties:
+        kcal: { type: number, minimum: 0, maximum: 100000 }
+        proteinG: { type: number, minimum: 0, maximum: 10000 }
+        carbsG: { type: number, minimum: 0, maximum: 10000 }
+        fatG: { type: number, minimum: 0, maximum: 10000 }
+
+    Name:
+      type: string
+      minLength: 1
+      maxLength: 120
+      description: Must be non-empty after trimming.
+
+    LogEntry:
+      allOf:
+        - $ref: "#/components/schemas/Meta"
+        - type: object
+          required: [versionId, dayKey, loggedAt, name, quantity, macros, source, savedFoodId, mealCategory]
+          properties:
+            versionId:
+              type: string
+              format: uuid
+              description: ID of this saved state. New on every change (R14).
+            dayKey: { type: string, format: date }
+            loggedAt: { type: string, format: date-time }
+            name: { $ref: "#/components/schemas/Name" }
+            quantity: { $ref: "#/components/schemas/Quantity" }
+            macros: { $ref: "#/components/schemas/Macros" }
+            source: { enum: [ai, ai-edited, manual] }
+            savedFoodId: { type: [string, "null"], format: uuid }
+            mealCategory: { $ref: "#/components/schemas/MealCategory" }
+
+    MealCategory:
+      description: Null means Uncategorized. An incoming null never replaces a category (R17).
+      enum: [breakfast, lunch, dinner, snacks, null]
+
+    EntryVersion:
+      description: >
+        A replaced state of an entry. `id` is that state's versionId. `createdAt` and `updatedAt` are the
+        entry's values in that state.
+      allOf:
+        - $ref: "#/components/schemas/Meta"
+        - type: object
+          required:
+            [entryId, changeType, replacedAt, dayKey, loggedAt, name, quantity, macros, source, savedFoodId, mealCategory]
+          properties:
+            entryId: { type: string, format: uuid }
+            changeType: { enum: [edit, delete, restore] }
+            replacedAt: { type: string, format: date-time }
+            dayKey: { type: string, format: date }
+            loggedAt: { type: string, format: date-time }
+            name: { $ref: "#/components/schemas/Name" }
+            quantity: { $ref: "#/components/schemas/Quantity" }
+            macros: { $ref: "#/components/schemas/Macros" }
+            source: { enum: [ai, ai-edited, manual] }
+            savedFoodId: { type: [string, "null"], format: uuid }
+            mealCategory: { $ref: "#/components/schemas/MealCategory" }
+            restoredAt:
+              type: [string, "null"]
+              format: date-time
+              description: Pull-only (R15).
+
+    SavedFood:
+      allOf:
+        - $ref: "#/components/schemas/Meta"
+        - type: object
+          required: [name, referenceQuantity, macros, source, lastUsedAt]
+          properties:
+            name: { $ref: "#/components/schemas/Name" }
+            referenceQuantity: { $ref: "#/components/schemas/Quantity" }
+            macros: { $ref: "#/components/schemas/Macros" }
+            source: { enum: [ai, ai-edited, manual] }
+            lastUsedAt: { type: string, format: date-time }
+
+    ProteinGoal:
+      allOf:
+        - $ref: "#/components/schemas/Meta"
+        - type: object
+          required: [effectiveFrom, grams]
+          properties:
+            effectiveFrom: { type: string, format: date }
+            grams:
+              oneOf:
+                - { type: "null" }
+                - { type: number, exclusiveMinimum: 0, maximum: 10000 }
+
+    Problem:
+      type: object
+      required: [code]
+      properties:
+        code:
+          enum:
+            - invalid_request
+            - too_many_changes
+            - sync_notice_required
+            - unauthenticated
+            - csrf_failed
+            - rate_limited
+            - service_unavailable
+        invalid:
+          type: array
+          items:
+            type: object
+            required: [index, reason]
+            properties:
+              index: { type: integer }
+              reason: { enum: [invalid_record, unknown_schema_version, day_key_changed] }
+
+  responses:
+    Unauthenticated:
+      description: No valid full session (code unauthenticated).
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
+    CsrfFailed:
+      description: Missing or wrong X-CSRF-Token (code csrf_failed).
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
+    NoticeRequired:
+      description: Sync notice not acknowledged yet (code sync_notice_required).
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
+    RateLimited:
+      description: SyncPerUser limit hit (code rate_limited), with Retry-After.
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
+    Unavailable:
+      description: Database unavailable (code service_unavailable). The device keeps its outbox and retries.
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }

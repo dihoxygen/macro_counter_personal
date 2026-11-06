@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useServices } from '../../app/services';
 import type { SavedFood } from '../../data/records';
+import { toDayKey } from '../../domain/days';
+import { useRemoteChanges } from '../shared/useRemoteChanges';
 
 const SHOWN = 5;
 
@@ -16,16 +18,17 @@ interface Props {
 export function QuickPicks({ refreshKey, disabled, onPick, onMore }: Props) {
   const services = useServices();
   const [foods, setFoods] = useState<SavedFood[]>([]);
+  const remote = useRemoteChanges('food', 'entry');
 
   useEffect(() => {
     let active = true;
-    void services.savedFoods.listRecent(SHOWN).then((list) => {
+    void services.savedFoods.listQuickPicks(toDayKey(services.now()), SHOWN).then((list) => {
       if (active) setFoods(list);
     });
     return () => {
       active = false;
     };
-  }, [services, refreshKey]);
+  }, [services, refreshKey, remote]);
 
   if (foods.length === 0) return null;
 

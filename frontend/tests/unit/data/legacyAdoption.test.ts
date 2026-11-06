@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { openDb, type Db } from '../../../src/data/db';
 import { openDeviceRepository } from '../../../src/data/deviceRepository';
 import { adoptLegacyData, type AdoptionDeps } from '../../../src/data/legacyAdoption';
+import { peek } from '../../../src/data/outbox';
 import type { LogEntry, ProteinGoal, SavedFood } from '../../../src/data/records';
 
 let n = 0;
@@ -26,6 +27,7 @@ const macros = { kcal: 100, proteinG: 10, carbsG: 10, fatG: 1 };
 function entry(i: number): LogEntry {
   return {
     ...meta(`entry-${i}`),
+    versionId: `version-${i}`,
     dayKey: '2026-01-02',
     loggedAt: `2026-01-02T0${i}:00:00.000Z`,
     name: `Food ${i}`,
@@ -33,6 +35,7 @@ function entry(i: number): LogEntry {
     macros,
     source: 'manual',
     savedFoodId: null,
+    mealCategory: 'lunch',
   };
 }
 
@@ -113,6 +116,18 @@ describe('adoptLegacyData (FR-018: owner only, once, without loss)', () => {
     expect(copied.proteinGoals).toEqual([goal]);
     expect(deps.deleteLegacy).toHaveBeenCalledTimes(1);
     expect(await device.isLegacyAdopted()).toBe(true);
+  });
+
+  it('queues everything it copies for the first sync, foods first', async () => {
+    const { deps, targetName } = await world();
+
+    await adoptLegacyData(owner, deps);
+
+    const target = await openDb(targetName);
+    const items = await peek(target, 100);
+    target.close();
+    expect(items.map((i) => i.key.split(':')[0])).toEqual(['food', 'food', 'goal', 'entry', 'entry', 'entry']);
+    expect(items.every((i) => i.op === 'upsert')).toBe(true);
   });
 
   it('does nothing the second time', async () => {

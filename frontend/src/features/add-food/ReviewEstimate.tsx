@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { categoryForTime } from '../../domain/meals';
 import { formatGrams, formatKcal } from '../../domain/nutrition/format';
 import {
   acceptWarning,
@@ -8,13 +9,15 @@ import {
   editItem,
   needsAcceptance,
   reviewTotal,
+  setItemMeal,
   type ItemPatch,
   type ReviewItem,
   type ReviewState,
 } from '../../domain/review';
-import type { Macros, Quantity, Unit } from '../../domain/types';
+import type { Macros, MealCategory, Quantity, Unit } from '../../domain/types';
 import { entryFieldLabels, parseEntryForm, type EntryFormErrors, type EntryNumberField } from '../shared/entryForm';
 import { FieldError, NumberInput } from '../shared/FormBits';
+import { MealCategoryField } from '../shared/MealCategoryField';
 import { NUMBER_ERROR, parseNonNegative } from '../shared/numberField';
 
 interface Props {
@@ -23,10 +26,11 @@ interface Props {
   onDiscard: () => void;
   /** Called with the state after every edit, not on first render (feature 004: pending protein). */
   onChange?: (state: ReviewState) => void;
+  now?: () => Date;
 }
 
 /** Review, edit and confirm an AI estimate. Nothing is saved until Confirm (FR-006). */
-export function ReviewEstimate({ initial, onConfirm, onDiscard, onChange }: Props) {
+export function ReviewEstimate({ initial, onConfirm, onDiscard, onChange, now = () => new Date() }: Props) {
   const [state, setState] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -56,6 +60,8 @@ export function ReviewEstimate({ initial, onConfirm, onDiscard, onChange }: Prop
         <ReviewItemCard
           key={index}
           item={item}
+          meal={item.mealCategory ?? categoryForTime(now())}
+          onMeal={(meal) => apply((s) => setItemMeal(s, index, meal))}
           onEdit={(patch) => apply((s) => editItem(s, index, patch))}
           onAccept={() => apply((s) => acceptWarning(s, index))}
           onRemove={() => apply((s) => removeItem(s, index))}
@@ -101,11 +107,15 @@ const warnings = {
 
 function ReviewItemCard({
   item,
+  meal,
+  onMeal,
   onEdit,
   onAccept,
   onRemove,
 }: {
   item: ReviewItem;
+  meal: MealCategory;
+  onMeal: (meal: MealCategory) => void;
   onEdit: (patch: ItemPatch) => void;
   onAccept: () => void;
   onRemove: () => void;
@@ -118,6 +128,7 @@ function ReviewItemCard({
         <strong>{item.name}</strong>
         <div className="muted">{item.portionDescription || formatPortion(item.portion)}</div>
       </div>
+      <MealCategoryField value={meal} onChange={onMeal} />
       {editing ? (
         <ItemEditor
           item={item}

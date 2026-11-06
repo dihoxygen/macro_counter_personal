@@ -2,6 +2,7 @@ import { expect, test } from '../test';
 import { composer, describeFood, reviewCard } from '../helpers';
 import { adminSql, invite, uniqueUsername } from './db';
 import { completeSetup, nextCode, PASSWORD, SIGN_IN_FAILED, signIn } from './flows';
+import { waitForSynced } from './sync';
 
 // US2.4 / quickstart V5: the owner disables an account while the person is using the app.
 
@@ -18,6 +19,8 @@ test('a disabled person is sent to sign-in on their next server request, without
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
+  // Once the app has finished starting up, so disabling lands on "the next request" and not on one in flight.
+  await waitForSynced(page);
   adminSql(`select macro_admin.disable_user('${username}');`);
 
   // The next server call fails: describing a food (feature 004: on Today) brings up sign-in over the app.

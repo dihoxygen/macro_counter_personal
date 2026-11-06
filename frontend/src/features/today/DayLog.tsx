@@ -1,6 +1,7 @@
 import type { DayKey } from '../../domain/types';
 import { EntryEditor } from './EntryEditor';
 import { EntryList } from './EntryList';
+import { RecentlyDeleted } from './RecentlyDeleted';
 import { TotalsPanel } from './TotalsPanel';
 import { useDayLog } from './useDayLog';
 
@@ -20,10 +21,12 @@ export function DayLog({ dayKey, refreshKey = 0, onSetGoal, pendingG }: Props) {
   return (
     <div className="stack">
       <TotalsPanel totals={day.totals} goalG={day.goalG} onSetGoal={onSetGoal} pendingG={pendingG} />
+      {day.notice && <p role="status">{day.notice}</p>}
       {day.editing && (
         <EntryEditor key={day.editing.id} entry={day.editing} onClose={day.closeEditor} onChanged={day.changed} />
       )}
       <EntryList entries={day.entries} onSelect={day.select} />
+      <RecentlyDeleted dayKey={dayKey} refreshKey={day.reloads + refreshKey} onRestored={day.changed} />
     </div>
   );
 }

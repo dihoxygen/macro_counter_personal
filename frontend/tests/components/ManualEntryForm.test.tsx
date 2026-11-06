@@ -54,7 +54,8 @@ describe('ManualEntryForm', () => {
       quantity: { amount: 170, unit: 'g' },
       macros: { kcal: 100, proteinG: 17, carbsG: 6, fatG: 0.7 },
       source: 'manual',
-      savedFoodId: null,
+      savedFoodId: expect.any(String),
+      mealCategory: expect.any(String),
     });
   });
 

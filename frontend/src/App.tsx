@@ -4,12 +4,14 @@ import { GoalSettings } from './features/goal/GoalSettings';
 import { DayView } from './features/history/DayView';
 import { RecentFoods } from './features/recent/RecentFoods';
 import { TodayScreen } from './features/today/TodayScreen';
+import { TrendsView } from './features/trends/TrendsView';
 
-export type View = 'today' | 'recent' | 'history' | 'goal' | 'account';
+export type View = 'today' | 'recent' | 'history' | 'trends' | 'goal' | 'account';
 
 const titles: Record<Exclude<View, 'today'>, string> = {
   recent: 'Recent foods',
   history: 'Previous days',
+  trends: 'Trends',
   goal: 'Protein goal',
   account: 'Account',
 };
@@ -29,6 +31,7 @@ export default function App() {
         <section>
           <ScreenHeader title={titles[view]} onBack={goToday} />
           {view === 'history' && <DayView />}
+          {view === 'trends' && <TrendsView />}
           {view === 'recent' && <RecentFoods onLogged={goToday} />}
           {view === 'goal' && <GoalSettings onSaved={goToday} />}
           {view === 'account' && <AccountMenu />}

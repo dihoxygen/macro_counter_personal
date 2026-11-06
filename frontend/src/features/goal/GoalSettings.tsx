@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useServices } from '../../app/services';
 import { toDayKey } from '../../domain/days';
 import { goalForDay } from '../../domain/goals';
 import { parseNonNegative } from '../shared/numberField';
+import { useRemoteChanges } from '../shared/useRemoteChanges';
 
 const GOAL_ERROR = 'Enter a protein goal greater than 0 g';
 
@@ -13,6 +14,8 @@ export function GoalSettings({ onSaved }: { onSaved: () => void }) {
   const [current, setCurrent] = useState<number | null>(null);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const typing = useRef(false);
+  const remote = useRemoteChanges('goal');
 
   useEffect(() => {
     let active = true;
@@ -20,12 +23,12 @@ export function GoalSettings({ onSaved }: { onSaved: () => void }) {
       if (!active) return;
       const goal = goalForDay(history, today);
       setCurrent(goal);
-      if (goal !== null) setValue(String(goal));
+      if (goal !== null && !typing.current) setValue(String(goal));
     });
     return () => {
       active = false;
     };
-  }, [services, today]);
+  }, [services, today, remote]);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -58,6 +61,7 @@ export function GoalSettings({ onSaved }: { onSaved: () => void }) {
           min={1}
           value={value}
           onChange={(e) => {
+            typing.current = true;
             setValue(e.target.value);
             setError(null);
           }}

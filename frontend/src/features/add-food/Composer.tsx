@@ -167,6 +167,7 @@ export function Composer({ active, refreshKey, onLogged, onMoreRecent, onPending
         )}
         {phase.kind === 'review' && (
           <ReviewEstimate
+            now={services.now}
             initial={phase.state}
             onConfirm={confirm}
             onDiscard={flow.reset}

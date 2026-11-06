@@ -1,10 +1,11 @@
 import type { Estimate, Flag } from '../api/estimates';
 import type { NewEntry } from '../data/repositories';
 import { toDayKey } from './days';
+import { categoryForTime } from './meals';
 import { isCalorieMismatch, isLargePortion } from './nutrition/plausibility';
 import { sumMacros } from './nutrition/totals';
 import { assertMacros, assertNonNegative } from './nutrition/validate';
-import type { Macros, Quantity } from './types';
+import type { Macros, MealCategory, Quantity } from './types';
 
 // Pure review-and-confirm state for an AI estimate (data-model.md, estimate lifecycle).
 
@@ -20,6 +21,8 @@ export interface ReviewItem {
   edited: boolean;
   /** True once the user explicitly accepted this item's warnings (constitution VI). */
   accepted: boolean;
+  /** Set when the user picks a meal; until then the time of day decides (FR-021). */
+  mealCategory?: MealCategory;
 }
 
 export interface ReviewState {
@@ -80,6 +83,11 @@ export function addItem(state: ReviewState, item: Pick<ReviewItem, 'name' | 'por
   };
 }
 
+/** Not a value edit: nothing about the food's nutrition changes, so its source and any acceptance stand. */
+export function setItemMeal(state: ReviewState, index: number, mealCategory: MealCategory): ReviewState {
+  return replace(state, index, { ...itemAt(state, index), mealCategory });
+}
+
 export function acceptWarning(state: ReviewState, index: number): ReviewState {
   return replace(state, index, { ...itemAt(state, index), accepted: true });
 }
@@ -106,6 +114,7 @@ export function toEntries(state: ReviewState, now: Date): NewEntry[] {
     dayKey: toDayKey(now),
     loggedAt: new Date(now.getTime() + index).toISOString(),
     savedFoodId: null,
+    mealCategory: item.mealCategory ?? categoryForTime(now),
   }));
 }
 

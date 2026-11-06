@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useServices } from '../../app/services';
 import type { View } from '../../App';
 import { Composer } from '../add-food/Composer';
+import { SyncStatus } from '../sync/SyncStatus';
 import { EntryEditor } from './EntryEditor';
 import { EntryList } from './EntryList';
+import { RecentlyDeleted } from './RecentlyDeleted';
 import { TotalsPanel } from './TotalsPanel';
 import { useCurrentDayKey } from './useCurrentDayKey';
 import { useDayLog } from './useDayLog';
@@ -34,11 +36,17 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
       <header className="screen-header today-header">
         <h1>Today</h1>
         <span className="muted today-date">{formatToday(now())}</span>
+        <SyncStatus />
         <nav className="today-nav" aria-label="Other views">
           <button type="button" className="icon-button" aria-label="Previous days" onClick={() => onNavigate('history')}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="5" width="18" height="16" rx="2" />
               <path d="M3 10h18M8 3v4M16 3v4" />
+            </svg>
+          </button>
+          <button type="button" className="icon-button" aria-label="Trends" onClick={() => onNavigate('trends')}>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
             </svg>
           </button>
           <button type="button" className="icon-button" aria-label="Goal settings" onClick={() => onNavigate('goal')}>
@@ -65,10 +73,12 @@ export function TodayScreen({ active = true, onNavigate }: Props) {
         />
       </div>
       <div className="today-entries stack">
+        {day.notice && <p role="status">{day.notice}</p>}
         {day.editing && (
           <EntryEditor key={day.editing.id} entry={day.editing} onClose={day.closeEditor} onChanged={day.changed} />
         )}
         <EntryList entries={day.entries} onSelect={day.select} />
+        <RecentlyDeleted dayKey={dayKey} refreshKey={day.reloads + refreshKey} onRestored={day.changed} />
       </div>
       <Composer
         active={active}

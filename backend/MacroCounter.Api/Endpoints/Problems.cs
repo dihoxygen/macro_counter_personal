@@ -78,6 +78,22 @@ public static class Problems
         Create(StatusCodes.Status503ServiceUnavailable, "service_unavailable", "Temporarily unavailable.",
             "Sign-in is temporarily unavailable.");
 
+    // ---- 007: cross-device sync (contracts/sync-api.yaml) ----
+
+    public static IResult SyncNoticeRequired() =>
+        Create(StatusCodes.Status409Conflict, "sync_notice_required", "Sync is not turned on yet.",
+            "Acknowledge the sync notice first.");
+
+    /// <summary>Nothing was applied. Carries indexes and fixed codes only, never a field value (FR-014, FR-015).</summary>
+    public static IResult InvalidChanges(IReadOnlyList<Sync.InvalidChange> invalid) =>
+        Create(StatusCodes.Status400BadRequest, "invalid_request", "The request is invalid.",
+            "Some changes could not be accepted. Nothing was applied.",
+            new() { ["invalid"] = invalid.Select(i => new { index = i.Index, reason = i.Reason }).ToList() });
+
+    public static IResult TooManyChanges() =>
+        Create(StatusCodes.Status400BadRequest, "too_many_changes", "Too many changes.",
+            "Send at most 200 changes at a time.");
+
     private static IResult Create(int status, string code, string title, string detail,
         Dictionary<string, object?>? extensions = null)
     {

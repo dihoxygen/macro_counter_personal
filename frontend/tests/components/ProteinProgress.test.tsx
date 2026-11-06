@@ -17,6 +17,7 @@ const protein = (dayKey: string, proteinG: number): NewEntry => ({
   macros: { kcal: proteinG * 4, proteinG, carbsG: 0, fatG: 0 },
   source: 'manual',
   savedFoodId: null,
+  mealCategory: 'lunch',
 });
 
 describe('ProteinProgress', () => {

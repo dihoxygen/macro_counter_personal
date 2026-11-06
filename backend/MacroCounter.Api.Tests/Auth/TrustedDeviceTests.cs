@@ -17,7 +17,7 @@ public class TrustedDeviceTests(PostgresFixture db) : IAsyncLifetime
 
     private ApiFactory _factory = null!;
     private ActiveUser _carol = null!;
-    private int _step;
+    private string? _lastCode;
 
     public async Task InitializeAsync()
     {
@@ -30,9 +30,17 @@ public class TrustedDeviceTests(PostgresFixture db) : IAsyncLifetime
 
     /// <summary>
     /// A code that differs from the last one used, so the replay guard (which remembers only the last code) never
-    /// refuses it; alternating two steps keeps it inside the authenticator's time window.
+    /// refuses it. Offsets are relative to the clock, so alternating them by call can land on the same step when a
+    /// 30-second boundary falls between two calls; comparing the codes cannot, and one and two steps ahead both stay
+    /// inside the authenticator's time window.
     /// </summary>
-    private string NextCode(ActiveUser user) => user.Code(++_step % 2);
+    private string NextCode(ActiveUser user)
+    {
+        var code = user.Code(1);
+        if (code == _lastCode) code = user.Code(2);
+        _lastCode = code;
+        return code;
+    }
 
     private async Task<AuthClient> Browser()
     {

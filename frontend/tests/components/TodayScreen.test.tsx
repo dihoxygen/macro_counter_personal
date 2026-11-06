@@ -18,6 +18,7 @@ const entry = (overrides: Partial<NewEntry>): NewEntry => ({
   macros: { kcal: 100, proteinG: 10, carbsG: 10, fatG: 1 },
   source: 'manual',
   savedFoodId: null,
+  mealCategory: 'lunch',
   ...overrides,
 });
 
@@ -36,7 +37,7 @@ describe('TodayScreen', () => {
     expect(within(totals).getByText('30.1 g')).toBeInTheDocument();
 
     const list = screen.getByRole('list', { name: /entries/i });
-    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual([
       expect.stringContaining('Breakfast'),
       expect.stringContaining('Dinner'),
     ]);

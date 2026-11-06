@@ -1,20 +1,27 @@
-import type { DayKey } from '../domain/types';
-import type { LogEntry, ProteinGoal, SavedFood } from './records';
+import type { DayKey, MealCategory } from '../domain/types';
+import type { EntryVersion, LogEntry, ProteinGoal, SavedFood } from './records';
 
 // UI and domain code use these interfaces only; never IndexedDB directly (Principle III).
 
+/** Every new entry has a meal (FR-020); only entries from before categories existed have none. */
 export type NewEntry = Pick<
   LogEntry,
   'dayKey' | 'loggedAt' | 'name' | 'quantity' | 'macros' | 'source' | 'savedFoodId'
->;
+> & { mealCategory: MealCategory };
 
 /** dayKey is fixed at creation and can never be changed (travel edge case). */
-export type EntryPatch = Partial<Pick<LogEntry, 'name' | 'quantity' | 'macros' | 'source'>>;
+export type EntryPatch = Partial<Pick<LogEntry, 'name' | 'quantity' | 'macros' | 'source'>> & {
+  /** Never null: an entry cannot go back to Uncategorized (FR-022). */
+  mealCategory?: MealCategory;
+};
 
 export interface EntryRepository {
   create(entry: NewEntry): Promise<LogEntry>;
   get(id: string): Promise<LogEntry | undefined>;
   listByDay(dayKey: DayKey): Promise<LogEntry[]>;
+  listAll(): Promise<LogEntry[]>;
+  /** Inclusive at both ends. */
+  listByDayRange(from: DayKey, to: DayKey): Promise<LogEntry[]>;
   update(id: string, patch: EntryPatch): Promise<LogEntry>;
   delete(id: string): Promise<void>;
 }
@@ -23,8 +30,16 @@ export interface SavedFoodRepository {
   /** Saves a confirmed food, matching an existing one by normalized name and unit (data-model.md). */
   upsertFromEntry(entry: NewEntry): Promise<SavedFood>;
   get(id: string): Promise<SavedFood | undefined>;
-  /** Most recently used first. */
-  listRecent(limit?: number): Promise<SavedFood[]>;
+  listAll(): Promise<SavedFood[]>;
+  /** Most used in the 30 days ending on `today` first (FR-029). */
+  listQuickPicks(today: DayKey, limit?: number): Promise<SavedFood[]>;
+}
+
+export interface EntryVersionRepository {
+  listAll(): Promise<EntryVersion[]>;
+  listForEntry(entry: Pick<LogEntry, 'id' | 'versionId'>): Promise<EntryVersion[]>;
+  listDeletedForDay(dayKey: DayKey): Promise<EntryVersion[]>;
+  restore(versionId: string): Promise<LogEntry>;
 }
 
 export interface ProteinGoalRepository {

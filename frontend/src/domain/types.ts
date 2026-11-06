@@ -25,3 +25,7 @@ export type Source = z.infer<typeof SourceSchema>;
 
 export const DayKeySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export type DayKey = z.infer<typeof DayKeySchema>;
+
+/** The fixed set of meals (FR-020). No category at all, on entries from before this feature, is "Uncategorized". */
+export const MealCategorySchema = z.enum(['breakfast', 'lunch', 'dinner', 'snacks']);
+export type MealCategory = z.infer<typeof MealCategorySchema>;

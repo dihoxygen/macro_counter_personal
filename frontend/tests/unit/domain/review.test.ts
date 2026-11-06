@@ -106,6 +106,7 @@ describe('toEntries', () => {
       dayKey: '2026-10-08',
       loggedAt: now.toISOString(),
       savedFoodId: null,
+      mealCategory: 'lunch',
     });
     expect(entries[1]!.source).toBe('ai-edited');
     expect(entries[1]!.macros.kcal).toBe(80);
